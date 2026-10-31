@@ -41,6 +41,22 @@ const en = {
   switchCamera: 'Switch camera',
   takePhoto: 'Take a photo instead',
   scanNative: 'Scan with the phone’s scanner',
+  updatesTitle: 'Updates',
+  updatesAsk:
+    'Should Spark Hunt look for a new version on GitHub whenever it starts? That needs internet at the start; without it, the game starts as usual. You can change this in the settings.',
+  updatesYes: 'Yes, look',
+  updatesNo: 'No',
+  updatesSetting: 'Look for a new version when the app starts',
+  updatesNote:
+    'New versions come from the game’s releases on GitHub. Android asks before it installs one.',
+  updateReady: 'A new version of Spark Hunt is ready (build {build}).',
+  updateInstall: 'Install',
+  updateLater: 'Later',
+  updateDownloading: 'Downloading… {percent} %',
+  updateInstalling: 'Android’s installer takes over now.',
+  updatePermission:
+    'Allow Spark Hunt to install apps in the settings that have just opened, then tap Install again.',
+  updateFailed: 'The download failed. Try again later.',
   liveCamera: 'Back to the live camera',
   readingPhoto: 'Reading the photo…',
   photoNoCode:
@@ -131,6 +147,22 @@ const de: Record<TextKey, string> = {
   switchCamera: 'Kamera wechseln',
   takePhoto: 'Stattdessen ein Foto machen',
   scanNative: 'Mit dem Scanner des Handys scannen',
+  updatesTitle: 'Aktualisierungen',
+  updatesAsk:
+    'Soll Funkenjagd bei jedem Start auf GitHub nach einer neuen Version suchen? Dafür braucht es beim Start Internet; ohne startet das Spiel wie gewohnt. In den Einstellungen lässt sich das ändern.',
+  updatesYes: 'Ja, suchen',
+  updatesNo: 'Nein',
+  updatesSetting: 'Beim Start nach einer neuen Version suchen',
+  updatesNote:
+    'Neue Versionen kommen von den Releases des Spiels auf GitHub. Android fragt, bevor es eine installiert.',
+  updateReady: 'Eine neue Version von Funkenjagd ist da (Build {build}).',
+  updateInstall: 'Installieren',
+  updateLater: 'Später',
+  updateDownloading: 'Lade herunter… {percent} %',
+  updateInstalling: 'Jetzt übernimmt der Installer von Android.',
+  updatePermission:
+    'Erlaube Funkenjagd in den eben geöffneten Einstellungen, Apps zu installieren, und tippe dann noch einmal auf Installieren.',
+  updateFailed: 'Der Download ist fehlgeschlagen. Versuch es später noch einmal.',
   liveCamera: 'Zurück zur Live-Kamera',
   readingPhoto: 'Lese das Foto…',
   photoNoCode:

@@ -16,6 +16,8 @@ describe('parseSettings', () => {
       keepScreenOn: false,
       roundSeconds: 90,
       camera: { deviceId: 'cam-2', zoom: 2.5, exposure: -1 },
+      checkUpdates: true,
+      updatesAsked: true,
     }
     expect(parseSettings(stored)).toEqual(stored)
   })
@@ -28,6 +30,8 @@ describe('parseSettings', () => {
       roundSeconds: 45,
       camera: { deviceId: 3, zoom: Number.NaN, exposure: 'dark' },
       keepScreenOn: false,
+      checkUpdates: 'yes',
+      updatesAsked: 1,
     })
     expect(settings).toEqual({ ...DEFAULTS, keepScreenOn: false })
   })

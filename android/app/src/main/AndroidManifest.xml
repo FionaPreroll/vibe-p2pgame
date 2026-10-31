@@ -46,4 +46,6 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- A buzz for sparks and mines; without it, the WebView ignores navigator.vibrate. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- In-app updates: hands a new APK from the game's release to Android's installer, which asks. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

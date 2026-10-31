@@ -7,6 +7,7 @@ import { homeScreen, playerName } from './ui/home'
 import { hostScreen } from './ui/host'
 import { joinScreen } from './ui/join'
 import { settingsScreen } from './ui/settings'
+import { offerUpdates } from './ui/updates'
 
 setLanguage(settings().language)
 // In the app, fetch Google's scanner now, while there may be internet, for later on a hotspot.
@@ -27,6 +28,9 @@ const offer = unpack(location.hash)
 if (location.hash) history.replaceState(null, '', location.pathname + location.search)
 if (offer?.type === 'offer') joinScreen(playerName(), home, { offer })
 else home()
+
+// In the app: ask once about updates, then look for one at every start if the player wants.
+void offerUpdates()
 
 // The app has its files inside; a service worker would only keep a second copy of them.
 if (import.meta.env.PROD && 'serviceWorker' in navigator && !isApp()) {

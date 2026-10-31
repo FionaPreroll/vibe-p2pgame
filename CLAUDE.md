@@ -34,6 +34,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - A new permission goes into `android/app/src/main/AndroidManifest.xml`, with a comment why.
 - This container cannot reach Google's Android downloads: the APK is built and checked by `.github/workflows/android.yml` only.
 - The release "Spark Hunt for Android" (tag `android-latest`) is replaced by CI with every push to `main`; that tag moves on purpose, and is the only one that does. Numbered game versions stay for when they are asked for.
+- In-app updates (`src/updates.ts`, `AppUpdaterPlugin.java`) compare the release's `version.json` with the APK's `versionCode`; both are the Android workflow's run number, so the release job keeps publishing `version.json` beside the APK. The plugin reads and downloads only from this repository's releases.
 
 ## Code
 

@@ -4,6 +4,7 @@ name: Android
 # pull request, or by hand from the Actions tab. The APK is kept as the run's artifact; from main,
 # it also goes to the release "Spark Hunt for Android", at a download link that never changes:
 # https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk
+# Beside it, version.json names the build, for the app's in-app updates.
 
 on:
   push:
@@ -85,12 +86,14 @@ jobs:
 
           This is a debug build, signed with the project's debug key: for testing and playing with friends, not for the Play Store.
           NOTES
+          # What the app compares with its own build number to find updates (src/updates.ts).
+          printf '{"build":%s,"commit":"%s"}\n' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" > version.json
           # The tag follows main: it always names the commit of the APK in the release.
           git tag -f "$TAG" "$GITHUB_SHA"
           git push -f origin "refs/tags/$TAG"
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" spark-hunt.apk --clobber
+            gh release upload "$TAG" spark-hunt.apk version.json --clobber
             gh release edit "$TAG" --title "Spark Hunt for Android" --notes-file notes.md --latest
           else
-            gh release create "$TAG" spark-hunt.apk --title "Spark Hunt for Android" --notes-file notes.md --latest
+            gh release create "$TAG" spark-hunt.apk version.json --title "Spark Hunt for Android" --notes-file notes.md --latest
           fi

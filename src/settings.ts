@@ -12,6 +12,10 @@ export interface Settings {
   readonly roundSeconds: number
   /** The camera that last read a code, and its zoom and brightness. */
   readonly camera: CameraSettings
+  /** In the Android app: look for a new version at every start (see src/updates.ts). */
+  readonly checkUpdates: boolean
+  /** Whether the app has asked about `checkUpdates` yet, which it does once, at the first start. */
+  readonly updatesAsked: boolean
 }
 
 export interface CameraSettings {
@@ -32,6 +36,8 @@ export const DEFAULTS: Settings = {
   keepScreenOn: true,
   roundSeconds: 60,
   camera: { deviceId: null, zoom: null, exposure: null },
+  checkUpdates: false,
+  updatesAsked: false,
 }
 
 /**
@@ -55,6 +61,8 @@ export function parseSettings(stored: unknown, oldName?: unknown): Settings {
       zoom: finite(camera.zoom),
       exposure: finite(camera.exposure),
     },
+    checkUpdates: s.checkUpdates === true,
+    updatesAsked: s.updatesAsked === true,
   }
 }
 

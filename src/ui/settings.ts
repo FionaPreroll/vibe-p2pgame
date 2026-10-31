@@ -1,4 +1,5 @@
 import { setLanguage, t } from '../i18n'
+import { isApp } from '../native'
 import { forgetSettings, ROUND_CHOICES, settings, updateCamera, updateSettings } from '../settings'
 import { clearAll } from '../storage'
 import { h, show, toast } from './dom'
@@ -54,6 +55,11 @@ export function settingsScreen(onBack: () => void): void {
       h('label', {}, t('roundLength'), rounds),
       toggle(t('vibration'), current.vibration, (on) => updateSettings({ vibration: on })),
       toggle(t('keepScreenOn'), current.keepScreenOn, (on) => updateSettings({ keepScreenOn: on })),
+      isApp() &&
+        toggle(t('updatesSetting'), current.checkUpdates, (on) =>
+          updateSettings({ checkUpdates: on, updatesAsked: true }),
+        ),
+      isApp() && h('p', { class: 'muted' }, t('updatesNote')),
       h('p', { class: 'muted' }, t('cameraSaved')),
       h(
         'div',
