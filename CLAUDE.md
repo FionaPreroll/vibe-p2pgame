@@ -12,7 +12,7 @@ The README describes the project, its layout and its conventions. These rules ho
 
 - A change that players see adds that change to `CHANGELOG.md`, under `## [Unreleased]`, in the section it belongs to (`### Added`, `### Changed`, `### Fixed` or `### Removed`), in the same branch. Write it for players, in English.
 - Changes only developers notice (tests, tooling, refactoring) need no entry.
-- A new version is made only when asked: see "Changelog and versions" in the README.
+- A new version is made only when asked: see "Changelog and game versions" in the README.
 
 ## README
 
@@ -25,7 +25,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - A change to the library that its users notice adds an entry to `packages/p2p/CHANGELOG.md`, apart from the game's changelog, and updates `packages/p2p/README.md`.
 - Raise `ROOM_PROTOCOL` in `packages/p2p/src/room/messages.ts` whenever the room's own messages change.
 - Library code imports its own files with `.ts` extensions, which `tsc` rewrites to `.js` in the build.
-- A version is published only when asked: see "The library and its versions" in the README.
+- A version is published only when asked: see "Library versions" in the README.
 
 ## Android app
 
