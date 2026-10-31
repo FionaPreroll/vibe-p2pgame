@@ -36,6 +36,8 @@ test('a player who drops out rejoins with their place', async ({ browser }) => {
 })
 
 test('a host whose page reloads carries on, and the player can rejoin', async ({ browser }) => {
+  // The player's phone notices the silent host only after 8 seconds: more time than most.
+  test.setTimeout(60_000)
   const host = await player(browser)
   await host.getByLabel('Your name').fill('Hosty')
   await host.getByRole('button', { name: 'Host a game' }).click()

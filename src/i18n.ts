@@ -40,6 +40,7 @@ const en = {
   brightness: 'Brightness',
   switchCamera: 'Switch camera',
   takePhoto: 'Take a photo instead',
+  scanNative: 'Scan with the phone’s scanner',
   liveCamera: 'Back to the live camera',
   readingPhoto: 'Reading the photo…',
   photoNoCode:
@@ -129,6 +130,7 @@ const de: Record<TextKey, string> = {
   brightness: 'Helligkeit',
   switchCamera: 'Kamera wechseln',
   takePhoto: 'Stattdessen ein Foto machen',
+  scanNative: 'Mit dem Scanner des Handys scannen',
   liveCamera: 'Zurück zur Live-Kamera',
   readingPhoto: 'Lese das Foto…',
   photoNoCode:

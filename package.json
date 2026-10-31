@@ -21,13 +21,19 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "pnpm build && playwright test",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "build:p2p": "pnpm --filter @fionapreroll/p2p build"
+    "build:p2p": "pnpm --filter @fionapreroll/p2p build",
+    "icons:android": "node --experimental-strip-types tools/androidIcons.ts",
+    "android:sync": "pnpm build && cap sync android"
   },
   "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "8.2.1",
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@fionapreroll/p2p": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
+    "@capacitor/cli": "^8.6.0",
     "@playwright/test": "1.63.0",
     "@types/node": "^24.19.2",
     "@vitejs/plugin-basic-ssl": "^2.3.0",

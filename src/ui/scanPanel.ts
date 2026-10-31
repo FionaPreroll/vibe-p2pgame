@@ -7,6 +7,7 @@ import {
   startScanner,
 } from '@fionapreroll/p2p/qr'
 import { t } from '../i18n'
+import { nativeScan, nativeScannerReady } from '../native'
 import { settings, updateCamera } from '../settings'
 import { h } from './dom'
 
@@ -28,7 +29,8 @@ export interface ScanPanel {
  * - zoom, so the phone can be held further away, where it focuses;
  * - brightness, against a code that glares;
  * - switching between the phone's cameras, as some have one that focuses closer;
- * - a photo taken with the phone's own camera app, which focuses better than the browser.
+ * - a photo taken with the phone's own camera app, which focuses better than the browser;
+ * - in the Android app, Google's own scanner screen, which focuses and zooms by itself.
  * The sliders show only where the camera has the setting. The camera, its zoom and its
  * brightness are remembered for the next time.
  */
@@ -57,11 +59,30 @@ export function scanPanel(
       photoInput.click()
     },
   })
+  // Shown once the app knows Google's scanner can open; never in a browser.
+  const native = h('button', {
+    type: 'button',
+    class: 'primary',
+    textContent: t('scanNative'),
+    hidden: true,
+    onclick: async () => {
+      // Google's scanner needs the camera, which the page holds while it shows the picture.
+      scanner?.stop()
+      scanner = null
+      showLive(false)
+      message.textContent = ''
+      const texts = await nativeScan()
+      if (done || (texts !== null && take(texts))) return
+      if (texts !== null && texts.length > 0) message.textContent = t('badCode')
+      void start()
+    },
+  })
   const message = h('p', { class: 'status', role: 'status' } as Partial<HTMLParagraphElement>)
   const help = h('p', { class: 'muted' }, t('scanHelpBasic'))
   const element = h(
     'div',
     { class: 'scan' },
+    native,
     viewfinder,
     sliders,
     help,
@@ -189,6 +210,10 @@ export function scanPanel(
       return
     }
     message.textContent = t('photoNoCode')
+  })
+
+  void nativeScannerReady().then((ready) => {
+    native.hidden = !ready || done
   })
 
   return {

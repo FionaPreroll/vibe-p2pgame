@@ -1,6 +1,7 @@
 import './style.css'
 import { unpack } from '@fionapreroll/p2p'
 import { setLanguage } from './i18n'
+import { isApp, nativeScannerReady } from './native'
 import { settings } from './settings'
 import { homeScreen, playerName } from './ui/home'
 import { hostScreen } from './ui/host'
@@ -8,6 +9,8 @@ import { joinScreen } from './ui/join'
 import { settingsScreen } from './ui/settings'
 
 setLanguage(settings().language)
+// In the app, fetch Google's scanner now, while there may be internet, for later on a hotspot.
+void nativeScannerReady()
 
 function home(): void {
   homeScreen({
@@ -25,7 +28,8 @@ if (location.hash) history.replaceState(null, '', location.pathname + location.s
 if (offer?.type === 'offer') joinScreen(playerName(), home, { offer })
 else home()
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+// The app has its files inside; a service worker would only keep a second copy of them.
+if (import.meta.env.PROD && 'serviceWorker' in navigator && !isApp()) {
   navigator.serviceWorker
     .register('./sw.js')
     .then((registration) => {

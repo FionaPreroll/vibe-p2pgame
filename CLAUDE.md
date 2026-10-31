@@ -27,6 +27,13 @@ The README describes the project, its layout and its conventions. These rules ho
 - Library code imports its own files with `.ts` extensions, which `tsc` rewrites to `.js` in the build.
 - A version is published only when asked: see "The library and its versions" in the README.
 
+## Android app
+
+- `android/` is the Capacitor project of the Android app, and committed. The game's build goes into it with `pnpm android:sync`; nothing of the web build is committed there.
+- Native features go through `src/native.ts` and must also work in a browser, where they do nothing: the website and the app are one codebase.
+- A new permission goes into `android/app/src/main/AndroidManifest.xml`, with a comment why.
+- This container cannot reach Google's Android downloads: the APK is built and checked by `.github/workflows/android.yml` only.
+
 ## Code
 
 - Use pnpm, never npm or yarn. Run `pnpm check` before every push, and `pnpm test:e2e` when a change touches pairing, the network or the screens.

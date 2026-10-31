@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/FionaPreroll/vibe-p2pgame/actions/workflows/ci.yml/badge.svg)](https://github.com/FionaPreroll/vibe-p2pgame/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/FionaPreroll/vibe-p2pgame/branch/main/graph/badge.svg)](https://codecov.io/gh/FionaPreroll/vibe-p2pgame)
+[![Android](https://github.com/FionaPreroll/vibe-p2pgame/actions/workflows/android.yml/badge.svg)](https://github.com/FionaPreroll/vibe-p2pgame/actions/workflows/android.yml)
 
 A prototype game for phones lying side by side, with **no internet, no server and no app**. The phones connect directly over WebRTC data channels on a shared Wi-Fi, typically a hotspot opened by one of them. Instead of a signaling server, they swap their connection offers by **scanning QR codes**.
 
@@ -38,6 +39,33 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 - **Take a photo instead** opens the phone's own camera app, which focuses better. The photo is read at several sizes, and in Chrome on Android with the phone's built-in QR detector.
 
 **No camera?** Under _No camera? Use text codes_, each side can copy its code and paste the other's, for example between two laptops or through a messenger.
+
+## Android app
+
+The same game also comes as an Android app, made with [Capacitor](https://capacitorjs.com/): the web build (`dist`) packed into a native app that shows it in Android's WebView. App and website play together, as both pair over WebRTC with the same codes.
+
+What the app adds:
+
+- **Offline from the first start:** the game's files are inside the app, so nobody needs to have opened the website beforehand.
+- **Google's scanner:** a **Scan with the phone's scanner** button opens Google's own scanner screen (ML Kit, through `@capacitor-mlkit/barcode-scanning`), which focuses and zooms by itself. It comes with Google Play services as a module that is downloaded once; the app asks for it at every start, so start it once with internet before going out. Until the module is there, and on phones without Google Play services, the in-page scanner works as on the website.
+
+**Getting the app:** every push to `main` and every pull request builds a debug APK (`.github/workflows/android.yml`). Open the run under _Actions → Android_, download the artifact `spark-hunt-apk`, unzip it, and open `app-debug.apk` on the phone; Android asks once to allow installing apps from that source. A newer APK installs over the older one and keeps the game's settings, as every build is signed with the same debug key (`android/app/debug.keystore`, in the repository on purpose; it is not secret).
+
+**Building it yourself** needs Android Studio, or a JDK 21 and the Android SDK:
+
+```bash
+pnpm android:sync
+```
+
+```bash
+cd android && ./gradlew assembleDebug
+```
+
+`pnpm android:sync` builds the game and copies it into the Android project; run it after every change to the game. `pnpm exec cap open android` opens the project in Android Studio. App icon and splash screen are drawn from `public/icon.svg` with `pnpm icons:android`.
+
+**Native code** lives in `src/native.ts`. Everything there also works in a browser, where it does nothing, so the game stays one codebase. The app's permissions are in `android/app/src/main/AndroidManifest.xml`: the camera, for the in-page scanner, and vibration.
+
+**Not yet tested on a phone:** whether Android's WebView hides local addresses behind mDNS names as Chrome does, whether keeping the screen on works there, and taking photos through the camera app. A Play Store release would need a release key of its own and a privacy policy, as the app uses the camera.
 
 ## How it works
 
@@ -81,9 +109,11 @@ src/
   net/       protocol.ts: Spark Hunt's input and snapshots, checked
   session/   host.ts and guest.ts: Spark Hunt on the library's rooms; saved.ts: what a host keeps
   ui/        the screens, plain DOM without a framework; scanPanel.ts: the camera view
+  native.ts  what the Android app adds: Google's scanner
   i18n.ts    every visible text, in English and German
   settings.ts, storage.ts   what the browser remembers
-tools/       serviceWorker.ts: writes the offline worker into the build
+android/     the Android app's project (Capacitor), with capacitor.config.ts at the top
+tools/       serviceWorker.ts: writes the offline worker into the build; androidIcons.ts: the app's icons
 tests/e2e/   Playwright: two browser profiles pair through text codes and play
 ```
 
