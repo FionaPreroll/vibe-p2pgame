@@ -4,6 +4,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-31
+
 ### Fixed
 
 - `cleanName` no longer leaves two spaces in a row where a control character stood between two spaces, so a cleaned name stays the same when cleaned again.
@@ -19,5 +21,6 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 - Checks for writing parsers, and name cleaning.
 - Connections in memory for tests (`@fionapreroll/p2p/testing`).
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.1.0...HEAD
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.1.1...HEAD
+[0.1.1]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.1.0...p2p-v0.1.1
 [0.1.0]: https://github.com/FionaPreroll/vibe-p2pgame/tree/p2p-v0.1.0/packages/p2p
