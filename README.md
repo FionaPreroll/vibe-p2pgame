@@ -93,7 +93,6 @@ Rooms work on any `Connection`, whatever carries it: WebRTC, Bluetooth, or memor
 | 4. Answer    |                                                                             | Shows the answer as a QR code                      |
 | 5. Scan      | Scans the answer: ICE and DTLS connect directly over the Wi-Fi              |                                                    |
 | 6. Play      | Runs the game and sends the state to everyone                               | Sends where the player steers, and draws the state |
-
 - **Short codes** (`packages/p2p/src/signal.ts`): a browser's SDP is 1–3 KB, too dense to scan from a screen. Only a few fields differ between connections: offer or answer, the ICE user fragment and password, the DTLS fingerprint, the DTLS role and the UDP host candidates. The code carries just those, about 130 characters such as `P1~o~x~Wke9~UmMu…~ohqF…~192.168.43.1,58378`, and the other side writes a minimal SDP around them. With the join link, the QR code stays at version 10 or below.
 - **No STUN or TURN:** without internet there is nothing to reach. Phones on the same hotspot connect over their local addresses.
 - **Real addresses instead of mDNS:** Chrome hides local IPs behind random `….local` names unless the page may use the camera. That is why the host opens the camera _before_ making the offer, and the player has already scanned before making the answer. Real IPs avoid depending on mDNS, which not every hotspot passes on; and if only one side's address can be reached, ICE still connects through peer-reflexive candidates.
@@ -197,12 +196,12 @@ cd android && ./gradlew assembleDebug
 
 ### What CI does
 
-| Workflow      | When                                    | What                                                                                                                               |
-| ------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`      | Pull requests and pushes to `main`      | Type check, Biome, unit tests with coverage to Codecov, library build, end-to-end tests                                            |
-| `deploy.yml`  | Pushes to `main`, or by hand            | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_               |
-| `android.yml` | Pull requests and pushes to `main`      | Builds the APK; from `main`, replaces it in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json`       |
-| `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` | Publishes the library to GitHub's npm registry and tags the version                                                                |
+| Workflow          | When                                 | What                                                                                                                         |
+| ----------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`          | Pull requests and pushes to `main`   | Type check, Biome, unit tests with coverage to Codecov, library build, end-to-end tests                                      |
+| `deploy.yml`      | Pushes to `main`, or by hand         | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_         |
+| `android.yml`     | Pull requests and pushes to `main`   | Builds the APK; from `main`, replaces it in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json` |
+| `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` | Publishes the library to GitHub's npm registry and tags the version                                                          |
 
 ### Changelog and game versions
 
