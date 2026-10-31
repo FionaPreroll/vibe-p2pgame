@@ -67,7 +67,7 @@ const en = {
   btRejoinHint: 'Choose {host}’s game: you get your place and score back.',
   btRejected: 'The host did not let you in, or the connection broke.',
   btPermission:
-    'Bluetooth play needs the permission for nearby devices. Allow it for Spark Hunt in the settings, then try again.',
+    'Bluetooth play needs the permission for nearby devices, and to find games, Location (approximate is enough). Allow them for Spark Hunt in the phone’s settings, then try again.',
   btUnavailable:
     'Bluetooth play needs Google Play services, which this phone does not have. Use a QR code instead.',
   btOff:
@@ -86,10 +86,14 @@ const en = {
   updateReady: 'A new version of Spark Hunt is ready (build {build}).',
   updateInstall: 'Install',
   updateLater: 'Later',
+  updatesCheckNow: 'Look for a new version now',
+  updatesChecking: 'Looking…',
+  updatesCurrent: 'This is the newest version (build {build}).',
+  updatesCheckFailed: 'Could not look for a new version. Is there internet?',
   updateDownloading: 'Downloading… {percent} %',
   updateInstalling: 'Android’s installer takes over now.',
   updatePermission:
-    'Allow Spark Hunt to install apps in the settings that have just opened, then tap Install again.',
+    'Allow Spark Hunt to install apps in the settings that have just opened, then come back: installing goes on by itself.',
   updateFailed: 'The download failed. Try again later.',
   liveCamera: 'Back to the live camera',
   readingPhoto: 'Reading the photo…',
@@ -207,7 +211,7 @@ const de: Record<TextKey, string> = {
   btRejoinHint: 'Wähle das Spiel von {host}: Du bekommst deinen Platz und deine Punkte zurück.',
   btRejected: 'Der Host hat dich nicht hereingelassen, oder die Verbindung ist abgebrochen.',
   btPermission:
-    'Für Bluetooth braucht es die Berechtigung für Geräte in der Nähe. Erlaube sie Funkenjagd in den Einstellungen und versuch es noch einmal.',
+    'Für Bluetooth braucht es die Berechtigung für Geräte in der Nähe und, um Spiele zu finden, den Standort (ungefähr genügt). Erlaube sie Funkenjagd in den Einstellungen des Handys und versuch es noch einmal.',
   btUnavailable:
     'Für Bluetooth braucht es Google Play-Dienste, die dieses Handy nicht hat. Nimm stattdessen einen QR-Code.',
   btOff:
@@ -226,10 +230,14 @@ const de: Record<TextKey, string> = {
   updateReady: 'Eine neue Version von Funkenjagd ist da (Build {build}).',
   updateInstall: 'Installieren',
   updateLater: 'Später',
+  updatesCheckNow: 'Jetzt nach einer neuen Version suchen',
+  updatesChecking: 'Suche…',
+  updatesCurrent: 'Das ist die neueste Version (Build {build}).',
+  updatesCheckFailed: 'Konnte nicht nach einer neuen Version suchen. Gibt es Internet?',
   updateDownloading: 'Lade herunter… {percent} %',
   updateInstalling: 'Jetzt übernimmt der Installer von Android.',
   updatePermission:
-    'Erlaube Funkenjagd in den eben geöffneten Einstellungen, Apps zu installieren, und tippe dann noch einmal auf Installieren.',
+    'Erlaube Funkenjagd in den eben geöffneten Einstellungen, Apps zu installieren, und komm dann zurück: Die Installation geht von selbst weiter.',
   updateFailed: 'Der Download ist fehlgeschlagen. Versuch es später noch einmal.',
   liveCamera: 'Zurück zur Live-Kamera',
   readingPhoto: 'Lese das Foto…',

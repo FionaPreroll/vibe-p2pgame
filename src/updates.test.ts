@@ -5,13 +5,25 @@ vi.mock('./native', () => ({ isApp: () => native.app }))
 vi.mock('@capacitor/core', () => ({ registerPlugin: () => ({}) }))
 
 const { forgetSettings, settings, updateSettings } = await import('./settings')
-const { availableUpdate, installUpdate, parseRelease, RELEASE, updateOnStart } = await import(
-  './updates'
-)
+const {
+  availableUpdate,
+  checkForUpdate,
+  continueInstall,
+  installUpdate,
+  parseRelease,
+  RELEASE,
+  updateOnStart,
+} = await import('./updates')
 type Updater = import('./updates').Updater
 
-/** The native side, played by the test: installed build 5, release build 7. */
-function updater(overrides: Partial<Record<keyof Updater, unknown>> = {}) {
+/**
+ * The native side, played by the test: installed build 5, release build 7. A download leaves
+ * build 7 in the cache; installing needs `allowed`, as Android's setting does.
+ */
+function updater(
+  overrides: Partial<Record<keyof Updater, unknown>> = {},
+  state = { cached: -1, allowed: true },
+) {
   const remove = vi.fn(async () => {})
   let progress: ((p: { percent: number }) => void) | undefined
   const fake = {
@@ -20,8 +32,13 @@ function updater(overrides: Partial<Record<keyof Updater, unknown>> = {}) {
     download: vi.fn(async () => {
       progress?.({ percent: 50 })
       progress?.({ percent: 100 })
+      state.cached = 7
     }),
-    install: vi.fn(async () => {}),
+    downloaded: vi.fn(async () => ({ build: state.cached })),
+    canInstall: vi.fn(async () => ({ allowed: state.allowed })),
+    install: vi.fn(async () => {
+      if (!state.allowed) throw Object.assign(new Error('not allowed'), { code: 'permission' })
+    }),
     addListener: vi.fn(async (_: string, listener: (p: { percent: number }) => void) => {
       progress = listener
       return { remove }
@@ -87,22 +104,69 @@ describe('availableUpdate', () => {
   })
 })
 
+const release = { build: 7, commit: '0123abc' }
+
+describe('checkForUpdate', () => {
+  it('says whether there is a newer build, the app is up to date, or it could not look', async () => {
+    expect(await checkForUpdate(updater().fake)).toEqual({ kind: 'newer', release, installed: 5 })
+    const current = updater({ info: async () => ({ build: 7, name: '7' }) }).fake
+    expect(await checkForUpdate(current)).toEqual({ kind: 'current', installed: 7 })
+    const offline = updater({
+      fetchText: async () => {
+        throw new Error('offline')
+      },
+    }).fake
+    expect(await checkForUpdate(offline)).toEqual({ kind: 'failed' })
+    const broken = updater({ fetchText: async () => ({ text: '{"build":"x"}' }) }).fake
+    expect(await checkForUpdate(broken)).toEqual({ kind: 'failed' })
+  })
+})
+
 describe('installUpdate', () => {
   it('downloads the APK, tells the progress and hands it to the installer', async () => {
     const { fake, calls, remove } = updater()
     const progress: number[] = []
-    expect(await installUpdate((p) => progress.push(p), fake)).toBe('installing')
+    expect(await installUpdate(release, (p) => progress.push(p), fake)).toBe('installing')
     expect(calls.download).toHaveBeenCalledWith({ url: `${RELEASE}spark-hunt.apk` })
     expect(calls.install).toHaveBeenCalledOnce()
     expect(progress).toEqual([50, 100])
     expect(remove).toHaveBeenCalledOnce()
   })
 
-  it('says when Android first wants the right to install apps', async () => {
-    const install = async () => {
-      throw Object.assign(new Error('not allowed'), { code: 'permission' })
-    }
-    expect(await installUpdate(() => {}, updater({ install }).fake)).toBe('permission')
+  it('does not download again what is already here', async () => {
+    const { fake, calls } = updater({}, { cached: 7, allowed: true })
+    expect(await installUpdate(release, () => {}, fake)).toBe('installing')
+    expect(calls.download).not.toHaveBeenCalled()
+  })
+
+  it('downloads again over an older file, and installs nothing that is not the release', async () => {
+    const state = { cached: 6, allowed: true }
+    const { fake, calls } = updater(
+      {
+        download: vi.fn(async () => {
+          state.cached = 8
+        }),
+      },
+      state,
+    )
+    expect(await installUpdate(release, () => {}, fake)).toBe('failed')
+    expect(calls.download).toHaveBeenCalledOnce()
+    expect(calls.install).not.toHaveBeenCalled()
+  })
+
+  it('waits for the right to install apps, then goes on without downloading again', async () => {
+    const state = { cached: -1, allowed: false }
+    const { fake, calls } = updater({}, state)
+    expect(await installUpdate(release, () => {}, fake)).toBe('permission')
+    expect(calls.download).toHaveBeenCalledOnce()
+    // Back from the setting, still not allowed: nothing more happens, no setting opens again.
+    expect(await continueInstall(fake)).toBe('permission')
+    expect(calls.install).toHaveBeenCalledOnce()
+    state.allowed = true
+    expect(await continueInstall(fake)).toBe('installing')
+    // Tapping Install again also goes on from the file already here.
+    expect(await installUpdate(release, () => {}, fake)).toBe('installing')
+    expect(calls.download).toHaveBeenCalledOnce()
   })
 
   it('says when the download fails, and installs nothing', async () => {
@@ -111,7 +175,7 @@ describe('installUpdate', () => {
         throw new Error('offline')
       }),
     })
-    expect(await installUpdate(() => {}, fake)).toBe('failed')
+    expect(await installUpdate(release, () => {}, fake)).toBe('failed')
     expect(calls.install).not.toHaveBeenCalled()
     expect(remove).toHaveBeenCalledOnce()
   })

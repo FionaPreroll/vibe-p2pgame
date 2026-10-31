@@ -126,6 +126,25 @@ public class AppUpdaterPlugin extends Plugin {
     }
 
     /**
+     * The build of the APK downloaded last, read from the file itself, or -1 if there is none. So
+     * a download is not repeated, and an old file is never taken for the new build.
+     */
+    @PluginMethod
+    public void downloaded(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("build", downloadedBuild());
+        call.resolve(result);
+    }
+
+    /** Whether the app may hand APKs to the installer, without opening any setting. */
+    @PluginMethod
+    public void canInstall(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("allowed", Build.VERSION.SDK_INT < 26 || getContext().getPackageManager().canRequestPackageInstalls());
+        call.resolve(result);
+    }
+
+    /**
      * Hands the downloaded APK to Android's installer. Without the right to install apps, it opens
      * that setting instead and rejects with the code "permission": the player allows it there and
      * taps Install again.
@@ -143,8 +162,8 @@ public class AppUpdaterPlugin extends Plugin {
             return;
         }
         File apk = apkFile();
-        if (!apk.exists()) {
-            call.reject("Nothing downloaded");
+        if (!apk.exists() || downloadedBuild() < 0) {
+            call.reject("Nothing downloaded", "nothing-downloaded");
             return;
         }
         Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", apk);
@@ -153,6 +172,14 @@ public class AppUpdaterPlugin extends Plugin {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
         call.resolve();
+    }
+
+    private long downloadedBuild() {
+        File apk = apkFile();
+        if (!apk.exists()) return -1;
+        PackageInfo archive = getContext().getPackageManager().getPackageArchiveInfo(apk.getPath(), 0);
+        if (archive == null || !getContext().getPackageName().equals(archive.packageName)) return -1;
+        return Build.VERSION.SDK_INT >= 28 ? archive.getLongVersionCode() : archive.versionCode;
     }
 
     private File apkFile() {

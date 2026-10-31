@@ -42,7 +42,7 @@ All phones join the same Wi-Fi; out and about, one phone opens a hotspot and the
 
 ### By Bluetooth, in the Android app
 
-Both phones need the Android app, but no Wi-Fi at all. The host's phone advertises its game; the new player picks it from the games nearby. Both phones then show the same four-digit code, and the host accepts the player only after comparing it, so nobody else nearby slips in. The first time, the app asks for the permission for nearby devices (on older Android versions, Location).
+Both phones need the Android app, but no Wi-Fi at all. The host's phone advertises its game; the new player picks it from the games nearby. Both phones then show the same four-digit code, and the host accepts the player only after comparing it, so nobody else nearby slips in. The first time, the app asks for the permission for nearby devices, and on the joining phone also for Location, which Google's Nearby Connections needs to find games nearby; approximate is enough, and the host's phone is not asked.
 
 ### Dropping out and coming back
 
@@ -69,7 +69,7 @@ The same game, packed into an Android app with [Capacitor](https://capacitorjs.c
 - **Offline from the first start:** its files are inside the app.
 - **Bluetooth** between app phones, besides the QR code.
 - **Google's scanner**, which focuses and zooms by itself. It is a module of Google Play services, downloaded once: start the app once with internet before going out. Until then, and on phones without Google Play services, the in-page scanner works as on the website.
-- **Updates in the app**, if you agree at its first start or switch them on in the settings: at every start, the app looks for a newer build and offers to install it. Android asks before installing; the first time, it wants you to allow the app to install apps, and the app opens that setting.
+- **Updates in the app**, if you agree at its first start or switch them on in the settings: at every start, the app looks for a newer build and offers to install it; _Look for a new version now_ in the settings looks at once. Android asks before installing; the first time, it wants you to allow the app to install apps: the app opens that setting, and goes on installing by itself when you come back, without downloading again.
 
 **Installing:** download [`spark-hunt.apk`](https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk) from the release [Spark Hunt for Android](https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/android-latest) and open it on the phone; Android asks once to allow installing apps from that source. A newer APK installs over the older one and keeps the game's settings.
 

@@ -2,8 +2,10 @@ import { setLanguage, t } from '../i18n'
 import { isApp } from '../native'
 import { forgetSettings, ROUND_CHOICES, settings, updateCamera, updateSettings } from '../settings'
 import { clearAll } from '../storage'
+import { checkForUpdate } from '../updates'
 import { h, show, toast } from './dom'
 import { reportDialog } from './report'
+import { offer } from './updates'
 
 /** The settings, each stored as soon as it changes. */
 export function settingsScreen(onBack: () => void): void {
@@ -61,6 +63,7 @@ export function settingsScreen(onBack: () => void): void {
           updateSettings({ checkUpdates: on, updatesAsked: true }),
         ),
       isApp() && h('p', { class: 'muted' }, t('updatesNote')),
+      isApp() && checkNowButton(),
       h('p', { class: 'muted' }, t('cameraSaved')),
       h(
         'div',
@@ -121,4 +124,29 @@ function toggle(label: string, on: boolean, onChange: (on: boolean) => void): HT
   const input = h('input', { type: 'checkbox', checked: on })
   input.addEventListener('change', () => onChange(input.checked))
   return h('label', { class: 'toggle' }, input, label)
+}
+
+/** In the app: looks for a new version now, and offers it, whatever the switch above says. */
+function checkNowButton(): HTMLElement {
+  const status = h('p', { class: 'status', role: 'status' } as Partial<HTMLParagraphElement>)
+  const button = h('button', {
+    type: 'button',
+    textContent: t('updatesCheckNow'),
+    onclick: async () => {
+      button.disabled = true
+      status.textContent = t('updatesChecking')
+      const check = await checkForUpdate()
+      button.disabled = false
+      if (check.kind === 'newer') {
+        status.textContent = ''
+        offer(check.release)
+      } else {
+        status.textContent =
+          check.kind === 'current'
+            ? t('updatesCurrent', { build: check.installed })
+            : t('updatesCheckFailed')
+      }
+    },
+  })
+  return h('div', { class: 'check-now' }, h('div', { class: 'buttons' }, button), status)
 }

@@ -39,6 +39,8 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -135,8 +137,8 @@ public class NearbyPlugin extends Plugin {
             call.reject("Google Play services not available: " + text + " (" + status + ")", "unavailable");
             return;
         }
-        String[] aliases = neededAliases();
-        for (String alias : aliases) {
+        String[] aliases = askedAliases(role);
+        for (String alias : requiredAliases(role)) {
             if (getPermissionState(alias) != PermissionState.GRANTED) {
                 log("asking for permissions: " + TextUtils.join(", ", aliases));
                 requestPermissionForAliases(aliases, call, "permissionsAnswered");
@@ -148,7 +150,7 @@ public class NearbyPlugin extends Plugin {
 
     @PermissionCallback
     private void permissionsAnswered(PluginCall call) {
-        for (String alias : neededAliases()) {
+        for (String alias : requiredAliases(call.getString("role", ""))) {
             if (getPermissionState(alias) != PermissionState.GRANTED) {
                 log("permission " + alias + " not granted: " + getPermissionState(alias));
                 call.reject("Permission " + alias + " not granted", "permission");
@@ -469,7 +471,10 @@ public class NearbyPlugin extends Plugin {
             );
         }
         result.put("permissions", permissions);
-        result.put("neededPermissions", TextUtils.join(", ", neededAliases()));
+        result.put(
+            "neededPermissions",
+            "host " + TextUtils.join(", ", askedAliases("host")) + "; player " + TextUtils.join(", ", askedAliases("player"))
+        );
         result.put("advertising", advertising);
         result.put("discovering", discovering);
         result.put("waiting", pending.size());
@@ -485,9 +490,16 @@ public class NearbyPlugin extends Plugin {
         String what = e instanceof ApiException ? describe(((ApiException) e).getStatusCode()) : String.valueOf(e.getMessage());
         Boolean location = locationEnabled();
         log("could not " + step + ": " + what + (Boolean.FALSE.equals(location) ? " (Location is off)" : ""));
-        // Discovering depends on Location on many phones: when it is off, that is the likely cause.
-        String code = Boolean.FALSE.equals(location) && step.equals("discover") ? "location-off" : code(e);
+        // A permission Nearby misses is the player's to give; Location off is the likely cause of
+        // a failed discovery otherwise.
+        String code = code(e);
+        if (e instanceof ApiException && missingPermission(((ApiException) e).getStatusCode())) code = "permission";
+        else if (Boolean.FALSE.equals(location) && step.equals("discover")) code = "location-off";
         call.reject("Could not " + step + ": " + what, code, e);
+    }
+
+    private static boolean missingPermission(int status) {
+        return ConnectionsStatusCodes.getStatusCodeString(status).startsWith("MISSING_PERMISSION");
     }
 
     private static String describe(int status) {
@@ -523,12 +535,37 @@ public class NearbyPlugin extends Plugin {
         }
     }
 
-    /** The permissions Nearby needs on this phone's Android version. */
-    private static String[] neededAliases() {
-        if (Build.VERSION.SDK_INT >= 33) return new String[] { "bluetooth", "wifi" };
-        if (Build.VERSION.SDK_INT >= 31) return new String[] { "bluetooth", "location" };
-        if (Build.VERSION.SDK_INT >= 29) return new String[] { "location" };
-        return new String[] { "coarse" };
+    /**
+     * The permissions asked for, to host or to play, on this phone's Android version. Nearby wants
+     * location to discover games nearby on every version, even where Google's list says it does
+     * not: on Android 17 discovering fails with 8034 MISSING_PERMISSION_ACCESS_COARSE_LOCATION
+     * without it. Fine and coarse are asked for together, so the player can choose approximate.
+     */
+    private static String[] askedAliases(String role) {
+        List<String> aliases = new ArrayList<>();
+        if (Build.VERSION.SDK_INT >= 31) aliases.add("bluetooth");
+        if (Build.VERSION.SDK_INT >= 33) aliases.add("wifi");
+        if (Build.VERSION.SDK_INT < 29) {
+            aliases.add("coarse");
+        } else if (Build.VERSION.SDK_INT < 33 || "player".equals(role)) {
+            aliases.add("location");
+            aliases.add("coarse");
+        }
+        return aliases.toArray(new String[0]);
+    }
+
+    /**
+     * The permissions that must be granted: as asked, but from Android 13 on, approximate location
+     * is enough to discover; up to Android 12, Nearby wants precise location.
+     */
+    private static String[] requiredAliases(String role) {
+        List<String> aliases = new ArrayList<>();
+        for (String alias : askedAliases(role)) {
+            if (Build.VERSION.SDK_INT >= 33 && "location".equals(alias)) continue;
+            if (Build.VERSION.SDK_INT >= 29 && Build.VERSION.SDK_INT < 33 && "coarse".equals(alias)) continue;
+            aliases.add(alias);
+        }
+        return aliases.toArray(new String[0]);
     }
 
     private static String shorten(String text) {
