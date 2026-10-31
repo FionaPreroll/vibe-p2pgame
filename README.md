@@ -87,8 +87,7 @@ pnpm check
 ## Branches and pull requests
 
 - Every feature or fix gets its own branch off `origin/main`, named `feature/<name_in_snake_case>` or `fix/<name_in_snake_case>`.
-- Each branch gets one pull request against `main`. Nobody pushes to `main` directly.
-- A pull request is merged once CI is green.
+- While the game is in development, a finished branch may be merged into `main` directly, once `pnpm check` and `pnpm test:e2e` pass on the merged result. Otherwise, and later as the rule, each branch gets one pull request against `main`, merged once CI is green.
 
 ## Deployment
 

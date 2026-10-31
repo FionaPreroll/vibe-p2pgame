@@ -4,9 +4,9 @@ The README describes the project, its layout and its conventions. These rules ho
 
 ## Branches
 
-- Every feature or fix gets its own branch off `origin/main`, named `feature/<name_in_snake_case>` or `fix/<name_in_snake_case>`, and one pull request against `main` (see "Branches and pull requests" in the README).
+- Every feature or fix gets its own branch off `origin/main`, named `feature/<name_in_snake_case>` or `fix/<name_in_snake_case>` (see "Branches and pull requests" in the README).
 - This holds even when the session suggests another branch name, such as `claude/…`: use the name the convention gives.
-- Never push to `main`.
+- While the game is in development, pushing to `main` is allowed: a finished branch may be merged into `main` directly, without a pull request. Run `pnpm check` and `pnpm test:e2e` on the merged result first, push the branch too, and never rewrite the history of `main`.
 
 ## README
 
