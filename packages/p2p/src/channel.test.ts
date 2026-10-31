@@ -55,6 +55,9 @@ describe('cleanName', () => {
     expect(cleanName('‮evil‬ name', '?')).toBe('evil name')
     expect(cleanName('a\u0000b\u0007c\nd\te', '?')).toBe('abc d e')
     expect(cleanName('zero​width', '?')).toBe('zerowidth')
+    // Found by fast-check: a control character between two spaces left two in a row.
+    expect(cleanName('!\t\u0000\t!', '?')).toBe('! !')
+    expect(cleanName('a \u200B b', '?')).toBe('a b')
     expect(cleanName('   ', '?')).toBe('?')
     expect(cleanName(7, '?')).toBe('?')
     expect(cleanName('😀'.repeat(20), '?')).toBe('😀'.repeat(16))

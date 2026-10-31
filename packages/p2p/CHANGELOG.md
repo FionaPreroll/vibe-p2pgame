@@ -4,6 +4,10 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+### Fixed
+
+- `cleanName` no longer leaves two spaces in a row where a control character stood between two spaces, so a cleaned name stays the same when cleaned again.
+
 ## [0.1.0] - 2026-10-31
 
 ### Added

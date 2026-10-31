@@ -56,8 +56,10 @@ export function cleanName(name: unknown, fallback: string): string {
     typeof name === 'string'
       ? Array.from(
           name
+            // Control characters first, but not whitespace, which then becomes single spaces:
+            // the other way round, "a \0 b" would keep two spaces in a row.
+            .replace(/(?![\t\n\v\f\r])[\p{Cc}\p{Cf}]/gu, '')
             .replace(/\s+/g, ' ')
-            .replace(/[\p{Cc}\p{Cf}]/gu, '')
             .trim(),
         )
           .slice(0, MAX_NAME_LENGTH)
