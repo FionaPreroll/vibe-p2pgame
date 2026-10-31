@@ -35,6 +35,9 @@ export class Painter {
 
   /** Arena coordinates of a point on the screen, such as a touch. */
   toArena(clientX: number, clientY: number): { x: number; y: number } {
+    // The box may have changed since the last frame, as when the sheet below hides at the
+    // start of a round: a touch before the next frame must not use the old size.
+    this.fit()
     const rect = this.canvas.getBoundingClientRect()
     const ratio = this.canvas.width / Math.max(1, rect.width)
     return {

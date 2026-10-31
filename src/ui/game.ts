@@ -55,7 +55,11 @@ export function gameScreen(
 
   // Steering: a touch or a pressed mouse button sets the target, the keys push it along.
   canvas.addEventListener('pointerdown', (event) => {
-    canvas.setPointerCapture(event.pointerId)
+    // Capture keeps the drag on the canvas; a pointer the browser no longer tracks cannot be
+    // captured, and steering still works without.
+    try {
+      canvas.setPointerCapture(event.pointerId)
+    } catch {}
     session.setTarget(painter.toArena(event.clientX, event.clientY))
   })
   canvas.addEventListener('pointermove', (event) => {

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ownCode, pasteCode, player } from './helpers'
+import { ownCode, pair, pasteCode, player } from './helpers'
 
 /** The color in the middle of a canvas, roughly: the second player's dot is blue. */
 function centerColor(canvas: HTMLCanvasElement): string {
@@ -132,4 +132,35 @@ test('the live camera can be focused by tapping the picture', async ({ browser }
     .toBeGreaterThan(0)
   await viewfinder.click({ position: { x: 40, y: 40 } })
   await expect(guest.locator('.focus-ring')).toHaveClass(/pulse/)
+})
+
+test('a touch the moment a round starts goes where it was aimed', async ({ browser }) => {
+  const host = await player(browser)
+  await host.getByRole('button', { name: 'Host a game' }).click()
+  const guest = await player(browser)
+  await pair(host, guest)
+
+  // The sheet below the arena hides as the round starts, and the arena grows. Touch its
+  // middle in that very moment, before the next frame is drawn.
+  await guest.evaluate(() => {
+    const sheet = document.querySelector('.sheet') as HTMLElement
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement
+    new MutationObserver((_, observer) => {
+      if (!sheet.hidden) return
+      observer.disconnect()
+      const box = canvas.getBoundingClientRect()
+      canvas.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          pointerId: 1,
+          clientX: box.left + box.width / 2,
+          clientY: box.top + box.height / 2,
+        }),
+      )
+    }).observe(sheet, { attributes: true })
+  })
+  await host.getByRole('button', { name: 'Start round' }).click()
+  await expect
+    .poll(() => host.locator('canvas').evaluate(centerColor), { timeout: 10_000 })
+    .toEqual('blue')
 })
