@@ -97,6 +97,12 @@ pnpm check
 - Every feature or fix gets its own branch off `origin/main`, named `feature/<name_in_snake_case>` or `fix/<name_in_snake_case>`.
 - While the game is in development, a finished branch may be merged into `main` directly, once `pnpm check` and `pnpm test:e2e` pass on the merged result. Otherwise, and later as the rule, each branch gets one pull request against `main`, merged once CI is green.
 
+## Changelog and versions
+
+- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Changes that players can see go under `## [Unreleased]`, in `### Added`, `### Changed`, `### Fixed` or `### Removed`, written in English for players.
+- Changes only developers notice, such as tests, tooling or refactoring, need no entry.
+- A version is made only when asked. The entries under `## [Unreleased]` then move to a new `## [x.y.z] - YYYY-MM-DD` section, `package.json` gets the same version, and the commit is tagged `vx.y.z`. The empty `## [Unreleased]` heading stays for the next changes, and the link definitions at the end of the file point at the comparison and the release. Versions follow [Semantic Versioning](https://semver.org/).
+
 ## Deployment
 
 `.github/workflows/deploy.yml` publishes the build to GitHub Pages on every push to `main`, or by hand from the Actions tab. In the repository settings under _Pages_, set the source to _GitHub Actions_.

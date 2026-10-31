@@ -8,6 +8,12 @@ The README describes the project, its layout and its conventions. These rules ho
 - This holds even when the session suggests another branch name, such as `claude/…`: use the name the convention gives.
 - While the game is in development, pushing to `main` is allowed: a finished branch may be merged into `main` directly, without a pull request. Run `pnpm check` and `pnpm test:e2e` on the merged result first, push the branch too, and never rewrite the history of `main`.
 
+## Changelog
+
+- A change that players see adds that change to `CHANGELOG.md`, under `## [Unreleased]`, in the section it belongs to (`### Added`, `### Changed`, `### Fixed` or `### Removed`), in the same branch. Write it for players, in English.
+- Changes only developers notice (tests, tooling, refactoring) need no entry.
+- A new version is made only when asked: see "Changelog and versions" in the README.
+
 ## README
 
 - The README starts with two badges, linked to their pages, and keeps them: CI (`.github/workflows/ci.yml`) and coverage (Codecov). A new workflow that checks the code gets a badge there too.
