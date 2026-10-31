@@ -5,7 +5,7 @@ import { qrElement } from '../qr/qr'
 import { GuestSession } from '../session/guest'
 import { forgetJoinedGame, playerToken, rememberJoinedGame } from '../session/saved'
 import { pastedSignal, textCodes } from './codes'
-import { h, show, toast } from './dom'
+import { failureText, h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
 import { scanPanel } from './scanPanel'
 
@@ -60,8 +60,7 @@ export function joinScreen(name: string, onLeave: () => void, options: JoinOptio
       play(session, name, onLeave)
     } catch (error) {
       if (left) return
-      status.textContent =
-        error instanceof Error && error.message === 'full' ? t('full') : t('connectFailed')
+      status.textContent = failureText(error)
       status.append(
         ' ',
         h('button', {

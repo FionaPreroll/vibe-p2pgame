@@ -1,4 +1,16 @@
-import { ARENA, PLAYER_RADIUS, type Snapshot, SPARK_RADIUS, type Target } from './sim'
+import {
+  ARENA,
+  BLAST_SECONDS,
+  type Blast,
+  MINE_ARM_SECONDS,
+  MINE_PENALTY,
+  MINE_RADIUS,
+  type Mine,
+  PLAYER_RADIUS,
+  type Snapshot,
+  SPARK_RADIUS,
+  type Target,
+} from './sim'
 
 export const COLORS = [
   '#ff5470',
@@ -73,6 +85,9 @@ export class Painter {
       c.fill()
     }
 
+    // Snapshots of older hosts have no mines; the version check keeps them out, this is a guard.
+    for (const mine of snapshot.mines ?? []) this.drawMine(mine, now)
+
     if (target !== null) {
       c.strokeStyle = 'rgba(255,255,255,0.35)'
       c.lineWidth = 3
@@ -108,6 +123,65 @@ export class Painter {
       c.fillText(player.name, shown.x, shown.y + PLAYER_RADIUS + 30)
     }
     for (const id of this.shown.keys()) if (!present.has(id)) this.shown.delete(id)
+    for (const blast of snapshot.blasts ?? []) this.drawBlast(blast)
+  }
+
+  /**
+   * A mine: a dark red ball with spikes and a light. While it arms, it fades in and its light
+   * stays grey, so players see it is not live yet.
+   */
+  private drawMine(mine: Mine, now: number): void {
+    const c = this.context
+    const arming = mine.armIn > 0
+    c.globalAlpha = arming ? 0.3 + 0.5 * (1 - mine.armIn / MINE_ARM_SECONDS) : 1
+    c.strokeStyle = '#ff3b30'
+    c.lineWidth = 5
+    c.beginPath()
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2
+      c.moveTo(
+        mine.x + Math.cos(angle) * MINE_RADIUS * 0.6,
+        mine.y + Math.sin(angle) * MINE_RADIUS * 0.6,
+      )
+      c.lineTo(
+        mine.x + Math.cos(angle) * MINE_RADIUS * 1.35,
+        mine.y + Math.sin(angle) * MINE_RADIUS * 1.35,
+      )
+    }
+    c.stroke()
+    c.fillStyle = '#5c0f14'
+    c.shadowColor = '#ff3b30'
+    c.shadowBlur = arming ? 0 : 20
+    c.beginPath()
+    c.arc(mine.x, mine.y, MINE_RADIUS, 0, Math.PI * 2)
+    c.fill()
+    c.shadowBlur = 0
+    c.strokeStyle = '#ff3b30'
+    c.lineWidth = 3
+    c.stroke()
+    const blink = Math.sin(now / 120) > 0
+    c.fillStyle = arming ? '#8a8a8a' : blink ? '#ff6b5e' : '#a3171f'
+    c.beginPath()
+    c.arc(mine.x, mine.y, MINE_RADIUS * 0.35, 0, Math.PI * 2)
+    c.fill()
+    c.globalAlpha = 1
+  }
+
+  /** A mine going off: a ring that spreads and fades, and the points lost rising above it. */
+  private drawBlast(blast: Blast): void {
+    const c = this.context
+    const progress = Math.min(1, blast.age / BLAST_SECONDS)
+    c.globalAlpha = 1 - progress
+    c.strokeStyle = '#ff8a3c'
+    c.lineWidth = 10 * (1 - progress) + 2
+    c.beginPath()
+    c.arc(blast.x, blast.y, MINE_RADIUS + 80 * progress, 0, Math.PI * 2)
+    c.stroke()
+    c.fillStyle = playerColor(blast.playerId)
+    c.font = '700 40px system-ui, sans-serif'
+    c.textAlign = 'center'
+    c.fillText(`−${MINE_PENALTY}`, blast.x, blast.y - MINE_RADIUS - 20 - 50 * progress)
+    c.globalAlpha = 1
   }
 
   private drawArena(): void {

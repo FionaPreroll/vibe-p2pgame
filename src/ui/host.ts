@@ -5,7 +5,7 @@ import { HostSession, type Pairing } from '../session/host'
 import type { HostedGame } from '../session/saved'
 import { settings } from '../settings'
 import { joinLink, pastedSignal, textCodes } from './codes'
-import { h, show, toast } from './dom'
+import { failureText, h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
 import { scanPanel } from './scanPanel'
 
@@ -72,8 +72,7 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
       close()
       toast(t(rejoined ? 'rejoined' : 'connected', { name }))
     } catch (error) {
-      status.textContent =
-        error instanceof Error && error.message === 'full' ? t('full') : t('connectFailed')
+      status.textContent = failureText(error)
       status.append(
         ' ',
         h('button', {

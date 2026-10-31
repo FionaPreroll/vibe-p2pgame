@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   ARENA,
   addPlayer,
+  BLAST_SECONDS,
   createWorld,
+  MINE_ARM_SECONDS,
+  MINE_PENALTY,
+  MINE_RADIUS,
+  mineCount,
   PLAYER_RADIUS,
   ROUND_SECONDS,
   removePlayer,
@@ -53,7 +58,7 @@ describe('step', () => {
     Object.assign(near, { x: 500 + 10, y: 500 })
     Object.assign(far, { x: 500 - 20, y: 500 })
     const catches = step(world, still, 0.01)
-    expect(catches).toEqual([{ playerId: 0, gold: false }])
+    expect(catches).toEqual([{ playerId: 0, points: 1 }])
     expect(near.score).toBe(1)
     expect(far.score).toBe(0)
     expect(world.sparks.map((s) => s.id)).not.toContain(99)
@@ -64,7 +69,7 @@ describe('step', () => {
     const world = createWorld(3)
     const player = addPlayer(world, 0, 'Ada')
     world.sparks = [{ id: 99, x: player.x, y: player.y, gold: true }]
-    expect(step(world, still, 0.01)).toEqual([{ playerId: 0, gold: true }])
+    expect(step(world, still, 0.01)).toEqual([{ playerId: 0, points: 3 }])
     expect(player.score).toBe(3)
   })
 
@@ -78,7 +83,7 @@ describe('step', () => {
     step(world, still, ROUND_SECONDS - 1)
     expect(world.phase).toBe('play')
     step(world, still, 2)
-    expect(world).toMatchObject({ phase: 'over', timeLeft: 0, sparks: [] })
+    expect(world).toMatchObject({ phase: 'over', timeLeft: 0, sparks: [], mines: [] })
     step(world, still, 1)
     expect(world.sparks).toEqual([])
   })
@@ -104,6 +109,68 @@ describe('step', () => {
   })
 })
 
+describe('mines', () => {
+  it('lie on the board, more with more players, apart from players and sparks', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const world = createWorld(seed)
+      for (let id = 0; id < 4; id++) addPlayer(world, id, `P${id}`)
+      step(world, still, 0.01)
+      expect(world.mines).toHaveLength(mineCount(4))
+      for (const mine of world.mines) {
+        for (const p of world.players)
+          expect(Math.hypot(p.x - mine.x, p.y - mine.y)).toBeGreaterThan(150)
+        for (const s of world.sparks)
+          expect(Math.hypot(s.x - mine.x, s.y - mine.y)).toBeGreaterThan(50)
+      }
+    }
+    expect(mineCount(1)).toBeLessThan(mineCount(8))
+  })
+
+  it('are harmless while they arm', () => {
+    const world = createWorld(3)
+    const player = addPlayer(world, 0, 'Ada')
+    world.mines = [{ id: 99, x: player.x, y: player.y, armIn: MINE_ARM_SECONDS }]
+    step(world, still, MINE_ARM_SECONDS / 2)
+    expect(player.score).toBe(0)
+    expect(world.mines.map((m) => m.id)).toContain(99)
+  })
+
+  it('cost points when touched, below zero too, and go off elsewhere anew', () => {
+    const world = createWorld(3)
+    const victim = addPlayer(world, 0, 'Ada')
+    const other = addPlayer(world, 1, 'Bo')
+    world.mines = [{ id: 99, x: victim.x + MINE_RADIUS, y: victim.y, armIn: 0 }]
+    Object.assign(other, { x: victim.x + MINE_RADIUS * 2 + 20, y: victim.y })
+    const catches = step(world, still, 0.01)
+    expect(catches).toEqual([{ playerId: 0, points: -MINE_PENALTY }])
+    expect(victim.score).toBe(-MINE_PENALTY)
+    expect(other.score).toBe(0)
+    expect(world.blasts).toMatchObject([{ playerId: 0, x: victim.x + MINE_RADIUS, y: victim.y }])
+    expect(world.mines.map((m) => m.id)).not.toContain(99)
+    expect(world.mines).toHaveLength(mineCount(2))
+    expect(world.mines.every((m) => m.armIn > 0)).toBe(true)
+  })
+
+  it('leave a blast that fades', () => {
+    const world = createWorld(3)
+    const player = addPlayer(world, 0, 'Ada')
+    world.mines = [{ id: 99, x: player.x, y: player.y, armIn: 0 }]
+    step(world, still, 0.01)
+    expect(world.blasts).toHaveLength(1)
+    step(world, still, BLAST_SECONDS)
+    expect(world.blasts).toEqual([])
+  })
+
+  it('are cleared when a round starts', () => {
+    const world = createWorld(3)
+    addPlayer(world, 0, 'Ada')
+    step(world, still, 0.01)
+    expect(world.mines.length).toBeGreaterThan(0)
+    startRound(world)
+    expect(world.mines).toEqual([])
+  })
+})
+
 describe('players', () => {
   it('start apart and can leave', () => {
     const world = createWorld(1)
@@ -123,5 +190,8 @@ describe('players', () => {
     expect(winners(world.players)).toEqual([a])
     b.score = 2
     expect(winners(world.players)).toEqual([a, b])
+    a.score = -2
+    b.score = -4
+    expect(winners(world.players)).toEqual([])
   })
 })

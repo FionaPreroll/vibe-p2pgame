@@ -99,8 +99,10 @@ export function gameScreen(
     }
     painter.draw(state, session.selfId(), session.target())
     if (state) {
-      if (me && lastScore !== null && me.score > lastScore && settings().vibration) {
-        navigator.vibrate?.(me.score - lastScore > 1 ? 80 : 25)
+      if (me && lastScore !== null && me.score !== lastScore && settings().vibration) {
+        // A short buzz for a spark, a longer one for gold, and a double one for a mine.
+        const change = me.score - lastScore
+        navigator.vibrate?.(change < 0 ? [70, 50, 70] : change > 1 ? 80 : 25)
       }
       lastScore = me?.score ?? null
       timer.textContent =

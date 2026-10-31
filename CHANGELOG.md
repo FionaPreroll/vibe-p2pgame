@@ -7,6 +7,8 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 ### Added
 
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
+- Mines: touching a red mine costs two points, and a score can drop below zero. A mine goes off with a flash that shows whose points it took, then appears again elsewhere. A new mine is grey and harmless for its first second, and never appears right next to a player. More players, more mines.
+- Phones that run different versions of the game say so when pairing, instead of playing a game one of them cannot fully show.
 - Phones connect directly over Wi-Fi, for example a hotspot opened by one of them, without internet, a server or an app. To join, the new player scans the host's QR code, then the host scans the code on the player's phone.
 - The host's QR code also works with the phone's own camera app, which opens the game and joins at once. Without a camera, the codes can be copied and pasted as text.
 - Once opened online, the game also starts without internet, and browsers can install it as an app.

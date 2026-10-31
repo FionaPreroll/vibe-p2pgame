@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 type Child = Node | string | null | undefined | false
 
 /** Builds an element: `h('button', { class: 'big', onclick }, 'Go')`. */
@@ -27,4 +29,14 @@ export function toast(text: string): void {
   document.body.append(element)
   setTimeout(() => element.classList.add('gone'), 2500)
   setTimeout(() => element.remove(), 3000)
+}
+
+/** What went wrong while connecting, for players. */
+export function failureText(error: unknown): string {
+  const reason = error instanceof Error ? error.message : ''
+  return reason === 'full'
+    ? t('full')
+    : reason === 'version'
+      ? t('versionMismatch')
+      : t('connectFailed')
 }

@@ -11,7 +11,7 @@ import {
   type World,
 } from '../game/sim'
 import { acceptAnswer, createOffer, type Link, onLost, opened } from '../net/link'
-import { listen, send, type ToGuest, type ToHost } from '../net/protocol'
+import { listen, PROTOCOL, send, type ToGuest, type ToHost } from '../net/protocol'
 import type { Signal } from '../net/signal'
 import { forgetHostedGame, type HostedGame, saveHostedGame } from './saved'
 import { Seats } from './seats'
@@ -109,6 +109,11 @@ export class HostSession implements Session {
         const returning = [...this.guests].find(([, guest]) => guest.token === token)
         // The same browser again, while its old connection has not timed out yet: the old
         // one is dead, as a browser only ever plays from one page.
+        if (message.version !== PROTOCOL) {
+          send(link.control, { type: 'mismatch', version: PROTOCOL })
+          setTimeout(() => link.pc.close(), 500)
+          return reject(new Error('version'))
+        }
         if (returning && token) this.drop(returning[0], false)
         if (this.world.players.length >= MAX_PLAYERS) {
           send(link.control, { type: 'full' })
@@ -160,7 +165,7 @@ export class HostSession implements Session {
     const guest: Guest = { link, name, token: seatToken, lastSeen: performance.now() }
     this.guests.set(id, guest)
     addPlayer(this.world, id, name).score = score
-    send(link.control, { type: 'welcome', id, host: this.name, rejoined })
+    send(link.control, { type: 'welcome', id, host: this.name, rejoined, version: PROTOCOL })
     listen<ToHost>(link.fast, (message) => {
       guest.lastSeen = performance.now()
       if (message.type === 'ping') {
@@ -226,6 +231,18 @@ function compact(state: Snapshot): Snapshot {
     timeLeft: Math.round(state.timeLeft * 10) / 10,
     players: state.players.map((p) => ({ ...p, x: Math.round(p.x), y: Math.round(p.y) })),
     sparks: state.sparks.map((s) => ({ ...s, x: Math.round(s.x), y: Math.round(s.y) })),
+    mines: state.mines.map((m) => ({
+      ...m,
+      x: Math.round(m.x),
+      y: Math.round(m.y),
+      armIn: Math.round(m.armIn * 10) / 10,
+    })),
+    blasts: state.blasts.map((b) => ({
+      ...b,
+      x: Math.round(b.x),
+      y: Math.round(b.y),
+      age: Math.round(b.age * 100) / 100,
+    })),
     away: state.away?.map(({ id, name }) => ({ id, name })),
   }
 }

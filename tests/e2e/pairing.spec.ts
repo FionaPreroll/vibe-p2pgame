@@ -164,3 +164,32 @@ test('a touch the moment a round starts goes where it was aimed', async ({ brows
     .poll(() => host.locator('canvas').evaluate(centerColor), { timeout: 10_000 })
     .toEqual('blue')
 })
+
+test('phones with different versions of the game say so instead of playing', async ({
+  browser,
+}) => {
+  const host = await player(browser)
+  await host.getByRole('button', { name: 'Host a game' }).click()
+  const guest = await player(browser)
+  // The player's phone runs an older version: its hello carries another version number.
+  await guest.evaluate(() => {
+    const send = RTCDataChannel.prototype.send as (this: RTCDataChannel, data: string) => void
+    RTCDataChannel.prototype.send = function (this: RTCDataChannel, data: unknown) {
+      const message = typeof data === 'string' ? JSON.parse(data) : null
+      send.call(
+        this,
+        message?.type === 'hello' ? JSON.stringify({ ...message, version: 1 }) : String(data),
+      )
+    } as RTCDataChannel['send']
+  })
+  await host.getByRole('button', { name: 'Add player' }).click()
+  const modal = host.locator('.modal')
+  const offer = await ownCode(host, modal)
+  await guest.getByRole('button', { name: 'Join a game' }).click()
+  await pasteCode(guest.locator('.join'), offer)
+  await pasteCode(modal, await ownCode(guest))
+  for (const status of [modal.locator('.card > .status'), guest.locator('.join > .status')]) {
+    await expect(status).toContainText('different versions of the game')
+  }
+  await expect(host.locator('.roster li')).toHaveCount(1)
+})

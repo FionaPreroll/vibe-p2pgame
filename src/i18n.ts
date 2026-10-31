@@ -53,11 +53,14 @@ const en = {
   lost: 'The connection to the host was lost.',
   playerLeft: '{name} left.',
   full: 'This game is full.',
+  versionMismatch:
+    'The two phones run different versions of the game. Close the game on both and open it again to update, then pair once more.',
   timeLeft: '{s} s',
-  steer: 'Touch where your dot should go and catch the sparks. Golden ones count three.',
+  steer:
+    'Touch where your dot should go and catch the sparks. Golden ones count three, and mines cost two.',
   winner: '{names} wins!',
   tie: 'Tie: {names}',
-  noWinner: 'Nobody caught a spark.',
+  noWinner: 'Nobody scored.',
   lobby: 'Warm up while more players join.',
   settings: 'Settings',
   languageLabel: 'Language',
@@ -139,11 +142,14 @@ const de: Record<TextKey, string> = {
   lost: 'Die Verbindung zum Host ist abgebrochen.',
   playerLeft: '{name} ist gegangen.',
   full: 'Dieses Spiel ist voll.',
+  versionMismatch:
+    'Die beiden Handys haben verschiedene Versionen des Spiels. Schließ das Spiel auf beiden und öffne es neu, um es zu aktualisieren, dann koppelt noch einmal.',
   timeLeft: '{s} s',
-  steer: 'Tippe dorthin, wo dein Punkt hin soll, und fang die Funken. Goldene zählen dreifach.',
+  steer:
+    'Tippe dorthin, wo dein Punkt hin soll, und fang die Funken. Goldene zählen dreifach, Minen kosten zwei Punkte.',
   winner: '{names} gewinnt!',
   tie: 'Unentschieden: {names}',
-  noWinner: 'Niemand hat einen Funken gefangen.',
+  noWinner: 'Niemand hat gepunktet.',
   lobby: 'Wärm dich auf, während weitere Spieler dazukommen.',
   settings: 'Einstellungen',
   languageLabel: 'Sprache',

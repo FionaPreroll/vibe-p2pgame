@@ -24,5 +24,6 @@ The README describes the project, its layout and its conventions. These rules ho
 - Use pnpm, never npm or yarn. Run `pnpm check` before every push, and `pnpm test:e2e` when a change touches pairing, the network or the screens.
 - `src/game/sim.ts` holds the game rules as pure TypeScript: no DOM, no WebRTC and no imports from other `src/` folders. The host runs them; players only draw snapshots.
 - Codes in QR codes must stay small enough to scan from a screen: `src/qr/qr.test.ts` checks the QR version. Change the code format in `src/net/signal.ts` only with a new version prefix (`P1` → `P2`).
+- Raise `PROTOCOL` in `src/net/protocol.ts` whenever messages or snapshots change, so phones with different versions refuse to play together instead of misreading each other.
 - Every value read from storage or from another phone is checked before use: storage through the `parse…` functions, messages by their type and fields.
 - Every text players see goes through `t()` from `src/i18n.ts`, with an English and a German version.

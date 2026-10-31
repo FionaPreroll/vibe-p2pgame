@@ -1,6 +1,6 @@
 import type { Snapshot, Target } from '../game/sim'
 import { type Link, onLost, opened } from '../net/link'
-import { listen, send, type ToGuest } from '../net/protocol'
+import { listen, PROTOCOL, send, type ToGuest } from '../net/protocol'
 import { type Session, SILENCE_MS, TICK_MS } from './session'
 
 const PING_MS = 1000
@@ -58,12 +58,16 @@ export class GuestSession implements Session {
     const welcome = await new Promise<Extract<ToGuest, { type: 'welcome' }>>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('timeout')), WELCOME_TIMEOUT_MS)
       listen<ToGuest>(link.control, (message) => {
-        if (message.type === 'welcome' && typeof message.id === 'number') resolve(message)
+        if (message.type === 'welcome' && typeof message.id === 'number') {
+          // A host without a version, or another one, sends snapshots this phone misreads.
+          if (message.version === PROTOCOL) resolve(message)
+          else reject(new Error('version'))
+        } else if (message.type === 'mismatch') reject(new Error('version'))
         else if (message.type === 'full') reject(new Error('full'))
         else return
         clearTimeout(timer)
       })
-      send(link.control, { type: 'hello', name, token })
+      send(link.control, { type: 'hello', name, token, version: PROTOCOL })
     })
     const host = typeof welcome.host === 'string' ? welcome.host : '?'
     return new GuestSession(link, welcome.id, host, welcome.rejoined === true)

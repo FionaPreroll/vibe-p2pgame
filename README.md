@@ -5,7 +5,7 @@
 
 A prototype game for phones lying side by side, with **no internet, no server and no app**. The phones connect directly over WebRTC data channels on a shared Wi-Fi, typically a hotspot opened by one of them. Instead of a signaling server, they swap their connection offers by **scanning QR codes**.
 
-The game itself is small on purpose, because the prototype is about the connection: every player steers a glowing dot toward the spot they touch, and whoever reaches a spark first scores. Golden sparks count three, and a round lasts one minute. The page is in English or German, whichever the browser's language is.
+The game itself is small on purpose, because the prototype is about the connection: every player steers a glowing dot toward the spot they touch, and whoever reaches a spark first scores. Golden sparks count three. Red mines cost two points: a touched mine explodes and appears again elsewhere, and scores can drop below zero. A new mine is grey and harmless for its first second, and never appears right next to a player. A round lasts one minute. The page is in English or German, whichever the browser's language is.
 
 ## Why not Bluetooth?
 
@@ -54,6 +54,7 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 - **Real addresses instead of mDNS**: Chrome hides local IPs behind random `….local` names unless the page may use the camera. That is why the host opens the camera _before_ making the offer, and why the player has already scanned before making the answer. Real IPs avoid depending on mDNS, which not every hotspot passes on. Even if only one side's address can be reached, ICE still connects through peer-reflexive candidates.
 - **Two data channels per player** (`src/net/link.ts`): `control` is reliable, for hello and welcome; `fast` is unordered with no retransmits, like UDP, for input, state and pings. Both are negotiated up front, so no signaling is needed after the scans.
 - **Host-authoritative** (`src/session/host.ts`): the host steps the rules (`src/game/sim.ts`, pure TypeScript) and sends complete snapshots, so a lost packet is simply replaced by the next one. Players smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds.
+- **Versions**: phones update the game in the background, so a host and a player may run different versions. `hello` and `welcome` carry the protocol version (`PROTOCOL` in `src/net/protocol.ts`). If they differ, the player is not let in and both phones say so. Raise the version whenever messages or snapshots change.
 - **Leaving and rejoining** (`src/session/seats.ts`, `saved.ts`): a phone that closes, fails or stays silent for 8 seconds is dropped, but its seat is kept under its browser's token. A `hello` with that token gets the same id and score back. If the same browser says hello while its old connection has not timed out yet, the old one is dropped first. The host saves the seats every 2 seconds and when the page is hidden. When the host ends the game, it sends `bye`, so players know there is nothing to rejoin.
 - **Storage** (`src/storage.ts`, `src/settings.ts`): everything lives in `localStorage` under the `vibe-p2pgame:` prefix. Every stored value is checked on reading, and an invalid value falls back to its default.
 
