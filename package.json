@@ -18,6 +18,7 @@
     "format": "biome check --write",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "pnpm build && playwright test",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
@@ -30,6 +31,7 @@
     "@playwright/test": "1.63.0",
     "@types/node": "^24.19.2",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@vitest/coverage-v8": "5.0.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"

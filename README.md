@@ -1,5 +1,8 @@
 # vibe-p2pgame: Spark Hunt
 
+[![CI](https://github.com/FionaPreroll/vibe-p2pgame/actions/workflows/ci.yml/badge.svg)](https://github.com/FionaPreroll/vibe-p2pgame/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/FionaPreroll/vibe-p2pgame/branch/main/graph/badge.svg)](https://codecov.io/gh/FionaPreroll/vibe-p2pgame)
+
 A prototype game for phones lying side by side, with **no internet, no server and no app**. The phones connect directly over WebRTC data channels on a shared Wi-Fi, typically a hotspot opened by one of them. Instead of a signaling server, they swap their connection offers by **scanning QR codes**.
 
 The game itself is small on purpose, because the prototype is about the connection: every player steers a glowing dot toward the spot they touch, and whoever reaches a spark first scores. Golden sparks count three, and a round lasts one minute. The page is in English or German, whichever the browser's language is.
@@ -77,9 +80,15 @@ pnpm dev
 pnpm check
 ```
 
-`pnpm check` runs the type check, Biome and the unit tests. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
+`pnpm check` runs the type check, Biome and the unit tests. `pnpm test:coverage` also measures coverage; CI uploads it to Codecov. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
 
 **On phones:** `pnpm dev:phone` serves the game to the local network over HTTPS with a self-signed certificate (phones only open the camera on HTTPS pages). Open the address it prints on each phone and accept the certificate warning once. Alternatively, deploy to GitHub Pages and use that URL.
+
+## Branches and pull requests
+
+- Every feature or fix gets its own branch off `origin/main`, named `feature/<name_in_snake_case>` or `fix/<name_in_snake_case>`.
+- Each branch gets one pull request against `main`. Nobody pushes to `main` directly.
+- A pull request is merged once CI is green.
 
 ## Deployment
 
