@@ -1,6 +1,12 @@
+import { type Signal, unpack } from '@fionapreroll/p2p'
+import {
+  cameraIds,
+  decodePhoto,
+  type Range,
+  type Scanner,
+  startScanner,
+} from '@fionapreroll/p2p/qr'
 import { t } from '../i18n'
-import { type Signal, unpack } from '../net/signal'
-import { cameraIds, decodePhoto, type Range, type Scanner, startScanner } from '../qr/scanner'
 import { settings, updateCamera } from '../settings'
 import { h } from './dom'
 

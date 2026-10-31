@@ -1,6 +1,6 @@
 import './style.css'
+import { unpack } from '@fionapreroll/p2p'
 import { setLanguage } from './i18n'
-import { unpack } from './net/signal'
 import { settings } from './settings'
 import { homeScreen, playerName } from './ui/home'
 import { hostScreen } from './ui/host'

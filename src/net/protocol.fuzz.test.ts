@@ -1,15 +1,8 @@
+import { cleanName, MAX_NAME_LENGTH } from '@fionapreroll/p2p'
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { ARENA, MAX_PLAYERS, type Snapshot } from '../game/sim'
-import {
-  cleanName,
-  decode,
-  MAX_MESSAGE_LENGTH,
-  MAX_NAME_LENGTH,
-  parseSnapshot,
-  parseToGuest,
-  parseToHost,
-} from './protocol'
+import { parseInput, parseSnapshot } from './protocol'
 
 /** Values a hostile phone may send in place of a field: anything JSON can carry, and worse. */
 const field = fc.oneof(
@@ -20,41 +13,6 @@ const field = fc.oneof(
   fc.constantFrom(Number.NaN, Infinity, -Infinity, -0, 1e308, Number.MAX_SAFE_INTEGER + 2, null),
   fc.constantFrom('__proto__', 'constructor', '‮', '\u0000', 'x'.repeat(5000)),
 )
-const message = fc.dictionary(
-  fc.constantFrom(
-    'type',
-    'name',
-    'token',
-    'version',
-    'x',
-    'y',
-    'ping',
-    'sent',
-    'id',
-    'host',
-    'rejoined',
-    'state',
-  ),
-  field,
-)
-const typed = fc
-  .tuple(
-    fc.constantFrom(
-      'hello',
-      'input',
-      'ping',
-      'welcome',
-      'mismatch',
-      'bye',
-      'full',
-      'state',
-      'pong',
-      'other',
-    ),
-    message,
-  )
-  .map(([type, rest]) => ({ ...rest, type }))
-
 /** A snapshot as an honest host sends it. */
 const coordinate = fc.integer({ min: 0, max: ARENA })
 const honestSnapshot: fc.Arbitrary<Snapshot> = fc.record({
@@ -129,47 +87,34 @@ function expectSound(snapshot: Snapshot): void {
 describe('parsers, fuzzed', () => {
   it('never throw, whatever arrives', () => {
     fc.assert(
-      fc.property(fc.oneof(fc.anything(), message, typed), (value) => {
-        parseToHost(value)
-        parseToGuest(value)
+      fc.property(fc.oneof(fc.anything(), field), (value) => {
+        parseInput(value)
         parseSnapshot(value)
       }),
       { numRuns: 2000 },
     )
   })
 
-  it('never throw on raw text, and drop anything too long', () => {
+  it('give the host only targets in the arena, or none', () => {
     fc.assert(
-      fc.property(fc.oneof(fc.string(), fc.string({ unit: 'binary' }), fc.json()), (text) => {
-        decode(text, parseToHost)
-        decode(text, parseToGuest)
-      }),
-      { numRuns: 2000 },
-    )
-    const long = JSON.stringify({ type: 'ping', sent: 1, pad: 'x'.repeat(MAX_MESSAGE_LENGTH) })
-    expect(decode(long, parseToHost)).toBeUndefined()
-  })
-
-  it('give the host only safe input', () => {
-    fc.assert(
-      fc.property(typed, (value) => {
-        const parsed = parseToHost(JSON.parse(JSON.stringify(value)))
-        if (parsed?.type === 'input') {
-          expect((parsed.x === null) === (parsed.y === null)).toBe(true)
-          for (const v of [parsed.x, parsed.y]) {
-            if (v !== null) expect(Number.isFinite(v) && v >= 0 && v <= ARENA).toBe(true)
+      fc.property(
+        fc.oneof(
+          fc.record({ x: field, y: field }),
+          fc.dictionary(fc.constantFrom('x', 'y'), field),
+          field,
+        ),
+        (value) => {
+          const target = parseInput(JSON.parse(JSON.stringify(value) ?? 'null'))
+          if (target) {
+            for (const v of [target.x, target.y])
+              expect(Number.isFinite(v) && v >= 0 && v <= ARENA).toBe(true)
           }
-          if (parsed.ping !== null) expect(parsed.ping >= 0 && parsed.ping <= 60_000).toBe(true)
-        } else if (parsed?.type === 'hello') {
-          expect(typeof parsed.name).toBe('string')
-          expect(parsed.token === '' || /^[A-Za-z0-9-]{8,64}$/.test(parsed.token)).toBe(true)
-          expect(typeof parsed.version).toBe('number')
-        } else if (parsed?.type === 'ping') {
-          expect(Number.isFinite(parsed.sent)).toBe(true)
-        }
-      }),
+        },
+      ),
       { numRuns: 2000 },
     )
+    expect(parseInput(JSON.parse('{"x":1e999,"y":1}'))).toBeUndefined()
+    expect(parseInput(null)).toBeNull()
   })
 
   it('accept every honest snapshot unchanged', () => {
@@ -198,28 +143,6 @@ describe('parsers, fuzzed', () => {
         },
       ),
       { numRuns: 3000 },
-    )
-  })
-
-  it('make every name short, single line and printable', () => {
-    fc.assert(
-      fc.property(
-        fc.oneof(
-          fc.string(),
-          fc.string({ unit: 'grapheme' }),
-          fc.string({ unit: 'binary' }),
-          field,
-        ),
-        (name) => {
-          const clean = cleanName(name, '?')
-          expect(clean.length).toBeGreaterThan(0)
-          expect(Array.from(clean).length).toBeLessThanOrEqual(MAX_NAME_LENGTH)
-          expect(clean).not.toMatch(/[\p{Cc}\p{Cf}\n\r\t]/u)
-          expect(clean).toBe(clean.trim())
-          expect(cleanName(clean, '?')).toBe(clean)
-        },
-      ),
-      { numRuns: 2000 },
     )
   })
 })

@@ -1,6 +1,6 @@
+import type { Signal } from '@fionapreroll/p2p'
+import { qrElement } from '@fionapreroll/p2p/qr'
 import { t } from '../i18n'
-import type { Signal } from '../net/signal'
-import { qrElement } from '../qr/qr'
 import { HostSession, type Pairing } from '../session/host'
 import type { HostedGame } from '../session/saved'
 import { settings } from '../settings'
@@ -67,10 +67,10 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
     scan.stop()
     status.textContent = t('connecting')
     try {
-      const { name, rejoined } = await pairing.accept(signal)
+      const { player, rejoined } = await pairing.accept(signal)
       pairing = null
       close()
-      toast(t(rejoined ? 'rejoined' : 'connected', { name }))
+      toast(t(rejoined ? 'rejoined' : 'connected', { name: player.name }))
     } catch (error) {
       status.textContent = failureText(error)
       status.append(

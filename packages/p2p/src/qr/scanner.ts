@@ -172,8 +172,9 @@ async function decodeFrame(
   return text === undefined ? [] : [text]
 }
 
-const canvas = document.createElement('canvas')
-const context = canvas.getContext('2d', { willReadFrequently: true })
+/** One canvas for all decoding, made when first needed: importing needs no DOM. */
+let canvas: HTMLCanvasElement | undefined
+let context: CanvasRenderingContext2D | null = null
 
 /** Decodes the middle `crop` of an image, scaled to at most `size` pixels across. */
 function jsQRDecode(
@@ -183,6 +184,10 @@ function jsQRDecode(
   crop: number,
   size: number,
 ): string | undefined {
+  if (!canvas) {
+    canvas = document.createElement('canvas')
+    context = canvas.getContext('2d', { willReadFrequently: true })
+  }
   if (!context) return undefined
   const sw = width * crop
   const sh = height * crop

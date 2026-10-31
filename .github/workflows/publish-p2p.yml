@@ -1,0 +1,37 @@
+name: Publish p2p
+
+# Publishes @fionapreroll/p2p to GitHub's npm registry when a tag such as p2p-v0.1.0 is pushed.
+# The tag must match the version in packages/p2p/package.json.
+
+on:
+  push:
+    tags: ["p2p-v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@fionapreroll"
+      - run: pnpm install --frozen-lockfile
+      - name: Check that the tag names the package's version
+        run: |
+          version=$(node -p "require('./packages/p2p/package.json').version")
+          if [ "p2p-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match packages/p2p/package.json ($version)"
+            exit 1
+          fi
+      - run: pnpm check
+      - run: pnpm --filter @fionapreroll/p2p publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

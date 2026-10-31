@@ -19,11 +19,19 @@ The README describes the project, its layout and its conventions. These rules ho
 - The README starts with two badges, linked to their pages, and keeps them: CI (`.github/workflows/ci.yml`) and coverage (Codecov). A new workflow that checks the code gets a badge there too.
 - A change that players or developers notice updates the README in the same pull request.
 
+## The library
+
+- `packages/p2p` is the library `@fionapreroll/p2p`, for other games too: no imports from the game's `src/`, nothing of Spark Hunt in it, and no texts players see, as games bring their own.
+- A change to the library that its users notice adds an entry to `packages/p2p/CHANGELOG.md`, apart from the game's changelog, and updates `packages/p2p/README.md`.
+- Raise `ROOM_PROTOCOL` in `packages/p2p/src/room/messages.ts` whenever the room's own messages change.
+- Library code imports its own files with `.ts` extensions, which `tsc` rewrites to `.js` in the build.
+- A version is published only when asked: see "The library and its versions" in the README.
+
 ## Code
 
 - Use pnpm, never npm or yarn. Run `pnpm check` before every push, and `pnpm test:e2e` when a change touches pairing, the network or the screens.
 - `src/game/sim.ts` holds the game rules as pure TypeScript: no DOM, no WebRTC and no imports from other `src/` folders. The host runs them; players only draw snapshots.
-- Codes in QR codes must stay small enough to scan from a screen: `src/qr/qr.test.ts` checks the QR version. Change the code format in `src/net/signal.ts` only with a new version prefix (`P1` → `P2`).
-- Raise `PROTOCOL` in `src/net/protocol.ts` whenever messages or snapshots change, so phones with different versions refuse to play together instead of misreading each other.
+- Codes in QR codes must stay small enough to scan from a screen: `packages/p2p/src/qr/qr.test.ts` checks the QR version. Change the code format in `packages/p2p/src/signal.ts` only with a new version prefix (`P1` → `P2`).
+- Raise `PROTOCOL` in `src/net/protocol.ts` whenever Spark Hunt's input or snapshots change, so phones with different versions refuse to play together instead of misreading each other.
 - Every value read from storage or from another phone is checked before use: storage through the `parse…` functions, messages by their type and fields.
 - Every text players see goes through `t()` from `src/i18n.ts`, with an English and a German version.

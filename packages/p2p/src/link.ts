@@ -1,4 +1,4 @@
-import { fromSdp, pack, type Signal, toSdp } from './signal'
+import { fromSdp, pack, type Signal, toSdp } from './signal.ts'
 
 /**
  * One WebRTC connection between two phones, with two data channels:

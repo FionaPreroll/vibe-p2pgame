@@ -1,7 +1,7 @@
 import jsQR from 'jsqr'
 import { encode } from 'uqr'
 import { describe, expect, it } from 'vitest'
-import { fromSdp, pack } from '../net/signal'
+import { fromSdp, pack } from '../signal.ts'
 
 /** Draws a QR code into RGBA pixels, as a camera frame would show it, and reads it back. */
 function scan(text: string, pixelsPerModule = 4): string | undefined {

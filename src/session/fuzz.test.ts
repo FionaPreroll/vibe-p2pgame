@@ -1,8 +1,10 @@
+import { cleanName } from '@fionapreroll/p2p'
+import { ROOM_PROTOCOL } from '@fionapreroll/p2p/room'
+import { linkPair } from '@fionapreroll/p2p/testing'
 import fc from 'fast-check'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ARENA, MAX_PLAYERS, PLAYER_RADIUS } from '../game/sim'
-import { cleanName, PROTOCOL, parseSnapshot } from '../net/protocol'
-import { linkPair } from '../net/testing'
+import { PROTOCOL, parseSnapshot } from '../net/protocol'
 import { GuestSession } from './guest'
 import { HostSession } from './host'
 
@@ -34,7 +36,9 @@ const fields = fc.dictionary(
   fc.constantFrom(
     'name',
     'token',
+    'room',
     'version',
+    'data',
     'x',
     'y',
     'ping',
@@ -67,11 +71,19 @@ const hostileText = fc.oneof(
       fields,
     )
     .map(([type, rest]) => JSON.stringify({ ...rest, type })),
+  // Spark Hunt's own input and state, with odd values inside the room's envelope.
+  fc
+    .tuple(
+      fc.constantFrom('input', 'state'),
+      fc.dictionary(fc.constantFrom('x', 'y', 'phase', 'players', 'timeLeft'), value),
+      value,
+    )
+    .map(([type, data, ping]) => JSON.stringify({ type, data, ping })),
   // JSON's own way to Infinity, which JSON.stringify never writes.
   fc.constantFrom(
-    '{"type":"input","x":1e999,"y":-1e999,"ping":1e999}',
+    '{"type":"input","data":{"x":1e999,"y":-1e999},"ping":1e999}',
     '{"type":"ping","sent":1e999}',
-    `{"type":"hello","name":"x","token":"${'t'.repeat(10)}","version":1e999}`,
+    `{"type":"hello","name":"x","token":"${'t'.repeat(10)}","room":${ROOM_PROTOCOL},"version":${PROTOCOL}}`,
   ),
 )
 const hostileStep = fc.record({
@@ -153,6 +165,7 @@ describe('a player, fuzzed', () => {
             id: 1,
             host: 'Host',
             rejoined: false,
+            room: ROOM_PROTOCOL,
             version: PROTOCOL,
           }),
         )

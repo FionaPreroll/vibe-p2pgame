@@ -49,21 +49,22 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 | 4. Answer    |                                                                             | Shows the answer as a QR code                      |
 | 5. Scan      | Scans the answer: ICE and DTLS connect directly over the Wi-Fi              |                                                    |
 | 6. Play      | Runs the game 30 times a second and sends the state to everyone             | Sends where the player steers, and draws the state |
-- **Short codes** (`src/net/signal.ts`): a browser's SDP is 1–3 KB, too dense to scan from a screen. Only a few fields differ between connections: offer or answer, the ICE user fragment and password, the DTLS fingerprint, the DTLS role and the UDP host candidates. The code carries just those, about 130 characters such as `P1~o~x~Wke9~UmMu…~ohqF…~192.168.43.1,58378`, and the other side writes a minimal SDP around them. With the join link included, the QR code stays at version 10 or below.
+- **The library** (`packages/p2p`, published as [`@fionapreroll/p2p`](packages/p2p/README.md)): everything that is not Spark Hunt's own lives there, for other games to use too: codes, connections, the room for host and players, QR codes, and the means to check and test it all. The game builds on it.
+- **Short codes** (`packages/p2p/src/signal.ts`): a browser's SDP is 1–3 KB, too dense to scan from a screen. Only a few fields differ between connections: offer or answer, the ICE user fragment and password, the DTLS fingerprint, the DTLS role and the UDP host candidates. The code carries just those, about 130 characters such as `P1~o~x~Wke9~UmMu…~ohqF…~192.168.43.1,58378`, and the other side writes a minimal SDP around them. With the join link included, the QR code stays at version 10 or below.
 - **No STUN or TURN**: without internet there is nothing to reach. Phones on the same hotspot connect over their local addresses.
 - **Real addresses instead of mDNS**: Chrome hides local IPs behind random `….local` names unless the page may use the camera. That is why the host opens the camera _before_ making the offer, and why the player has already scanned before making the answer. Real IPs avoid depending on mDNS, which not every hotspot passes on. Even if only one side's address can be reached, ICE still connects through peer-reflexive candidates.
-- **Two data channels per player** (`src/net/link.ts`): `control` is reliable, for hello and welcome; `fast` is unordered with no retransmits, like UDP, for input, state and pings. Both are negotiated up front, so no signaling is needed after the scans.
-- **Host-authoritative** (`src/session/host.ts`): the host steps the rules (`src/game/sim.ts`, pure TypeScript) and sends complete snapshots, so a lost packet is simply replaced by the next one. Players smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds.
-- **Versions**: phones update the game in the background, so a host and a player may run different versions. `hello` and `welcome` carry the protocol version (`PROTOCOL` in `src/net/protocol.ts`). If they differ, the player is not let in and both phones say so. Raise the version whenever messages or snapshots change.
-- **Leaving and rejoining** (`src/session/seats.ts`, `saved.ts`): a phone that closes, fails or stays silent for 8 seconds is dropped, but its seat is kept under its browser's token. A `hello` with that token gets the same id and score back. If the same browser says hello while its old connection has not timed out yet, the old one is dropped first. The host saves the seats every 2 seconds and when the page is hidden. When the host ends the game, it sends `bye`, so players know there is nothing to rejoin.
+- **Two data channels per player** (`packages/p2p/src/link.ts`): `control` is reliable, for hello and welcome; `fast` is unordered with no retransmits, like UDP, for input, state and pings. Both are negotiated up front, so no signaling is needed after the scans.
+- **Host-authoritative** (`HostRoom` in the library, `src/session/host.ts` in the game): the room lets players in and carries the messages, and on every tick the game steps the rules (`src/game/sim.ts`, pure TypeScript) and sends complete snapshots, so a lost packet is simply replaced by the next one. Players smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds.
+- **Versions**: phones update the game in the background, so a host and a player may run different versions. `hello` and `welcome` carry two versions: the room's own (`ROOM_PROTOCOL` in the library) and the game's (`PROTOCOL` in `src/net/protocol.ts`). If either differs, the player is not let in and both phones say so. Raise the game's version whenever its input or snapshots change.
+- **Leaving and rejoining** (`Seats` in the library, `src/session/saved.ts`): a phone that closes, fails or stays silent for 8 seconds is dropped, but its seat is kept under its browser's token, and the game keeps its score. A `hello` with that token gets the same id, and with it the score, back. If the same browser says hello while its old connection has not timed out yet, the old one is dropped first. The host saves the seats every 2 seconds and when the page is hidden. When the host ends the game, it sends `bye`, so players know there is nothing to rejoin.
 - **Storage** (`src/storage.ts`, `src/settings.ts`): everything lives in `localStorage` under the `vibe-p2pgame:` prefix. Every stored value is checked on reading, and an invalid value falls back to its default.
 
 ## Security
 
 Anyone can make a QR code, and any phone that pairs can send whatever it likes, so neither side trusts the other:
 
-- **Codes** (`unpack` in `src/net/signal.ts`) are read strictly by the ICE grammar: credentials only of ICE characters, addresses only as IPv4, IPv6 or mDNS names, at most six candidates, and a length limit. No field can smuggle a line into the SDP the browser reads.
-- **Messages** (`src/net/protocol.ts`) longer than 16 KB are dropped unread. The rest is parsed as JSON and checked field by field (`parseToHost`, `parseToGuest`, `parseSnapshot`), and anything unexpected is dropped. Coordinates must be finite (JSON reads `1e999` as Infinity) and are kept inside the arena. A snapshot is drawn only when all of it is sound.
+- **Codes** (`unpack` in the library) are read strictly by the ICE grammar: credentials only of ICE characters, addresses only as IPv4, IPv6 or mDNS names, at most six candidates, and a length limit. No field can smuggle a line into the SDP the browser reads.
+- **Messages** longer than 16 KB are dropped unread. The rest is parsed as JSON and checked field by field: the room's own part by the library, Spark Hunt's input and snapshots by `parseInput` and `parseSnapshot` in `src/net/protocol.ts`. Anything unexpected is dropped. Coordinates must be finite (JSON reads `1e999` as Infinity) and are kept inside the arena. A snapshot is drawn only when all of it is sound.
 - **Names** lose control and formatting characters, such as a right-to-left override, and are cut to 16 characters.
 - **The host** decides everything: a player only steers their own dot and cannot name an id. The host answers pings only with a number, and lets in one player per connection and up to eight players in all. Player tokens never leave the host, so nobody can take another player's place.
 - **Limits:** the connection is encrypted by WebRTC (DTLS), but a phone that pairs can still lie about its own input; the game does not check what is humanly possible. A rejoining player is known by their browser's token, which is safe only as long as that token stays secret.
@@ -71,12 +72,14 @@ Anyone can make a QR code, and any phone that pairs can send whatever it likes, 
 ## Layout
 
 ```
+packages/p2p/   the library @fionapreroll/p2p, with its own README and CHANGELOG
+  src/          signal.ts: codes; link.ts: WebRTC; channel.ts: messages and checks;
+                room/: HostRoom, GuestRoom, Seats; qr/: QR codes and the camera;
+                testing.ts: connections in memory, for tests
 src/
   game/      sim.ts: the rules, pure and tested; draw.ts: the canvas
-  net/       signal.ts: SDP ↔ short code; link.ts: WebRTC; protocol.ts: messages, checked;
-             testing.ts: connections in memory, for tests
-  qr/        qr.ts: QR codes as SVG (uqr); scanner.ts: camera, focus, zoom, decoding
-  session/   host.ts and guest.ts: the two sides of a game; seats.ts and saved.ts: rejoining
+  net/       protocol.ts: Spark Hunt's input and snapshots, checked
+  session/   host.ts and guest.ts: Spark Hunt on the library's rooms; saved.ts: what a host keeps
   ui/        the screens, plain DOM without a framework; scanPanel.ts: the camera view
   i18n.ts    every visible text, in English and German
   settings.ts, storage.ts   what the browser remembers
@@ -102,8 +105,8 @@ pnpm check
 
 `pnpm check` runs the type check, Biome and the unit tests:
 
-- `src/session/p2p.test.ts` connects real host and player sessions through connections in memory (`src/net/testing.ts`), with fake timers. It covers joining, steering, pings, a full game, versions, silence, leaving and rejoining, and attacks from players and hosts.
-- `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the code format, the message parsers, the rules, and the host and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it. `pnpm test:coverage` also measures coverage; CI uploads it to Codecov. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
+- `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game. It covers joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `src/session/p2p.test.ts` does the same for what Spark Hunt adds.
+- `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the codes, the room's messages, the game's parsers and rules, and hosts and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it. `pnpm test:coverage` also measures coverage; CI uploads it to Codecov. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
 
 **On phones:** `pnpm dev:phone` serves the game to the local network over HTTPS with a self-signed certificate (phones only open the camera on HTTPS pages). Open the address it prints on each phone and accept the certificate warning once. Alternatively, deploy to GitHub Pages and use that URL.
 
@@ -117,6 +120,18 @@ pnpm check
 - `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Changes that players can see go under `## [Unreleased]`, in `### Added`, `### Changed`, `### Fixed` or `### Removed`, written in English for players.
 - Changes only developers notice, such as tests, tooling or refactoring, need no entry.
 - A version is made only when asked. The entries under `## [Unreleased]` then move to a new `## [x.y.z] - YYYY-MM-DD` section, `package.json` gets the same version, and the commit is tagged `vx.y.z`. The empty `## [Unreleased]` heading stays for the next changes, and the link definitions at the end of the file point at the comparison and the release. Versions follow [Semantic Versioning](https://semver.org/).
+
+## The library and its versions
+
+`packages/p2p` is a pnpm workspace package. The game uses it as `workspace:*`, straight from its sources, so a change to the library is tested with the game at once. `pnpm check` and `pnpm test` cover both, and `pnpm build:p2p` builds the package into `packages/p2p/dist`.
+
+The library has its own version and `packages/p2p/CHANGELOG.md`, apart from the game's. A version is made only when asked:
+
+1. Move the entries under `## [Unreleased]` in `packages/p2p/CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, and set `"version"` in `packages/p2p/package.json` to the same.
+2. Commit, then tag that commit `p2p-vx.y.z` and push the tag.
+3. `.github/workflows/publish-p2p.yml` checks that the tag names the package's version, runs every check and publishes the package to GitHub's npm registry.
+
+Games that use it install it as `README.md` in `packages/p2p` describes, with a token that may read packages.
 
 ## Deployment
 

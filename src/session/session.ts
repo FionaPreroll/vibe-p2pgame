@@ -10,8 +10,3 @@ export interface Session {
   target(): Target
   close(): void
 }
-
-/** A phone that sends nothing for this long is taken for gone, even if WebRTC has not noticed. */
-export const SILENCE_MS = 8000
-/** How often the host sends the state, and players their input. */
-export const TICK_MS = 1000 / 30

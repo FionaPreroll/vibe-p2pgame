@@ -1,18 +1,16 @@
 /**
  * Who has a place in a hosted game, by the token each browser keeps for itself. A player who
  * drops out keeps their place: rejoining with the same token gives back their id, and with it
- * their color and their score, even in the middle of a round.
+ * whatever the game keeps under that id, such as a color or a score.
  */
 export interface Seat {
   readonly token: string
   readonly id: number
   readonly name: string
-  readonly score: number
 }
 
 export interface Claim {
   readonly id: number
-  readonly score: number
   readonly rejoined: boolean
 }
 
@@ -34,9 +32,9 @@ export class Seats {
     const seat = this.away.get(token)
     if (seat) {
       this.away.delete(token)
-      return { id: seat.id, score: seat.score, rejoined: true }
+      return { id: seat.id, rejoined: true }
     }
-    return { id: this.nextId++, score: 0, rejoined: false }
+    return { id: this.nextId++, rejoined: false }
   }
 
   /** Keeps the place of a player who left, for when they come back. */
@@ -47,11 +45,6 @@ export class Seats {
   /** Players who left and may come back, in the order they joined. */
   awaySeats(): Seat[] {
     return [...this.away.values()].sort((a, b) => a.id - b.id)
-  }
-
-  /** A new round starts from nothing for everyone, away or not. */
-  resetScores(): void {
-    for (const [token, seat] of this.away) this.away.set(token, { ...seat, score: 0 })
   }
 
   get next(): number {

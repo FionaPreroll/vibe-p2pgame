@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
-import { pack, type Signal, toSdp, unpack } from './signal'
+import { pack, type Signal, toSdp, unpack } from './signal.ts'
 
 const iceChars = fc.constantFrom(
   ...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split(''),

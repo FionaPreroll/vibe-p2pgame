@@ -26,6 +26,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
+      - run: pnpm build:p2p
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test

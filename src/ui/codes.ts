@@ -1,5 +1,5 @@
+import { type Signal, unpack } from '@fionapreroll/p2p'
 import { t } from '../i18n'
-import { type Signal, unpack } from '../net/signal'
 import { h } from './dom'
 
 /**

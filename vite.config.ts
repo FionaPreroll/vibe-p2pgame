@@ -9,12 +9,12 @@ export default defineConfig(({ mode }) => ({
   // certificate that the phone has to accept once.
   plugins: [serviceWorker(), ...(mode === 'phone' ? [basicSsl()] : [])],
   test: {
-    include: ['src/**/*.test.ts', 'tools/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'tools/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       // Every source file, so files without tests count as uncovered instead of missing.
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/testing.ts'],
+      include: ['src/**/*.ts', 'packages/*/src/**/*.ts'],
+      exclude: ['**/*.test.ts', '**/testing.ts', 'packages/*/src/**/index.ts'],
       // lcov for Codecov, a table for the terminal.
       reporter: ['text', 'lcov'],
     },

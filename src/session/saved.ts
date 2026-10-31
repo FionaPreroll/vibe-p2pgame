@@ -1,5 +1,5 @@
+import { randomToken, type Seat } from '@fionapreroll/p2p/room'
 import { readJson, remove, writeJson } from '../storage'
-import type { Seat } from './seats'
 
 /** Saved games older than this are not offered any more. */
 export const MAX_AGE_MS = 12 * 60 * 60 * 1000
@@ -11,9 +11,7 @@ export const MAX_AGE_MS = 12 * 60 * 60 * 1000
 export function playerToken(): string {
   const stored = readJson('token')
   if (typeof stored === 'string' && stored.length >= 8) return stored
-  const token = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) =>
-    b.toString(16).padStart(2, '0'),
-  ).join('')
+  const token = randomToken()
   writeJson('token', token)
   return token
 }
@@ -47,11 +45,15 @@ export function parseJoinedGame(stored: unknown, now: number): JoinedGame | null
  * The game this phone hosts, saved as it goes: if the page is closed or reloaded, the host
  * can carry on with the same players and scores, once they have scanned codes again.
  */
+export interface SavedPlayer extends Seat {
+  readonly score: number
+}
+
 export interface HostedGame {
   readonly savedAt: number
   readonly hostScore: number
-  /** Every other player, connected at the time or away. */
-  readonly players: readonly Seat[]
+  /** Every other player, connected at the time or away, with their score. */
+  readonly players: readonly SavedPlayer[]
   readonly nextId: number
 }
 
@@ -72,7 +74,7 @@ export function parseHostedGame(stored: unknown, now: number): HostedGame | null
   if (!Array.isArray(stored.players) || !isCount(stored.nextId) || !isCount(stored.hostScore)) {
     return null
   }
-  const players: Seat[] = []
+  const players: SavedPlayer[] = []
   for (const p of stored.players) {
     if (
       !isObject(p) ||

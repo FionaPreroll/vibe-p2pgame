@@ -1,4 +1,4 @@
-import type { Link } from './link'
+import type { Link } from './link.ts'
 
 /**
  * Two phones connected in memory, for tests: what one side sends on a channel arrives on the

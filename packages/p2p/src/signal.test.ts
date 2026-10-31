@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromSdp, pack, toSdp, unpack } from './signal'
+import { fromSdp, pack, toSdp, unpack } from './signal.ts'
 
 /** An offer as Chrome writes it for a data channel, shortened to the lines that matter. */
 const CHROME_OFFER = [
