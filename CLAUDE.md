@@ -33,6 +33,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - Native features go through `src/native.ts` and must also work in a browser, where they do nothing: the website and the app are one codebase.
 - A new permission goes into `android/app/src/main/AndroidManifest.xml`, with a comment why.
 - This container cannot reach Google's Android downloads: the APK is built and checked by `.github/workflows/android.yml` only.
+- The release "Spark Hunt for Android" (tag `android-latest`) is replaced by CI with every push to `main`; that tag moves on purpose, and is the only one that does. Numbered game versions stay for when they are asked for.
 
 ## Code
 

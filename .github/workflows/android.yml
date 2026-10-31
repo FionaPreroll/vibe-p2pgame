@@ -1,7 +1,9 @@
 name: Android
 
 # Builds the Android app (Capacitor) as an installable debug APK, on every push to main and every
-# pull request, or by hand from the Actions tab. The APK is kept as the run's artifact.
+# pull request, or by hand from the Actions tab. The APK is kept as the run's artifact; from main,
+# it also goes to the release "Spark Hunt for Android", at a download link that never changes:
+# https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk
 
 on:
   push:
@@ -35,9 +37,60 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: ${{ github.run_number }}-${{ github.sha }}
         run: ./gradlew assembleDebug --no-daemon
+      - run: mv android/app/build/outputs/apk/debug/app-debug.apk spark-hunt.apk
       - uses: actions/upload-artifact@v4
         with:
           name: spark-hunt-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: spark-hunt.apk
           retention-days: 30
           if-no-files-found: error
+
+  release:
+    # Builds of main only: pull requests and hand-started runs on other branches publish nothing.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: android-release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: android-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: spark-hunt-apk
+      - name: Skip if main has moved on
+        id: current
+        run: |
+          head=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$head" = "$GITHUB_SHA" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::main is at $head now; its own run publishes that build instead."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish the release
+        if: steps.current.outputs.publish == 'true'
+        run: |
+          cat > notes.md <<NOTES
+          The newest build of Spark Hunt for Android, from commit ${GITHUB_SHA::7} (build ${GITHUB_RUN_NUMBER}). This release is replaced with every change to \`main\`.
+
+          **Installing:** download \`spark-hunt.apk\` below and open it on the phone; Android asks once to allow installing apps from that source. A newer APK installs over an older one and keeps the game's settings.
+
+          **Before going out:** start the app once with internet, so that Google's QR scanner can download its module.
+
+          This is a debug build, signed with the project's debug key: for testing and playing with friends, not for the Play Store.
+          NOTES
+          # The tag follows main: it always names the commit of the APK in the release.
+          git tag -f "$TAG" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$TAG"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" spark-hunt.apk --clobber
+            gh release edit "$TAG" --title "Spark Hunt for Android" --notes-file notes.md --latest
+          else
+            gh release create "$TAG" spark-hunt.apk --title "Spark Hunt for Android" --notes-file notes.md --latest
+          fi
