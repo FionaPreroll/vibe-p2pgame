@@ -127,9 +127,10 @@ pnpm check
 
 The library has its own version and `packages/p2p/CHANGELOG.md`, apart from the game's. A version is made only when asked:
 
-1. Move the entries under `## [Unreleased]` in `packages/p2p/CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, and set `"version"` in `packages/p2p/package.json` to the same.
-2. Commit, then tag that commit `p2p-vx.y.z` and push the tag.
-3. `.github/workflows/publish-p2p.yml` checks that the tag names the package's version, runs every check and publishes the package to GitHub's npm registry.
+1. Move the entries under `## [Unreleased]` in `packages/p2p/CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in `packages/p2p/package.json` to the same, and bring that to `main`.
+2. In the Actions tab, run **Publish p2p** on `main`. It checks that the version is new and in the changelog, runs every check, publishes the package to GitHub's npm registry, and then tags the commit `p2p-vx.y.z`.
+
+Pushing a tag `p2p-vx.y.z` yourself publishes too, once the tag matches the version in `packages/p2p/package.json`.
 
 Games that use it install it as `README.md` in `packages/p2p` describes, with a token that may read packages.
 
