@@ -1,0 +1,30 @@
+type Child = Node | string | null | undefined | false
+
+/** Builds an element: `h('button', { class: 'big', onclick }, 'Go')`. */
+export function h<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  props: Partial<Omit<HTMLElementTagNameMap[K], 'style'>> & { class?: string } = {},
+  ...children: Child[]
+): HTMLElementTagNameMap[K] {
+  const element = document.createElement(tag)
+  const { class: className, ...rest } = props
+  Object.assign(element, rest)
+  if (className) element.className = className
+  for (const child of children) if (child) element.append(child)
+  return element
+}
+
+/** Puts a screen in place of the current one. */
+export function show(screen: HTMLElement): void {
+  const app = document.getElementById('app')
+  if (!app) throw new Error('No #app element')
+  app.replaceChildren(screen)
+}
+
+/** A short message that fades away by itself. */
+export function toast(text: string): void {
+  const element = h('div', { class: 'toast', role: 'status' } as Partial<HTMLDivElement>, text)
+  document.body.append(element)
+  setTimeout(() => element.classList.add('gone'), 2500)
+  setTimeout(() => element.remove(), 3000)
+}

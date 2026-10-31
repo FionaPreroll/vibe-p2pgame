@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Spark Hunt</title>
+  <defs>
+    <radialGradient id="spark" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff6c0"/>
+      <stop offset="0.35" stop-color="#ffc400"/>
+      <stop offset="1" stop-color="#ffc400" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#12152b"/>
+  <circle cx="256" cy="256" r="120" fill="url(#spark)"/>
+  <circle cx="150" cy="370" r="48" fill="#ff5470"/>
+  <circle cx="370" cy="150" r="48" fill="#4da3ff"/>
+</svg>
