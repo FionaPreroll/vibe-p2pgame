@@ -21,6 +21,13 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 
 **Offline:** open the page once while online. A service worker keeps all of its files, so after that it also starts on a hotspot without internet, and browsers can install it as an app. Phones only allow the camera on HTTPS pages, so serve it over HTTPS, for example from GitHub Pages.
 
+**Camera won't focus?** Many phones can't focus on a screen held close. Below the camera picture:
+
+- Tap the picture to focus and set the exposure on that spot.
+- Hold the phone further away and use the **Zoom** slider. Lower the **Brightness** if the code glares. Both sliders appear only where the browser offers these camera settings, which is mostly Chrome on Android.
+- **Switch camera** cycles through the phone's cameras, as some focus closer than others.
+- **Take a photo instead** opens the phone's own camera app, which focuses better. The photo is read at several sizes, and in Chrome on Android with the phone's built-in QR detector.
+
 **No camera?** Under _No camera? Use text codes_, each side can copy its code and paste the other's, for example between two laptops or through a messenger.
 
 ## How it works
@@ -46,9 +53,9 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 src/
   game/      sim.ts: the rules, pure and tested; draw.ts: the canvas
   net/       signal.ts: SDP ↔ short code; link.ts: WebRTC; protocol.ts: messages
-  qr/        qr.ts: QR codes as SVG (uqr); scanner.ts: camera + jsQR
+  qr/        qr.ts: QR codes as SVG (uqr); scanner.ts: camera, focus, zoom, decoding
   session/   host.ts and guest.ts: the two sides of a game
-  ui/        the screens, plain DOM without a framework
+  ui/        the screens, plain DOM without a framework; scanPanel.ts: the camera view
   i18n.ts    every visible text, in English and German
 tools/       serviceWorker.ts: writes the offline worker into the build
 tests/e2e/   Playwright: two browser profiles pair through text codes and play

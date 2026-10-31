@@ -3,9 +3,10 @@ import { answerOffer } from '../net/link'
 import type { Signal } from '../net/signal'
 import { qrElement } from '../qr/qr'
 import { GuestSession } from '../session/guest'
-import { pastedSignal, signalScanner, textCodes } from './codes'
+import { pastedSignal, textCodes } from './codes'
 import { h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
+import { scanPanel } from './scanPanel'
 
 /**
  * Joins a game: scan the host's code, show the answer code until the host has scanned it,
@@ -13,25 +14,23 @@ import { gameScreen, result, roster } from './game'
  */
 export function joinScreen(name: string, onLeave: () => void, offer?: Signal): void {
   const step = h('p', {}, t('joinStep1'))
-  const video = h('video', { class: 'camera big' })
   const qrBox = h('div', { class: 'qr-box' })
   const status = h('p', { class: 'status', role: 'status' } as Partial<HTMLParagraphElement>)
   let answerCode: string | null = null
   let started = false
   let left = false
-  let scanner: Awaited<ReturnType<typeof signalScanner>> = null
 
   const leave = () => {
     left = true
-    scanner?.stop()
+    scan.stop()
     onLeave()
   }
 
   const begin = async (signal: Signal) => {
     if (started) return
     started = true
-    scanner?.stop()
-    video.hidden = true
+    scan.stop()
+    scan.element.hidden = true
     codes.element.open = false
     status.textContent = t('connecting')
     try {
@@ -61,6 +60,15 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
     }
   }
 
+  const scan = scanPanel(
+    'offer',
+    (signal) => {
+      void begin(signal)
+      return true
+    },
+    true,
+  )
+
   const codes = textCodes(
     () => answerCode,
     (text) => {
@@ -87,7 +95,7 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
         h('h2', {}, t('join')),
       ),
       step,
-      video,
+      scan.element,
       qrBox,
       status,
       codes.element,
@@ -98,18 +106,11 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
     void begin(offer)
     return
   }
-  void (async () => {
-    scanner = await signalScanner(video, 'offer', (signal) => {
-      void begin(signal)
-      return true
-    })
-    if (left || started) return scanner?.stop()
-    if (scanner === null) {
-      video.hidden = true
-      status.textContent = t('noCamera')
-      codes.element.open = true
-    }
-  })()
+  void scan.ready.then((camera) => {
+    if (camera || left || started) return
+    status.textContent = t('noCamera')
+    codes.element.open = true
+  })
 }
 
 function play(session: GuestSession, onLeave: () => void): void {

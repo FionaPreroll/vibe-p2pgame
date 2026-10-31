@@ -154,17 +154,83 @@ label {
   height: 100%;
 }
 
+.viewfinder {
+  position: relative;
+  cursor: crosshair;
+}
+
 .camera {
+  display: block;
   width: 100%;
-  max-height: 30vh;
+  height: 30vh;
   object-fit: cover;
   border-radius: 12px;
   background: #000;
 }
 
-.camera.big {
+.viewfinder.big .camera {
+  height: auto;
   max-height: 55vh;
   aspect-ratio: 1;
+}
+
+.focus-ring {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.focus-ring.pulse {
+  animation: focus 0.9s ease-out;
+}
+
+@keyframes focus {
+  0% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.scan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.scan p {
+  margin: 0;
+}
+
+.camera-controls {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.camera-controls:empty {
+  display: none;
+}
+
+.slider {
+  grid-template-columns: 7rem 1fr;
+  align-items: center;
+  font-weight: 500;
+}
+
+.slider input {
+  padding: 0;
+  accent-color: var(--accent);
 }
 
 .status:empty {

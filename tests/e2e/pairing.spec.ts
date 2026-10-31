@@ -106,5 +106,51 @@ test('a code of the wrong kind is refused', async ({ browser }) => {
   const modal = host.locator('.modal')
   const offer = await ownCode(host, modal)
   await pasteCode(modal, offer)
-  await expect(modal.locator('.status')).toHaveText(/not a code from this game/)
+  await expect(modal.locator('.card > .status')).toHaveText(/not a code from this game/)
+})
+
+test('players pair with photos of the codes, for cameras that will not focus live', async ({
+  browser,
+}) => {
+  const host = await player(browser)
+  const guest = await player(browser)
+  await host.getByRole('button', { name: 'Host a game' }).click()
+  await host.getByRole('button', { name: 'Add player' }).click()
+  const modal = host.locator('.modal')
+  await expect(modal.locator('.qr svg')).toBeVisible({ timeout: 10_000 })
+  const offerPhoto = await modal.locator('.qr').screenshot()
+
+  await guest.getByRole('button', { name: 'Join a game' }).click()
+  await expect(guest.getByRole('button', { name: 'Take a photo instead' })).toBeVisible()
+  // A photo with nothing on it: the player is told, and can go on.
+  await guest.locator('input.photo').setInputFiles({
+    name: 'blank.png',
+    mimeType: 'image/png',
+    buffer: await guest.screenshot({ clip: { x: 0, y: 0, width: 50, height: 50 } }),
+  })
+  await expect(guest.locator('.scan .status')).toHaveText(/No code found/)
+  await guest
+    .locator('input.photo')
+    .setInputFiles({ name: 'offer.png', mimeType: 'image/png', buffer: offerPhoto })
+  await expect(guest.locator('.qr svg')).toBeVisible()
+
+  await modal.locator('input.photo').setInputFiles({
+    name: 'answer.png',
+    mimeType: 'image/png',
+    buffer: await guest.locator('.qr').screenshot(),
+  })
+  await expect(host.locator('.toast')).toHaveText(/joined/)
+  await expect(guest.locator('.roster li')).toHaveCount(2)
+})
+
+test('the live camera can be focused by tapping the picture', async ({ browser }) => {
+  const guest = await player(browser)
+  await guest.getByRole('button', { name: 'Join a game' }).click()
+  const viewfinder = guest.locator('.viewfinder')
+  await expect(viewfinder).toBeVisible()
+  await expect
+    .poll(() => guest.locator('video').evaluate((v: HTMLVideoElement) => v.videoWidth))
+    .toBeGreaterThan(0)
+  await viewfinder.click({ position: { x: 40, y: 40 } })
+  await expect(guest.locator('.focus-ring')).toHaveClass(/pulse/)
 })

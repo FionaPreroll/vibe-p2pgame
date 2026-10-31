@@ -1,6 +1,5 @@
 import { t } from '../i18n'
 import { type Signal, unpack } from '../net/signal'
-import { type Scanner, startScanner } from '../qr/scanner'
 import { h } from './dom'
 
 /**
@@ -43,26 +42,6 @@ export function textCodes(
     h('div', { class: 'row' }, paste, use),
   )
   return { element, refresh }
-}
-
-/**
- * A camera view that reads codes of one kind, offer or answer. Codes of the other kind, or QR
- * codes of other things, are ignored, so a camera that still sees the phone's own code or a
- * poster on the wall does no harm. `onSignal` returns true to stop scanning.
- */
-export async function signalScanner(
-  video: HTMLVideoElement,
-  type: Signal['type'],
-  onSignal: (signal: Signal) => boolean,
-): Promise<Scanner | null> {
-  try {
-    return await startScanner(video, (text) => {
-      const signal = unpack(text)
-      return signal?.type === type ? onSignal(signal) : false
-    })
-  } catch {
-    return null
-  }
 }
 
 /** Reads a pasted code of the expected kind. */

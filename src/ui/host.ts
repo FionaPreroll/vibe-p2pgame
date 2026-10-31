@@ -1,11 +1,11 @@
 import { t } from '../i18n'
 import type { Signal } from '../net/signal'
 import { qrElement } from '../qr/qr'
-import type { Scanner } from '../qr/scanner'
 import { HostSession, type Pairing } from '../session/host'
-import { joinLink, pastedSignal, signalScanner, textCodes } from './codes'
+import { joinLink, pastedSignal, textCodes } from './codes'
 import { h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
+import { scanPanel } from './scanPanel'
 
 /** Hosts a game: the arena at once, and between rounds the buttons to add players and start. */
 export function hostScreen(name: string, onLeave: () => void): void {
@@ -51,17 +51,15 @@ export function hostScreen(name: string, onLeave: () => void): void {
  */
 function pairingDialog(session: HostSession, parent: HTMLElement): void {
   const qrBox = h('div', { class: 'qr-box' }, h('p', { class: 'muted' }, '…'))
-  const video = h('video', { class: 'camera' })
   const status = h('p', { class: 'status', role: 'status' } as Partial<HTMLParagraphElement>)
   let pairing: Pairing | null = null
-  let scanner: Scanner | null = null
   let busy = false
   let closed = false
 
   const accept = async (signal: Signal) => {
     if (busy || pairing === null) return
     busy = true
-    scanner?.stop()
+    scan.stop()
     status.textContent = t('connecting')
     try {
       const joined = await pairing.accept(signal)
@@ -94,9 +92,15 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
     },
   )
 
+  const scan = scanPanel('answer', (signal) => {
+    if (pairing === null) return false
+    void accept(signal)
+    return true
+  })
+
   const close = () => {
     closed = true
-    scanner?.stop()
+    scan.stop()
     pairing?.cancel()
     modal.remove()
   }
@@ -111,7 +115,7 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
       h('p', {}, t('pairStep1')),
       qrBox,
       h('p', {}, t('pairStep2')),
-      video,
+      scan.element,
       status,
       codes.element,
       h(
@@ -124,14 +128,9 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
   parent.append(modal)
 
   void (async () => {
-    scanner = await signalScanner(video, 'answer', (signal) => {
-      if (pairing === null) return false
-      void accept(signal)
-      return true
-    })
-    if (closed) return scanner?.stop()
-    if (scanner === null) {
-      video.hidden = true
+    const camera = await scan.ready
+    if (closed) return
+    if (!camera) {
       status.textContent = t('noCamera')
       codes.element.open = true
     }

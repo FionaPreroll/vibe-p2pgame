@@ -27,7 +27,20 @@ const en = {
   joinStep1: 'Scan the code on the host’s screen.',
   joinStep2: 'Show this code to the host and keep the screen on.',
   waitHost: 'Waiting for the host to start…',
-  noCamera: 'The camera is not available. Use the text codes below instead.',
+  noCamera:
+    'The live camera is not available. Take a photo of the code instead, or use the text codes below.',
+  scanHelp:
+    'Blurry? Tap the picture to focus. Hold the phone a little further away and zoom in, or turn the brightness down if the code glares.',
+  scanHelpBasic:
+    'Blurry? Tap the picture to focus, hold the phone a little further away, or take a photo instead.',
+  zoom: 'Zoom',
+  brightness: 'Brightness',
+  switchCamera: 'Switch camera',
+  takePhoto: 'Take a photo instead',
+  liveCamera: 'Back to the live camera',
+  readingPhoto: 'Reading the photo…',
+  photoNoCode:
+    'No code found in the photo. Try again from a little further away, with the code in the middle of the picture.',
   textCodes: 'No camera? Use text codes',
   copy: 'Copy',
   copied: 'Copied',
@@ -74,7 +87,20 @@ const de: Record<TextKey, string> = {
   joinStep1: 'Scanne den Code auf dem Bildschirm des Hosts.',
   joinStep2: 'Zeig diesen Code dem Host und lass den Bildschirm an.',
   waitHost: 'Warte, bis der Host die Runde startet…',
-  noCamera: 'Die Kamera ist nicht verfügbar. Nimm stattdessen die Text-Codes unten.',
+  noCamera:
+    'Die Live-Kamera ist nicht verfügbar. Mach stattdessen ein Foto vom Code, oder nimm die Text-Codes unten.',
+  scanHelp:
+    'Unscharf? Tippe ins Bild, um scharfzustellen. Halte das Handy etwas weiter weg und zoome heran, oder dreh die Helligkeit herunter, wenn der Code blendet.',
+  scanHelpBasic:
+    'Unscharf? Tippe ins Bild, um scharfzustellen, halte das Handy etwas weiter weg, oder mach stattdessen ein Foto.',
+  zoom: 'Zoom',
+  brightness: 'Helligkeit',
+  switchCamera: 'Kamera wechseln',
+  takePhoto: 'Stattdessen ein Foto machen',
+  liveCamera: 'Zurück zur Live-Kamera',
+  readingPhoto: 'Lese das Foto…',
+  photoNoCode:
+    'Im Foto wurde kein Code gefunden. Versuch es etwas weiter weg, mit dem Code in der Bildmitte.',
   textCodes: 'Keine Kamera? Text-Codes verwenden',
   copy: 'Kopieren',
   copied: 'Kopiert',
