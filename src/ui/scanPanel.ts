@@ -7,6 +7,7 @@ import {
   startScanner,
 } from '@fionapreroll/p2p/qr'
 import { t } from '../i18n'
+import { describeError, log } from '../log'
 import { nativeScan, nativeScannerReady } from '../native'
 import { settings, updateCamera } from '../settings'
 import { h } from './dom'
@@ -72,6 +73,12 @@ export function scanPanel(
       showLive(false)
       message.textContent = ''
       const texts = await nativeScan()
+      log(
+        'camera',
+        texts === null
+          ? "Google's scanner closed without a code"
+          : `Google's scanner read ${texts.length} code(s)`,
+      )
       if (done || (texts !== null && take(texts))) return
       if (texts !== null && texts.length > 0) message.textContent = t('badCode')
       void start()
@@ -129,7 +136,8 @@ export function scanPanel(
         return true
       }
       scanner = started
-    } catch {
+    } catch (error) {
+      log('camera', `no live camera: ${describeError(error)}`)
       showLive(false)
       viewfinder.hidden = true
       live.hidden = true

@@ -3,6 +3,7 @@ import { isApp } from '../native'
 import { forgetSettings, ROUND_CHOICES, settings, updateCamera, updateSettings } from '../settings'
 import { clearAll } from '../storage'
 import { h, show, toast } from './dom'
+import { reportDialog } from './report'
 
 /** The settings, each stored as soon as it changes. */
 export function settingsScreen(onBack: () => void): void {
@@ -86,6 +87,17 @@ export function settingsScreen(onBack: () => void): void {
         }),
       ),
       h('p', { class: 'muted' }, t('savedLocally')),
+      h('h3', {}, t('debugTitle')),
+      h('p', { class: 'muted' }, t('debugNote')),
+      h(
+        'div',
+        { class: 'buttons' },
+        h('button', {
+          type: 'button',
+          textContent: t('debugCreate'),
+          onclick: () => void reportDialog(),
+        }),
+      ),
     ),
   )
 }

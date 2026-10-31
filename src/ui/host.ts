@@ -1,6 +1,7 @@
 import type { Signal } from '@fionapreroll/p2p'
 import { qrElement } from '@fionapreroll/p2p/qr'
 import { t } from '../i18n'
+import { describeError, log } from '../log'
 import { HostSession, type Pairing } from '../session/host'
 import type { HostedGame } from '../session/saved'
 import { settings } from '../settings'
@@ -17,7 +18,10 @@ import { scanPanel } from './scanPanel'
  */
 export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame): void {
   const session = new HostSession(name, saved)
-  session.onLeave = (left) => toast(t('playerLeft', { name: left }))
+  session.onLeave = (left) => {
+    log('game', 'a player left')
+    toast(t('playerLeft', { name: left }))
+  }
   const screen = gameScreen(
     session,
     (state) => [
@@ -76,8 +80,10 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
       const { player, rejoined } = await pairing.accept(signal)
       pairing = null
       close()
+      log('qr', `player ${player.id} joined${rejoined ? ', back in their place' : ''}`)
       toast(t(rejoined ? 'rejoined' : 'connected', { name: player.name }))
     } catch (error) {
+      log('qr', `a player did not join: ${describeError(error)}`)
       status.textContent = failureText(error)
       status.append(
         ' ',

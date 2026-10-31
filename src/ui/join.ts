@@ -1,6 +1,7 @@
 import { answerOffer, type Signal } from '@fionapreroll/p2p'
 import { qrElement } from '@fionapreroll/p2p/qr'
 import { t } from '../i18n'
+import { describeError, log } from '../log'
 import { GuestSession } from '../session/guest'
 import { forgetJoinedGame, playerToken, rememberJoinedGame } from '../session/saved'
 import { pastedSignal, textCodes } from './codes'
@@ -56,9 +57,14 @@ export function joinScreen(name: string, onLeave: () => void, options: JoinOptio
         throw error
       })
       if (left) return session.close()
+      log(
+        'qr',
+        `joined as player ${session.selfId()}${session.rejoined ? ', back in my place' : ''}`,
+      )
       rememberJoinedGame(session.host)
       play(session, name, onLeave)
     } catch (error) {
+      log('qr', `could not join: ${describeError(error)}`)
       if (left) return
       status.textContent = failureText(error)
       status.append(
@@ -142,6 +148,7 @@ export function play(session: GuestSession, name: string, onLeave: () => void): 
     },
   )
   session.onLost = (ended) => {
+    log('game', ended ? 'the host ended the game' : 'lost the host')
     screen.destroy()
     if (ended) {
       forgetJoinedGame()

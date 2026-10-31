@@ -1,6 +1,7 @@
 import './style.css'
 import { unpack } from '@fionapreroll/p2p'
 import { setLanguage } from './i18n'
+import { captureErrors, log } from './log'
 import { isApp, nativeScannerReady } from './native'
 import { settings } from './settings'
 import { startJoin } from './ui/connect'
@@ -10,6 +11,8 @@ import { joinScreen } from './ui/join'
 import { settingsScreen } from './ui/settings'
 import { offerUpdates } from './ui/updates'
 
+captureErrors()
+log('app', `start: ${isApp() ? 'Android app' : 'browser'}, build ${__BUILD__.commit}`)
 setLanguage(settings().language)
 // In the app, fetch Google's scanner now, while there may be internet, for later on a hotspot.
 void nativeScannerReady()

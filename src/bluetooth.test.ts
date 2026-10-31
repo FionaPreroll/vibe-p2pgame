@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@capacitor/core', () => ({ registerPlugin: () => ({}) }))
 
-const { BLUETOOTH_STATE_INTERVAL_MS, Bluetooth, MAX_REQUESTS } = await import('./bluetooth')
+const { BLUETOOTH_STATE_INTERVAL_MS, Bluetooth, BluetoothStartError, MAX_REQUESTS } = await import(
+  './bluetooth'
+)
+const { logLines } = await import('./log')
 const { GuestSession } = await import('./session/guest')
 const { HostSession } = await import('./session/host')
 type NearbyEvent = import('./bluetooth').NearbyEvent
@@ -133,6 +136,9 @@ class FakeNearby implements NearbyPlugin {
   }
   async reset() {
     this.answers.clear()
+  }
+  async diagnostics() {
+    return { sdk: 34, bluetooth: 'on', log: ['+0s start player'] }
   }
   async addListener(event: NearbyEvent, listener: (e: unknown) => void) {
     this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener])
@@ -271,17 +277,30 @@ describe('Bluetooth between two phones', () => {
 })
 
 describe('Bluetooth, starting', () => {
-  it('says why it cannot start', async () => {
-    for (const [code, expected] of [
-      ['permission', 'permission'],
-      ['unavailable', 'unavailable'],
-      ['nearby-8007', 'radio'],
-      [undefined, 'radio'],
+  it('says why it cannot start, and keeps the native code and message for a report', async () => {
+    for (const [code, kind, shown] of [
+      ['permission', 'permission', 'permission'],
+      ['unavailable', 'unavailable', 'unavailable'],
+      ['bluetooth-off', 'bluetooth-off', 'bluetooth-off'],
+      ['location-off', 'location-off', 'location-off'],
+      ['nearby-8007', 'radio', 'nearby-8007'],
+      [undefined, 'radio', 'failed'],
     ] as const) {
       const phone = new Air().phone('P1')
-      phone.startError = Object.assign(new Error('no'), { code })
-      await expect(new Bluetooth(phone).look('Bo')).rejects.toBe(expected)
+      phone.startError = Object.assign(new Error('Could not discover: 8007 STATUS_RADIO_ERROR'), {
+        code,
+      })
+      const failure = await new Bluetooth(phone).look('Bo').catch((error: unknown) => error)
+      expect(failure).toBeInstanceOf(BluetoothStartError)
+      expect(failure).toMatchObject({
+        kind,
+        code: shown,
+        message: 'Could not discover: 8007 STATUS_RADIO_ERROR',
+      })
     }
+    expect(
+      logLines().some((line) => line.includes('could not start as player: radio (nearby-8007')),
+    ).toBe(true)
   })
 
   it('ends what an earlier page left behind, once', async () => {

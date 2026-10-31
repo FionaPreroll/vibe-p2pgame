@@ -1,7 +1,16 @@
 package io.github.fionapreroll.sparkhunt;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
+import android.text.TextUtils;
+import androidx.core.content.ContextCompat;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -20,6 +29,7 @@ import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
 import com.google.android.gms.nearby.connection.ConnectionOptions;
 import com.google.android.gms.nearby.connection.ConnectionResolution;
 import com.google.android.gms.nearby.connection.ConnectionsClient;
+import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
 import com.google.android.gms.nearby.connection.DiscoveryOptions;
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
@@ -28,6 +38,7 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -71,8 +82,27 @@ public class NearbyPlugin extends Plugin {
     /** Fast messages on their way to one connection; while there are this many, new ones are dropped. */
     private static final int MAX_FAST_IN_FLIGHT = 2;
 
+    /** Lines kept for the debug report: what happened, never what was said. */
+    private static final int MAX_LOG_LINES = 200;
+    /** Every permission Nearby may need on some Android version, for the debug report. */
+    private static final String[] PERMISSIONS = {
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_ADVERTISE",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.NEARBY_WIFI_DEVICES",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+    };
+
     private ConnectionsClient client;
     private boolean advertising = false;
+    private boolean discovering = false;
+    private final ArrayDeque<String> log = new ArrayDeque<>();
+    private final long loadedAt = System.currentTimeMillis();
     private final Set<String> pending = new HashSet<>();
     private final Set<String> connected = new HashSet<>();
     private final Map<String, Integer> fastInFlight = new HashMap<>();
@@ -93,17 +123,22 @@ public class NearbyPlugin extends Plugin {
     @PluginMethod
     public void start(PluginCall call) {
         String role = call.getString("role", "");
+        log("start " + role + " (Android " + Build.VERSION.SDK_INT + ")");
         if ((!"host".equals(role) && !"player".equals(role)) || shorten(call.getString("name", "")).isEmpty()) {
             call.reject("Bad arguments");
             return;
         }
         if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(getContext()) != ConnectionResult.SUCCESS) {
-            call.reject("Google Play services are missing", "unavailable");
+            int status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(getContext());
+            String text = GoogleApiAvailability.getInstance().getErrorString(status);
+            log("Google Play services not available: " + status + " " + text);
+            call.reject("Google Play services not available: " + text + " (" + status + ")", "unavailable");
             return;
         }
         String[] aliases = neededAliases();
         for (String alias : aliases) {
             if (getPermissionState(alias) != PermissionState.GRANTED) {
+                log("asking for permissions: " + TextUtils.join(", ", aliases));
                 requestPermissionForAliases(aliases, call, "permissionsAnswered");
                 return;
             }
@@ -115,16 +150,25 @@ public class NearbyPlugin extends Plugin {
     private void permissionsAnswered(PluginCall call) {
         for (String alias : neededAliases()) {
             if (getPermissionState(alias) != PermissionState.GRANTED) {
-                call.reject("Permission denied", "permission");
+                log("permission " + alias + " not granted: " + getPermissionState(alias));
+                call.reject("Permission " + alias + " not granted", "permission");
                 return;
             }
         }
+        log("permissions granted");
         begin(call);
     }
 
     private void begin(PluginCall call) {
         String name = shorten(call.getString("name", ""));
-        if ("host".equals(call.getString("role", ""))) {
+        String role = call.getString("role", "");
+        // Nearby's own errors say little when the radio is off: this is checked first.
+        if (Boolean.FALSE.equals(bluetoothEnabled())) {
+            log("Bluetooth is off");
+            call.reject("Bluetooth is off", "bluetooth-off");
+            return;
+        }
+        if ("host".equals(role)) {
             client.stopDiscovery();
             client.stopAdvertising();
             AdvertisingOptions options = new AdvertisingOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
@@ -132,18 +176,24 @@ public class NearbyPlugin extends Plugin {
                 .startAdvertising(name, SERVICE_ID, lifecycle, options)
                 .addOnSuccessListener(unused -> {
                     advertising = true;
+                    log("advertising");
                     call.resolve();
                 })
-                .addOnFailureListener(e -> call.reject("Could not advertise", code(e), e));
+                .addOnFailureListener(e -> failed(call, "advertise", e));
         } else {
             client.stopAdvertising();
             advertising = false;
             client.stopDiscovery();
+            discovering = false;
             DiscoveryOptions options = new DiscoveryOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
             client
                 .startDiscovery(SERVICE_ID, discovery, options)
-                .addOnSuccessListener(unused -> call.resolve())
-                .addOnFailureListener(e -> call.reject("Could not discover", code(e), e));
+                .addOnSuccessListener(unused -> {
+                    discovering = true;
+                    log("discovering");
+                    call.resolve();
+                })
+                .addOnFailureListener(e -> failed(call, "discover", e));
         }
     }
 
@@ -152,7 +202,9 @@ public class NearbyPlugin extends Plugin {
     public void stop(PluginCall call) {
         client.stopAdvertising();
         client.stopDiscovery();
+        if (advertising || discovering) log("stopped advertising and discovering");
         advertising = false;
+        discovering = false;
         call.resolve();
     }
 
@@ -167,10 +219,11 @@ public class NearbyPlugin extends Plugin {
         }
         // Not disruptive: Nearby must not take the phone off its Wi-Fi for a faster link.
         ConnectionOptions options = new ConnectionOptions.Builder().setDisruptiveUpgrade(false).build();
+        log("asking " + endpointId + " to connect");
         client
             .requestConnection(name, endpointId, lifecycle, options)
             .addOnSuccessListener(unused -> call.resolve())
-            .addOnFailureListener(e -> call.reject("Could not connect", code(e), e));
+            .addOnFailureListener(e -> failed(call, "connect to " + endpointId, e));
     }
 
     /** Says yes to a waiting connection, once the codes on both phones match. */
@@ -181,16 +234,20 @@ public class NearbyPlugin extends Plugin {
             call.reject("No such request");
             return;
         }
+        log("accepting " + endpointId);
         client
             .acceptConnection(endpointId, payloads)
             .addOnSuccessListener(unused -> call.resolve())
-            .addOnFailureListener(e -> call.reject("Could not accept", code(e), e));
+            .addOnFailureListener(e -> failed(call, "accept " + endpointId, e));
     }
 
     @PluginMethod
     public void reject(PluginCall call) {
         String endpointId = call.getString("endpointId", "");
-        if (pending.remove(endpointId)) client.rejectConnection(endpointId);
+        if (pending.remove(endpointId)) {
+            log("rejecting " + endpointId);
+            client.rejectConnection(endpointId);
+        }
         call.resolve();
     }
 
@@ -251,7 +308,9 @@ public class NearbyPlugin extends Plugin {
         client.stopAdvertising();
         client.stopDiscovery();
         client.stopAllEndpoints();
+        log("reset");
         advertising = false;
+        discovering = false;
         pending.clear();
         connected.clear();
         fastInFlight.clear();
@@ -264,9 +323,11 @@ public class NearbyPlugin extends Plugin {
         public void onConnectionInitiated(String endpointId, ConnectionInfo info) {
             // A host takes requests only while it advertises, and only a few at once.
             if (info.isIncomingConnection() && (!advertising || pending.size() >= MAX_PENDING)) {
+                log("turned down request from " + endpointId + (advertising ? ": too many waiting" : ": not hosting"));
                 client.rejectConnection(endpointId);
                 return;
             }
+            log((info.isIncomingConnection() ? "request from " : "answer from ") + endpointId);
             pending.add(endpointId);
             JSObject request = new JSObject();
             request.put("endpointId", endpointId);
@@ -283,8 +344,10 @@ public class NearbyPlugin extends Plugin {
             event.put("endpointId", endpointId);
             if (result.getStatus().isSuccess()) {
                 connected.add(endpointId);
+                log("connected to " + endpointId);
                 notifyListeners("connected", event);
             } else {
+                log("no connection to " + endpointId + ": " + describe(result.getStatus().getStatusCode()));
                 event.put("status", result.getStatus().getStatusCode());
                 notifyListeners("rejected", event);
             }
@@ -292,6 +355,7 @@ public class NearbyPlugin extends Plugin {
 
         @Override
         public void onDisconnected(String endpointId) {
+            log("disconnected from " + endpointId);
             if (connected.contains(endpointId)) gone(endpointId);
         }
     };
@@ -300,6 +364,7 @@ public class NearbyPlugin extends Plugin {
         @Override
         public void onEndpointFound(String endpointId, DiscoveredEndpointInfo info) {
             if (!SERVICE_ID.equals(info.getServiceId())) return;
+            log("found " + endpointId);
             JSObject found = new JSObject();
             found.put("endpointId", endpointId);
             found.put("name", shorten(info.getEndpointName()));
@@ -308,6 +373,7 @@ public class NearbyPlugin extends Plugin {
 
         @Override
         public void onEndpointLost(String endpointId) {
+            log("lost " + endpointId);
             JSObject lost = new JSObject();
             lost.put("endpointId", endpointId);
             notifyListeners("lost", lost);
@@ -369,6 +435,92 @@ public class NearbyPlugin extends Plugin {
         JSObject event = new JSObject();
         event.put("endpointId", endpointId);
         notifyListeners("disconnected", event);
+    }
+
+    /**
+     * What the debug report says about Bluetooth on this phone: the phone, Google Play services,
+     * the radio, Location, every permission Nearby may need, Nearby's state and the log.
+     */
+    @PluginMethod
+    public void diagnostics(PluginCall call) {
+        Context context = getContext();
+        JSObject result = new JSObject();
+        result.put("android", Build.VERSION.RELEASE);
+        result.put("sdk", Build.VERSION.SDK_INT);
+        result.put("manufacturer", Build.MANUFACTURER);
+        result.put("model", Build.MODEL);
+        int services = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context);
+        result.put("playServices", services + " " + GoogleApiAvailability.getInstance().getErrorString(services));
+        try {
+            PackageInfo gms = context.getPackageManager().getPackageInfo("com.google.android.gms", 0);
+            result.put("playServicesVersion", gms.versionName);
+        } catch (Exception e) {
+            result.put("playServicesVersion", "missing");
+        }
+        Boolean bluetooth = bluetoothEnabled();
+        result.put("bluetooth", bluetooth == null ? "unknown" : bluetooth ? "on" : "off");
+        Boolean location = locationEnabled();
+        result.put("location", location == null ? "unknown" : location ? "on" : "off");
+        JSObject permissions = new JSObject();
+        for (String permission : PERMISSIONS) {
+            permissions.put(
+                permission.substring(permission.lastIndexOf('.') + 1),
+                ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED ? "granted" : "denied"
+            );
+        }
+        result.put("permissions", permissions);
+        result.put("neededPermissions", TextUtils.join(", ", neededAliases()));
+        result.put("advertising", advertising);
+        result.put("discovering", discovering);
+        result.put("waiting", pending.size());
+        result.put("connected", connected.size());
+        JSArray lines = new JSArray();
+        for (String line : log) lines.put(line);
+        result.put("log", lines);
+        call.resolve(result);
+    }
+
+    /** A step that failed: logged with Nearby's own name for the status, and handed back. */
+    private void failed(PluginCall call, String step, Exception e) {
+        String what = e instanceof ApiException ? describe(((ApiException) e).getStatusCode()) : String.valueOf(e.getMessage());
+        Boolean location = locationEnabled();
+        log("could not " + step + ": " + what + (Boolean.FALSE.equals(location) ? " (Location is off)" : ""));
+        // Discovering depends on Location on many phones: when it is off, that is the likely cause.
+        String code = Boolean.FALSE.equals(location) && step.equals("discover") ? "location-off" : code(e);
+        call.reject("Could not " + step + ": " + what, code, e);
+    }
+
+    private static String describe(int status) {
+        return status + " " + ConnectionsStatusCodes.getStatusCodeString(status);
+    }
+
+    private void log(String line) {
+        long seconds = (System.currentTimeMillis() - loadedAt) / 1000;
+        log.addLast("+" + seconds + "s " + line);
+        while (log.size() > MAX_LOG_LINES) log.removeFirst();
+    }
+
+    /** Whether Bluetooth is switched on; null where the phone does not say. */
+    private Boolean bluetoothEnabled() {
+        try {
+            BluetoothManager manager = (BluetoothManager) getContext().getSystemService(Context.BLUETOOTH_SERVICE);
+            BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
+            return adapter == null ? Boolean.FALSE : adapter.isEnabled();
+        } catch (SecurityException e) {
+            return null;
+        }
+    }
+
+    /** Whether Location is switched on; null where the phone does not say. */
+    private Boolean locationEnabled() {
+        try {
+            LocationManager manager = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
+            if (manager == null) return null;
+            if (Build.VERSION.SDK_INT >= 28) return manager.isLocationEnabled();
+            return manager.isProviderEnabled(LocationManager.GPS_PROVIDER) || manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** The permissions Nearby needs on this phone's Android version. */

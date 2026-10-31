@@ -1,4 +1,5 @@
 import { type PluginListenerHandle, registerPlugin } from '@capacitor/core'
+import { describeError, log } from './log'
 import { isApp } from './native'
 import { settings, updateSettings } from './settings'
 
@@ -54,7 +55,8 @@ export async function availableUpdate(updater: Updater = AppUpdater): Promise<Re
     ])
     const release = parseRelease(JSON.parse(text))
     return release && release.build > build ? release : null
-  } catch {
+  } catch (error) {
+    log('updates', `no update information: ${describeError(error)}`)
     return null
   }
 }
@@ -78,6 +80,7 @@ export async function installUpdate(
     await updater.install()
     return 'installing'
   } catch (error) {
+    log('updates', `update failed: ${describeError(error)}`)
     return (error as { code?: unknown })?.code === 'permission' ? 'permission' : 'failed'
   } finally {
     await listener?.remove()

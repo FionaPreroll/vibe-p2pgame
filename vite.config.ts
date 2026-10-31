@@ -1,8 +1,25 @@
+import { execSync } from 'node:child_process'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { defineConfig } from 'vitest/config'
 import { serviceWorker } from './tools/serviceWorker.ts'
 
+/** Which build this is, for the debug report: the commit, from CI or from git, and the time. */
+function buildInfo(): { commit: string; time: string } {
+  let commit = process.env.GITHUB_SHA?.slice(0, 7)
+  if (!commit) {
+    try {
+      commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim()
+    } catch {
+      commit = 'unknown'
+    }
+  }
+  return { commit, time: new Date().toISOString() }
+}
+
 export default defineConfig(({ mode }) => ({
+  define: { __BUILD__: JSON.stringify(buildInfo()) },
   // Relative asset URLs, so the build runs under any path, such as GitHub Pages' /vibe-p2pgame/.
   base: './',
   // Phones only open the camera on HTTPS pages, so `pnpm dev:phone` serves with a self-signed

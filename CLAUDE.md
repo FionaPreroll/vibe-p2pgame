@@ -45,4 +45,5 @@ The README describes the project, its layout and its conventions. These rules ho
 - Codes in QR codes must stay small enough to scan from a screen: `packages/p2p/src/qr/qr.test.ts` checks the QR version. Change the code format in `packages/p2p/src/signal.ts` only with a new version prefix (`P1` → `P2`).
 - Raise `PROTOCOL` in `src/net/protocol.ts` whenever Spark Hunt's input or snapshots change, so phones with different versions refuse to play together instead of misreading each other.
 - Every value read from storage or from another phone is checked before use: storage through the `parse…` functions, messages by their type and fields.
+- What a debugging report needs goes into the log through `log()` from `src/log.ts`: what happened, never what was said. No names, tokens, codes, addresses or message contents in log lines or in the debug report (`src/report.ts`), on the native side neither.
 - Every text players see goes through `t()` from `src/i18n.ts`, with an English and a German version.

@@ -41,6 +41,15 @@ const en = {
   switchCamera: 'Switch camera',
   takePhoto: 'Take a photo instead',
   scanNative: 'Scan with the phone’s scanner',
+  debugTitle: 'Debug report',
+  debugNote:
+    'If something does not work, create a report and send it to the developer. It says what phone and versions this is and what happened recently; not who you are. You read it before you send it.',
+  debugCreate: 'Create debug report',
+  debugRead: 'Read it, then copy it or open an issue on GitHub with it.',
+  debugGithub: 'Report on GitHub',
+  debugPaste:
+    'Paste the debug report from Spark Hunt here, and say what you did and what happened.',
+  debugCopiedForIssue: 'The report is copied too: if the issue is empty, paste it there.',
   chooseConnection: 'How to connect?',
   viaQr: 'QR code over Wi-Fi',
   viaQrNote: 'Every phone and browser, on the same Wi-Fi or hotspot.',
@@ -62,7 +71,10 @@ const en = {
   btUnavailable:
     'Bluetooth play needs Google Play services, which this phone does not have. Use a QR code instead.',
   btOff:
-    'Bluetooth did not start. Turn on Bluetooth, and Location on older phones, then try again.',
+    'Bluetooth did not start. Check that Bluetooth and Location are on, then try again. If it keeps failing, send a debug report from the settings.',
+  btBluetoothOff: 'Bluetooth is off. Turn it on, then try again.',
+  btLocationOff:
+    'Looking for games nearby needs Location on this phone. Turn it on, then try again.',
   updatesTitle: 'Updates',
   updatesAsk:
     'Should Spark Hunt look for a new version on GitHub whenever it starts? That needs internet at the start; without it, the game starts as usual. You can change this in the settings.',
@@ -169,6 +181,15 @@ const de: Record<TextKey, string> = {
   switchCamera: 'Kamera wechseln',
   takePhoto: 'Stattdessen ein Foto machen',
   scanNative: 'Mit dem Scanner des Handys scannen',
+  debugTitle: 'Fehlerbericht',
+  debugNote:
+    'Wenn etwas nicht klappt, erstelle einen Bericht und schick ihn dem Entwickler. Er sagt, welches Handy und welche Versionen das sind und was zuletzt geschah; nicht, wer du bist. Du liest ihn, bevor du ihn schickst.',
+  debugCreate: 'Fehlerbericht erstellen',
+  debugRead: 'Lies ihn, dann kopiere ihn oder öffne damit ein Issue auf GitHub.',
+  debugGithub: 'Auf GitHub melden',
+  debugPaste:
+    'Füge hier den Fehlerbericht aus Funkenjagd ein, und sag, was du getan hast und was geschah.',
+  debugCopiedForIssue: 'Der Bericht ist auch kopiert: Ist das Issue leer, füge ihn dort ein.',
   chooseConnection: 'Wie verbinden?',
   viaQr: 'QR-Code über WLAN',
   viaQrNote: 'Jedes Handy und jeder Browser, im selben WLAN oder Hotspot.',
@@ -190,7 +211,10 @@ const de: Record<TextKey, string> = {
   btUnavailable:
     'Für Bluetooth braucht es Google Play-Dienste, die dieses Handy nicht hat. Nimm stattdessen einen QR-Code.',
   btOff:
-    'Bluetooth ist nicht gestartet. Schalte Bluetooth ein, auf älteren Handys auch den Standort, und versuch es noch einmal.',
+    'Bluetooth ist nicht gestartet. Prüfe, ob Bluetooth und Standort an sind, und versuch es noch einmal. Klappt es weiter nicht, schick einen Fehlerbericht aus den Einstellungen.',
+  btBluetoothOff: 'Bluetooth ist aus. Schalte es ein und versuch es noch einmal.',
+  btLocationOff:
+    'Die Suche nach Spielen in der Nähe braucht auf diesem Handy den Standort. Schalte ihn ein und versuch es noch einmal.',
   updatesTitle: 'Aktualisierungen',
   updatesAsk:
     'Soll Funkenjagd bei jedem Start auf GitHub nach einer neuen Version suchen? Dafür braucht es beim Start Internet; ohne startet das Spiel wie gewohnt. In den Einstellungen lässt sich das ändern.',

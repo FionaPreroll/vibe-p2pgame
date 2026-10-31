@@ -1,5 +1,6 @@
-import { bluetooth, type JoinRequest, type Peer, type StartError } from '../bluetooth'
+import { BluetoothStartError, bluetooth, type JoinRequest, type Peer } from '../bluetooth'
 import { t } from '../i18n'
+import { describeError, log } from '../log'
 import { GuestSession } from '../session/guest'
 import type { HostSession } from '../session/host'
 import { playerToken, rememberJoinedGame } from '../session/saved'
@@ -12,13 +13,17 @@ import { joinScreen, play } from './join'
  * host lets a player in only after comparing it, so nobody else nearby slips in.
  */
 
+/** Why Bluetooth did not start, for the player, with the code a debug report explains. */
 export function startErrorText(error: unknown): string {
-  const reason = error as StartError
-  return reason === 'permission'
-    ? t('btPermission')
-    : reason === 'unavailable'
-      ? t('btUnavailable')
-      : t('btOff')
+  if (!(error instanceof BluetoothStartError)) return `${t('btOff')} (${describeError(error)})`
+  const text = {
+    permission: t('btPermission'),
+    unavailable: t('btUnavailable'),
+    'bluetooth-off': t('btBluetoothOff'),
+    'location-off': t('btLocationOff'),
+    radio: t('btOff'),
+  }[error.kind]
+  return `${text} (${error.code})`
 }
 
 /** The host advertises its game and lets in, one by one, the players who ask and show the code. */
@@ -79,6 +84,7 @@ export function bluetoothHostDialog(session: HostSession, name: string, parent: 
               toast(t(rejoined ? 'rejoined' : 'connected', { name: player.name }))
               close()
             } catch (error) {
+              log('bluetooth', `player ${request.endpointId} did not join: ${describeError(error)}`)
               note.textContent = failureText(error)
             }
           },
@@ -155,6 +161,7 @@ export function bluetoothJoinScreen(name: string, onLeave: () => void, rejoin?: 
       rememberJoinedGame(session.host)
       play(session, name, onLeave)
     } catch (error) {
+      log('bluetooth', `could not join ${host.endpointId}: ${describeError(error)}`)
       connection.close()
       if (left) return
       status.textContent =

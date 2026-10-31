@@ -6,6 +6,7 @@ import {
   type PacketConnection,
   packetConnection,
 } from '@fionapreroll/p2p'
+import { describeError, log } from './log'
 
 /**
  * Bluetooth between phones in the Android app, through NearbyPlugin (Google's Nearby
@@ -27,6 +28,8 @@ export interface NearbyPlugin {
   send(options: { endpointId: string; channel: ChannelName; data: string }): Promise<void>
   disconnect(options: { endpointId: string }): Promise<void>
   reset(): Promise<void>
+  /** What the debug report says about Bluetooth on this phone (see NearbyPlugin.diagnostics). */
+  diagnostics(): Promise<Record<string, unknown>>
   addListener(event: NearbyEvent, listener: (event: unknown) => void): Promise<PluginListenerHandle>
 }
 
@@ -62,7 +65,25 @@ export interface JoinRequest extends Peer {
 }
 
 /** Why Bluetooth could not start, for the player to read. */
-export type StartError = 'permission' | 'unavailable' | 'radio'
+export type StartErrorKind =
+  | 'permission'
+  | 'unavailable'
+  | 'bluetooth-off'
+  | 'location-off'
+  | 'radio'
+
+/** Bluetooth could not start: the kind, for the player, and the native code and message, for a report. */
+export class BluetoothStartError extends Error {
+  constructor(
+    readonly kind: StartErrorKind,
+    /** NearbyPlugin's code, such as `nearby-8007`, or `failed`. */
+    readonly code: string,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'BluetoothStartError'
+  }
+}
 
 /** A Bluetooth connection being made: the code to show, then the connection itself. */
 export interface Dialing {
@@ -126,6 +147,7 @@ export class Bluetooth {
 
   reject(request: JoinRequest): void {
     if (!this.requests.delete(request.endpointId)) return
+    log('bluetooth', `rejecting ${request.endpointId}`)
     void this.plugin.reject({ endpointId: request.endpointId }).catch(() => {})
   }
 
@@ -140,20 +162,29 @@ export class Bluetooth {
     })
     this.links.get(host.endpointId)?.connection.close()
     const connection = this.connection(host.endpointId, undefined, digits)
-    this.plugin
-      .connect({ endpointId: host.endpointId, name })
-      .catch(() => this.closed(host.endpointId))
+    log('bluetooth', `asking ${host.endpointId} to join`)
+    this.plugin.connect({ endpointId: host.endpointId, name }).catch((error: unknown) => {
+      log('bluetooth', `could not ask ${host.endpointId}: ${describeError(error)}`)
+      this.closed(host.endpointId)
+    })
     return { connection, digits: promise }
   }
 
   private async start(role: 'host' | 'player', name: string): Promise<void> {
     await this.listen()
     this.role = role
+    log('bluetooth', `start as ${role}`)
     try {
       await this.plugin.start({ role, name: cleanName(name, '?') })
+      log('bluetooth', `started as ${role}`)
     } catch (error) {
       this.role = null
-      throw startError(error)
+      const failure = startError(error)
+      log(
+        'bluetooth',
+        `could not start as ${role}: ${failure.kind} (${failure.code}: ${failure.message})`,
+      )
+      throw failure
     }
   }
 
@@ -183,6 +214,7 @@ export class Bluetooth {
 
   private found(e: Record<string, unknown>): void {
     if (this.role !== 'player' || !isEndpoint(e.endpointId)) return
+    log('bluetooth', `found game ${e.endpointId}`)
     this.onFound({ endpointId: e.endpointId, name: cleanName(e.name, '?') })
   }
 
@@ -203,6 +235,7 @@ export class Bluetooth {
         void this.plugin.reject({ endpointId }).catch(() => {})
         return
       }
+      log('bluetooth', `request from ${endpointId}`)
       const request: JoinRequest = { endpointId, name: cleanName(e.name, '?'), digits: e.digits }
       this.requests.set(endpointId, request)
       this.onRequest(request)
@@ -210,9 +243,11 @@ export class Bluetooth {
       // The answer to this phone's own request: show the code, and say yes from this side.
       const link = this.links.get(endpointId)
       if (!link?.onDigits || link.connection.state !== 'connecting') {
+        log('bluetooth', `turned down an answer nobody asked for, from ${endpointId}`)
         void this.plugin.reject({ endpointId }).catch(() => {})
         return
       }
+      log('bluetooth', `answer from ${endpointId}`)
       link.onDigits(e.digits)
       this.plugin.accept({ endpointId }).catch(() => this.closed(endpointId))
     }
@@ -221,6 +256,10 @@ export class Bluetooth {
   private connected(endpointId: unknown): void {
     if (!isEndpoint(endpointId)) return
     const link = this.links.get(endpointId)
+    log(
+      'bluetooth',
+      `connected to ${endpointId}${link ? '' : ', which nobody asked for: ending it'}`,
+    )
     if (link) link.connection.markOpen()
     // A connection nobody here asked for or accepted is ended at once.
     else void this.plugin.disconnect({ endpointId }).catch(() => {})
@@ -228,6 +267,8 @@ export class Bluetooth {
 
   private closed(endpointId: unknown): void {
     if (!isEndpoint(endpointId)) return
+    if (this.links.has(endpointId) || this.requests.has(endpointId))
+      log('bluetooth', `closed ${endpointId}`)
     if (this.requests.delete(endpointId)) this.onRequestGone(endpointId)
     const link = this.links.get(endpointId)
     if (!link) return
@@ -276,7 +317,20 @@ function isEndpoint(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9A-Za-z]{1,32}$/.test(value)
 }
 
-function startError(error: unknown): StartError {
-  const code = (error as { code?: unknown } | null)?.code
-  return code === 'permission' ? 'permission' : code === 'unavailable' ? 'unavailable' : 'radio'
+const KINDS: readonly StartErrorKind[] = [
+  'permission',
+  'unavailable',
+  'bluetooth-off',
+  'location-off',
+]
+
+function startError(error: unknown): BluetoothStartError {
+  const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown }
+  const text = typeof code === 'string' ? code : 'failed'
+  const kind = (KINDS as readonly unknown[]).includes(code) ? (code as StartErrorKind) : 'radio'
+  return new BluetoothStartError(
+    kind,
+    text,
+    typeof message === 'string' ? message.slice(0, 300) : '',
+  )
 }

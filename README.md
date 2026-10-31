@@ -54,6 +54,8 @@ Both phones need the Android app, but no Wi-Fi at all. The host's phone advertis
 
 ⚙ on the start screen: your name, the language, vibration, keeping the screen on, and the round length when hosting. The camera you last scanned with is remembered, with its zoom and brightness, and in the app, whether to look for updates. Everything is stored on the phone only, and _Delete all saved data_ removes it.
 
+**Something does not work?** _Create debug report_ at the end of the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
+
 ## Getting the game
 
 ### In the browser
@@ -141,6 +143,7 @@ src/
   ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view
   native.ts     what the Android app adds: Google's scanner
   bluetooth.ts  Bluetooth between app phones
+  log.ts, report.ts   the log and the debug report
   updates.ts    updates of the app from its release
   i18n.ts       every visible text, in English and German
   settings.ts, storage.ts   what the phone remembers
@@ -170,6 +173,8 @@ pnpm check
 - `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds.
 - `src/bluetooth.test.ts` plays Spark Hunt over Bluetooth against a fake Nearby: several fake phones that advertise, ask, answer and carry messages between them, and native events that misbehave.
 - `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the codes, the room's messages, the game's parsers and rules, and hosts and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it.
+
+**Logs and the debug report:** `log()` from `src/log.ts` keeps the last 300 lines in memory, and NearbyPlugin keeps its own; `src/report.ts` puts both into the debug report. A log line says what happened, never what was said: `log()` masks anything that looks like a code, an address or a token, and a test checks that the report holds none.
 
 `pnpm test:coverage` also measures coverage, which CI uploads to Codecov; it counts unit tests only, not the browser. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
 
