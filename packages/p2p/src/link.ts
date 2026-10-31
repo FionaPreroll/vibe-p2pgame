@@ -1,7 +1,8 @@
+import type { Connection, ConnectionState } from './connection.ts'
 import { fromSdp, pack, type Signal, toSdp } from './signal.ts'
 
 /**
- * One WebRTC connection between two phones, with two data channels:
+ * One WebRTC connection between two phones, as a `Connection`, with two data channels:
  * - `control`, reliable and ordered, for messages that must arrive, such as a player's name;
  * - `fast`, unordered and never resent, like plain UDP, for game state and input, where only
  *   the newest message counts and a lost one is better skipped than waited for.
@@ -9,10 +10,47 @@ import { fromSdp, pack, type Signal, toSdp } from './signal.ts'
  * Both channels are negotiated up front with fixed ids, so the offer already contains them and
  * no further signaling is needed once the codes have been scanned.
  */
-export interface Link {
+export interface Link extends Connection {
   readonly pc: RTCPeerConnection
   readonly control: RTCDataChannel
   readonly fast: RTCDataChannel
+}
+
+class RtcLink implements Link {
+  readonly control: RTCDataChannel
+  readonly fast: RTCDataChannel
+
+  constructor(readonly pc: RTCPeerConnection) {
+    this.control = pc.createDataChannel('control', { negotiated: true, id: 0 })
+    this.fast = pc.createDataChannel('fast', {
+      negotiated: true,
+      id: 1,
+      ordered: false,
+      maxRetransmits: 0,
+    })
+  }
+
+  get state(): ConnectionState {
+    const pc = this.pc.connectionState
+    if (pc === 'failed' || pc === 'closed') return 'closed'
+    if (this.control.readyState === 'closing' || this.control.readyState === 'closed')
+      return 'closed'
+    return this.control.readyState === 'open' && this.fast.readyState === 'open'
+      ? 'open'
+      : 'connecting'
+  }
+
+  onStateChange(listener: () => void): void {
+    this.pc.addEventListener('connectionstatechange', listener)
+    for (const channel of [this.control, this.fast]) {
+      channel.addEventListener('open', listener)
+      channel.addEventListener('close', listener)
+    }
+  }
+
+  close(): void {
+    this.pc.close()
+  }
 }
 
 /** No STUN or TURN servers: on a hotspot without internet, there are none to reach. */
@@ -21,17 +59,7 @@ const CONFIG: RTCConfiguration = { iceServers: [] }
 const GATHER_TIMEOUT_MS = 3000
 
 function openLink(): Link {
-  const pc = new RTCPeerConnection(CONFIG)
-  return {
-    pc,
-    control: pc.createDataChannel('control', { negotiated: true, id: 0 }),
-    fast: pc.createDataChannel('fast', {
-      negotiated: true,
-      id: 1,
-      ordered: false,
-      maxRetransmits: 0,
-    }),
-  }
+  return new RtcLink(new RTCPeerConnection(CONFIG))
 }
 
 /** Waits until the connection knows all its local addresses, as a code carries them all at once. */
@@ -76,42 +104,4 @@ export async function answerOffer(offer: Signal): Promise<{ link: Link; code: st
   const link = openLink()
   await link.pc.setRemoteDescription({ type: 'offer', sdp: toSdp(offer) })
   return { link, code: await localCode(link, 'answer') }
-}
-
-/** Resolves once both channels are open, and rejects if the connection fails first. */
-export function opened(link: Link, timeoutMs = 30_000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => fail(new Error('Connection timed out')), timeoutMs)
-    const check = () => {
-      if (link.control.readyState === 'open' && link.fast.readyState === 'open') {
-        clearTimeout(timer)
-        resolve()
-      }
-    }
-    function fail(error: Error) {
-      clearTimeout(timer)
-      reject(error)
-    }
-    link.control.addEventListener('open', check)
-    link.fast.addEventListener('open', check)
-    link.pc.addEventListener('connectionstatechange', () => {
-      if (link.pc.connectionState === 'failed') fail(new Error('Connection failed'))
-    })
-    check()
-  })
-}
-
-/** Calls back once when the other phone is gone: closed, failed or out of reach. */
-export function onLost(link: Link, callback: () => void): void {
-  let lost = false
-  const lose = () => {
-    if (lost) return
-    lost = true
-    callback()
-  }
-  link.control.addEventListener('close', lose)
-  link.pc.addEventListener('connectionstatechange', () => {
-    const state = link.pc.connectionState
-    if (state === 'failed' || state === 'closed') lose()
-  })
 }

@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import { GuestSession } from '../session/guest'
 import { forgetJoinedGame, playerToken, rememberJoinedGame } from '../session/saved'
 import { pastedSignal, textCodes } from './codes'
+import { startJoin } from './connect'
 import { failureText, h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
 import { scanPanel } from './scanPanel'
@@ -125,7 +126,8 @@ export function joinScreen(name: string, onLeave: () => void, options: JoinOptio
   })
 }
 
-function play(session: GuestSession, name: string, onLeave: () => void): void {
+/** Plays a game joined, however the player connected. */
+export function play(session: GuestSession, name: string, onLeave: () => void): void {
   const screen = gameScreen(
     session,
     (state) => [
@@ -168,7 +170,7 @@ function lostScreen(name: string, host: string, onLeave: () => void): void {
           type: 'button',
           class: 'primary',
           textContent: t('rejoinNow'),
-          onclick: () => joinScreen(name, onLeave, { rejoin: host }),
+          onclick: () => startJoin(name, onLeave, { rejoin: host }),
         }),
         h('button', { type: 'button', textContent: t('home'), onclick: onLeave }),
       ),

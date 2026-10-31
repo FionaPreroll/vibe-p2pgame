@@ -1,4 +1,4 @@
-import type { Link } from '@fionapreroll/p2p'
+import type { Connection } from '@fionapreroll/p2p'
 import { HOST_ID, HostRoom, type Joined, type Pairing } from '@fionapreroll/p2p/room'
 import {
   addPlayer,
@@ -102,8 +102,8 @@ export class HostSession implements Session {
     return this.room.pair()
   }
 
-  /** Takes a connection made elsewhere, as tests do (see `HostRoom.attach`). */
-  attach(link: Link): { joined: Promise<Joined>; cancel(): void } {
+  /** Takes a connection made elsewhere: Bluetooth, or memory in tests (see `HostRoom.attach`). */
+  attach(link: Connection): { joined: Promise<Joined>; cancel(): void } {
     return this.room.attach(link)
   }
 

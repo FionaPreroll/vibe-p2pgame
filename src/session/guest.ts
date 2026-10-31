@@ -1,4 +1,4 @@
-import type { Link } from '@fionapreroll/p2p'
+import type { Connection } from '@fionapreroll/p2p'
 import { GuestRoom } from '@fionapreroll/p2p/room'
 import type { Snapshot, Target } from '../game/sim'
 import { PROTOCOL, parseSnapshot } from '../net/protocol'
@@ -23,7 +23,7 @@ export class GuestSession implements Session {
    * Waits for the connection, says hello and resolves once the host has let the player in.
    * The token lets the host recognise a player who comes back.
    */
-  static async join(link: Link, name: string, token: string): Promise<GuestSession> {
+  static async join(link: Connection, name: string, token: string): Promise<GuestSession> {
     const room = await GuestRoom.join<Target, Snapshot>(link, {
       name,
       token,

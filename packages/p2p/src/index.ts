@@ -14,7 +14,15 @@ export {
   type Parse,
   send,
 } from './channel.ts'
-export { acceptAnswer, answerOffer, createOffer, type Link, onLost, opened } from './link.ts'
+export { type Connection, type ConnectionState, onLost, opened } from './connection.ts'
+export { acceptAnswer, answerOffer, createOffer, type Link } from './link.ts'
+export {
+  type ChannelName,
+  type PacketConnection,
+  type PacketOptions,
+  type PacketTransport,
+  packetConnection,
+} from './packet.ts'
 export {
   type Candidate,
   fromSdp,

@@ -41,6 +41,28 @@ const en = {
   switchCamera: 'Switch camera',
   takePhoto: 'Take a photo instead',
   scanNative: 'Scan with the phone’s scanner',
+  chooseConnection: 'How to connect?',
+  viaQr: 'QR code over Wi-Fi',
+  viaQrNote: 'Every phone and browser, on the same Wi-Fi or hotspot.',
+  viaBluetooth: 'Bluetooth',
+  viaBluetoothNote: 'The Android app on both phones; no Wi-Fi needed.',
+  viaQrInstead: 'Use a QR code instead',
+  btHostWaiting:
+    'Waiting for players nearby. On their phone: Join a game, then Bluetooth, then your name.',
+  btCheckCode: 'Accept a player only if their phone shows the same code.',
+  btRequest: '{name} wants to join. Code: {digits}',
+  btAccept: 'Accept',
+  btReject: 'Reject',
+  btSearching: 'Looking for games nearby… Tap the host’s name.',
+  btWaitHost: 'Code: {digits}. {host} compares it and lets you in.',
+  btRejoinHint: 'Choose {host}’s game: you get your place and score back.',
+  btRejected: 'The host did not let you in, or the connection broke.',
+  btPermission:
+    'Bluetooth play needs the permission for nearby devices. Allow it for Spark Hunt in the settings, then try again.',
+  btUnavailable:
+    'Bluetooth play needs Google Play services, which this phone does not have. Use a QR code instead.',
+  btOff:
+    'Bluetooth did not start. Turn on Bluetooth, and Location on older phones, then try again.',
   updatesTitle: 'Updates',
   updatesAsk:
     'Should Spark Hunt look for a new version on GitHub whenever it starts? That needs internet at the start; without it, the game starts as usual. You can change this in the settings.',
@@ -147,6 +169,28 @@ const de: Record<TextKey, string> = {
   switchCamera: 'Kamera wechseln',
   takePhoto: 'Stattdessen ein Foto machen',
   scanNative: 'Mit dem Scanner des Handys scannen',
+  chooseConnection: 'Wie verbinden?',
+  viaQr: 'QR-Code über WLAN',
+  viaQrNote: 'Jedes Handy und jeder Browser, im selben WLAN oder Hotspot.',
+  viaBluetooth: 'Bluetooth',
+  viaBluetoothNote: 'Die Android-App auf beiden Handys; kein WLAN nötig.',
+  viaQrInstead: 'Stattdessen QR-Code verwenden',
+  btHostWaiting:
+    'Warte auf Spieler in der Nähe. Auf ihrem Handy: Mitspielen, dann Bluetooth, dann dein Name.',
+  btCheckCode: 'Nimm einen Spieler nur an, wenn sein Handy denselben Code zeigt.',
+  btRequest: '{name} möchte mitspielen. Code: {digits}',
+  btAccept: 'Annehmen',
+  btReject: 'Ablehnen',
+  btSearching: 'Suche Spiele in der Nähe… Tippe auf den Namen des Hosts.',
+  btWaitHost: 'Code: {digits}. {host} vergleicht ihn und lässt dich herein.',
+  btRejoinHint: 'Wähle das Spiel von {host}: Du bekommst deinen Platz und deine Punkte zurück.',
+  btRejected: 'Der Host hat dich nicht hereingelassen, oder die Verbindung ist abgebrochen.',
+  btPermission:
+    'Für Bluetooth braucht es die Berechtigung für Geräte in der Nähe. Erlaube sie Funkenjagd in den Einstellungen und versuch es noch einmal.',
+  btUnavailable:
+    'Für Bluetooth braucht es Google Play-Dienste, die dieses Handy nicht hat. Nimm stattdessen einen QR-Code.',
+  btOff:
+    'Bluetooth ist nicht gestartet. Schalte Bluetooth ein, auf älteren Handys auch den Standort, und versuch es noch einmal.',
   updatesTitle: 'Aktualisierungen',
   updatesAsk:
     'Soll Funkenjagd bei jedem Start auf GitHub nach einer neuen Version suchen? Dafür braucht es beim Start Internet; ohne startet das Spiel wie gewohnt. In den Einstellungen lässt sich das ändern.',

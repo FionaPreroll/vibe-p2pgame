@@ -36,6 +36,8 @@ The README describes the project, its layout and its conventions. These rules ho
 - The release "Spark Hunt for Android" (tag `android-latest`) is replaced by CI with every push to `main`; that tag moves on purpose, and is the only one that does. Numbered game versions stay for when they are asked for.
 - In-app updates (`src/updates.ts`, `AppUpdaterPlugin.java`) compare the release's `version.json` with the APK's `versionCode`; both are the Android workflow's run number, so the release job keeps publishing `version.json` beside the APK. The plugin reads and downloads only from this repository's releases.
 
+- Bluetooth (`src/bluetooth.ts`, `NearbyPlugin.java`) reaches the game only as the library's `packetConnection`: rooms know nothing of it. Its limits are on both sides, native and in `src/bluetooth.ts`, and every native event is checked there like a message from another phone.
+
 ## Code
 
 - Use pnpm, never npm or yarn. Run `pnpm check` before every push, and `pnpm test:e2e` when a change touches pairing, the network or the screens.

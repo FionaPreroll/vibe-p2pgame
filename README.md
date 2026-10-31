@@ -51,6 +51,12 @@ What the app adds:
 
 **Getting the app:** download [`spark-hunt.apk`](https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk) from the release [Spark Hunt for Android](https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/android-latest) and open it on the phone; Android asks once to allow installing apps from that source. Every push to `main` builds the APK anew (`.github/workflows/android.yml`) and replaces it in that release, so the link above always gives the newest build. Builds of pull requests are kept as the artifact `spark-hunt-apk` of their run under _Actions → Android_. A newer APK installs over the older one and keeps the game's settings, as every build is signed with the same debug key (`android/app/debug.keystore`, in the repository on purpose; it is not secret).
 
+**Bluetooth:** in the app, _Join a game_ and _Add player_ ask how to connect: by QR code over Wi-Fi, as on the website, or by Bluetooth, which needs the app on both phones but no Wi-Fi at all. Over Bluetooth, the host advertises its game, the player picks it from the games nearby, and both phones show the same four-digit code; the host accepts only after comparing it, so nobody else nearby slips in. Rejoining over Bluetooth takes no scanning: the player picks the game again. One game can mix both: some players by QR code, others by Bluetooth.
+
+It runs on Google's Nearby Connections (`NearbyPlugin.java`, `src/bluetooth.ts`), which finds phones over Bluetooth Low Energy, connects them over Bluetooth, and moves to a faster Wi-Fi link between them only where that does not take a phone off its own Wi-Fi. One host takes several players at once (Nearby's star strategy, as the game's own); Bluetooth allows up to seven connections a phone, the game's eight players with the host. As Bluetooth carries less than a Wi-Fi, the host sends a Bluetooth player 15 states a second instead of 30. It needs Google Play services and the permission for nearby devices, which the app asks for when Bluetooth is chosen; on older Android versions, Location instead.
+
+The native side trusts nobody nearby: it looks for this game's service only, keeps at most four requests waiting, takes messages only from accepted connections, only as bytes of at most 32 KB on a known channel and at most 120 a second, and drops fast messages while the link is busy. `src/bluetooth.ts` checks every native event again, field by field, ends any connection it did not ask for or accept, and hands messages to the library's `packetConnection`, which checks them once more.
+
 **Updates in the app:** at its first start, the app asks whether to look for a new version whenever it starts; that is off unless the player says yes, and the settings switch it later (_Look for a new version when the app starts_, shown in the app only). When it is on, the app reads `version.json` from the release, which names the build, and compares it with its own build number (the APK's `versionCode`, which CI sets to the run number). If the release is newer, it offers to install it: the app downloads `spark-hunt.apk` and hands it to Android's installer, which asks the player. The first time, Android wants the player to allow the app to install apps; the app opens that setting. Without internet, the app starts as usual. The native part is `AppUpdaterPlugin.java` in the Android project: it reads and downloads only from this repository's releases, over HTTPS, and Android installs an update only if it is signed with the same key as the app installed.
 
 **Building it yourself** needs Android Studio, or a JDK 21 and the Android SDK:
@@ -111,7 +117,8 @@ src/
   net/       protocol.ts: Spark Hunt's input and snapshots, checked
   session/   host.ts and guest.ts: Spark Hunt on the library's rooms; saved.ts: what a host keeps
   ui/        the screens, plain DOM without a framework; scanPanel.ts: the camera view
-  native.ts  what the Android app adds: Google's scanner; updates.ts: in-app updates
+  native.ts  what the Android app adds: Google's scanner; updates.ts: in-app updates;
+             bluetooth.ts: Bluetooth between phones
   i18n.ts    every visible text, in English and German
   settings.ts, storage.ts   what the browser remembers
 android/     the Android app's project (Capacitor), with capacitor.config.ts at the top

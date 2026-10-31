@@ -1,5 +1,5 @@
 import { listen, type Parse, send } from '../channel.ts'
-import { type Link, onLost, opened } from '../link.ts'
+import { type Connection, onLost, opened } from '../connection.ts'
 import { guestParser, ROOM_PROTOCOL, type ToGuest, type ToHost } from './messages.ts'
 
 export interface GuestRoomOptions<State> {
@@ -39,7 +39,7 @@ export class GuestRoom<Input, State> {
   private lost = false
 
   private constructor(
-    private readonly link: Link,
+    private readonly link: Connection,
     /** This player's id, as the host's game knows them. */
     readonly id: number,
     /** The host's name. */
@@ -90,7 +90,7 @@ export class GuestRoom<Input, State> {
    * `timeout` if the host does not answer.
    */
   static async join<Input, State>(
-    link: Link,
+    link: Connection,
     options: GuestRoomOptions<State>,
   ): Promise<GuestRoom<Input, State>> {
     const parse = guestParser(options.parseState)
@@ -149,7 +149,7 @@ export class GuestRoom<Input, State> {
   close(): void {
     this.lost = true
     for (const timer of this.timers) clearInterval(timer)
-    this.link.pc.close()
+    this.link.close()
   }
 
   private lose(ended: boolean): void {

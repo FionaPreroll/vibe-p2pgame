@@ -1,5 +1,6 @@
 import { cleanName, listen, type Parse, send } from '../channel.ts'
-import { acceptAnswer, createOffer, type Link, onLost, opened } from '../link.ts'
+import { type Connection, onLost, opened } from '../connection.ts'
+import { acceptAnswer, createOffer } from '../link.ts'
 import type { Signal } from '../signal.ts'
 import { hostParser, ROOM_PROTOCOL, type ToGuest, type ToHost } from './messages.ts'
 import { type Seat, Seats } from './seats.ts'
@@ -20,6 +21,8 @@ export interface HostRoomOptions<Input> {
   readonly tickMs?: number
   /** A player who sends nothing for this long is dropped. Default 8000. */
   readonly silenceMs?: number
+  /** A new connection that is open but says no hello for this long is closed. Default 15 000. */
+  readonly helloTimeoutMs?: number
   /** The seats of a game saved before (see `seats()`), so its players can rejoin. */
   readonly restore?: { readonly nextId: number; readonly seats: readonly Seat[] }
 }
@@ -51,7 +54,9 @@ export interface Pairing {
 export type LeaveReason = 'lost' | 'replaced'
 
 interface Guest {
-  readonly link: Link
+  readonly connection: Connection
+  /** When this player last got a state, for connections that want fewer (minStateIntervalMs). */
+  lastState: number
   readonly token: string
   name: string
   ping: number | null
@@ -82,7 +87,9 @@ export class HostRoom<Input, State> {
   private readonly parse: Parse<ToHost<Input>>
   private readonly maxPlayers: number
   private readonly silenceMs: number
+  private readonly helloTimeoutMs: number
   private last = performance.now()
+  private readonly tickMs: number
   private readonly timer: ReturnType<typeof setInterval>
   private closed = false
 
@@ -90,8 +97,10 @@ export class HostRoom<Input, State> {
     this.parse = hostParser(options.parseInput)
     this.maxPlayers = options.maxPlayers ?? 8
     this.silenceMs = options.silenceMs ?? 8000
+    this.helloTimeoutMs = options.helloTimeoutMs ?? 15_000
     this.seats = new Seats(options.restore?.nextId ?? HOST_ID + 1, options.restore?.seats)
-    this.timer = setInterval(() => this.tick(), options.tickMs ?? 1000 / 30)
+    this.tickMs = options.tickMs ?? 1000 / 30
+    this.timer = setInterval(() => this.tick(), this.tickMs)
   }
 
   /** Makes an invitation for one player: an offer code to show, and the answer to take. */
@@ -110,16 +119,37 @@ export class HostRoom<Input, State> {
   }
 
   /**
-   * Takes a new connection into the room: waits for the player's hello, then lets them in, or
-   * tells them why not. Listening starts at once, before the channels open, so the hello
-   * cannot slip by. Only the first hello counts. `joined` rejects with `version` or `full`.
+   * Takes a new connection into the room, of any kind (see `Connection`): waits for the
+   * player's hello, then lets them in, or tells them why not. Listening starts at once, before the channels open, so the hello
+   * cannot slip by. Only the first hello counts. `joined` rejects with `version` or `full`,
+   * with `closed` if the connection closes first, and with `timeout` if it opens and says no
+   * hello in time.
    */
-  attach(link: Link): { joined: Promise<Joined>; cancel(): void } {
+  attach(link: Connection): { joined: Promise<Joined>; cancel(): void } {
     let said = false
+    let timer: ReturnType<typeof setTimeout> | undefined
     const joined = new Promise<Joined>((resolve, reject) => {
+      // A connection that closes before its hello, or opens and never says it, is given up:
+      // a misbehaving phone cannot hold a connection open without joining.
+      const giveUp = (reason: string, close: boolean) => {
+        if (said) return
+        said = true
+        clearTimeout(timer)
+        if (close) link.close()
+        reject(new Error(reason))
+      }
+      link.onStateChange(() => {
+        if (link.state === 'closed') giveUp('closed', false)
+        else if (link.state === 'open' && timer === undefined && !said) {
+          timer = setTimeout(() => giveUp('timeout', true), this.helloTimeoutMs)
+        }
+      })
+      if (link.state === 'open')
+        timer = setTimeout(() => giveUp('timeout', true), this.helloTimeoutMs)
       listen(link.control, this.parse, (message) => {
         if (message.type !== 'hello' || said || this.closed) return
         said = true
+        clearTimeout(timer)
         if (message.room !== ROOM_PROTOCOL || message.version !== this.options.version) {
           this.refuse(link, {
             type: 'mismatch',
@@ -139,10 +169,12 @@ export class HostRoom<Input, State> {
         resolve(this.admit(link, cleanName(message.name, '?'), message.token))
       })
     })
+    // Whoever waits for it hears how it ended; an invitation nobody waits for may end quietly.
+    joined.catch(() => {})
     return {
       joined,
       cancel: () => {
-        if (!said) link.pc.close()
+        if (!said) link.close()
       },
     }
   }
@@ -178,25 +210,33 @@ export class HostRoom<Input, State> {
     if (this.closed) return
     this.closed = true
     clearInterval(this.timer)
-    if (ended) for (const guest of this.guests.values()) send(guest.link.control, { type: 'bye' })
-    const links = [...this.guests.values()].map((guest) => guest.link)
+    if (ended)
+      for (const guest of this.guests.values()) send(guest.connection.control, { type: 'bye' })
+    const links = [...this.guests.values()].map((guest) => guest.connection)
     this.guests.clear()
     // A moment for the goodbyes to leave before the connections close.
     setTimeout(() => {
-      for (const link of links) link.pc.close()
+      for (const link of links) link.close()
     }, 300)
   }
 
-  private refuse(link: Link, message: ToGuest<State>): void {
+  private refuse(link: Connection, message: ToGuest<State>): void {
     send(link.control, message)
-    setTimeout(() => link.pc.close(), 500)
+    setTimeout(() => link.close(), 500)
   }
 
-  private admit(link: Link, name: string, token: string): Joined {
+  private admit(link: Connection, name: string, token: string): Joined {
     // Without a token, a player cannot come back: a seat of their own that nobody claims.
     const seatToken = token || `anonymous-${Math.random()}`
     const { id, rejoined } = this.seats.claim(seatToken)
-    const guest: Guest = { link, name, token: seatToken, ping: null, lastSeen: performance.now() }
+    const guest: Guest = {
+      connection: link,
+      name,
+      token: seatToken,
+      ping: null,
+      lastSeen: performance.now(),
+      lastState: Number.NEGATIVE_INFINITY,
+    }
     this.guests.set(id, guest)
     send(link.control, {
       type: 'welcome',
@@ -228,7 +268,7 @@ export class HostRoom<Input, State> {
     if (!guest) return
     this.guests.delete(id)
     this.seats.leave({ token: guest.token, id, name: guest.name })
-    guest.link.pc.close()
+    guest.connection.close()
     this.onLeave({ id, name: guest.name, ping: guest.ping }, reason)
   }
 
@@ -243,7 +283,16 @@ export class HostRoom<Input, State> {
     if (state === undefined) return
     const message = JSON.stringify({ type: 'state', data: state } satisfies ToGuest<State>)
     for (const guest of this.guests.values()) {
-      if (guest.link.fast.readyState === 'open') guest.link.fast.send(message)
+      const { fast, minStateIntervalMs = 0 } = guest.connection
+      // Half a tick of leeway: ticks do not fall exactly on the interval.
+      if (
+        fast.readyState !== 'open' ||
+        now - guest.lastState < minStateIntervalMs - this.tickMs / 2
+      ) {
+        continue
+      }
+      guest.lastState = now
+      fast.send(message)
     }
   }
 }

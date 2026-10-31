@@ -4,7 +4,9 @@ import { t } from '../i18n'
 import { HostSession, type Pairing } from '../session/host'
 import type { HostedGame } from '../session/saved'
 import { settings } from '../settings'
+import { bluetoothHostDialog } from './bluetoothUi'
 import { joinLink, pastedSignal, textCodes } from './codes'
+import { chooseConnection } from './connect'
 import { failureText, h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
 import { scanPanel } from './scanPanel'
@@ -27,7 +29,11 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
         h('button', {
           type: 'button',
           textContent: t('addPlayer'),
-          onclick: () => pairingDialog(session, screen.element),
+          onclick: async () => {
+            const choice = await chooseConnection()
+            if (choice === 'bluetooth') bluetoothHostDialog(session, name, screen.element)
+            else if (choice === 'qr') pairingDialog(session, screen.element)
+          },
         }),
         h('button', {
           type: 'button',

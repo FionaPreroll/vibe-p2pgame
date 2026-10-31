@@ -176,7 +176,7 @@ describe('joining', () => {
         { type: 'mismatch', room: ROOM_PROTOCOL, version: VERSION },
       ])
       await later(1000)
-      expect(pair.host.pc.connectionState).toBe('closed')
+      expect(pair.host.connection.state).toBe('closed')
       h.room.close()
     }
   })
@@ -215,12 +215,39 @@ describe('joining', () => {
     await expect(joining).rejects.toThrow('timeout')
   })
 
+  it('gives up on a connection that closes before its hello', async () => {
+    const h = host()
+    const pair = linkPair()
+    const attached = h.room.attach(pair.host.link)
+    pair.open()
+    pair.guest.connection.close()
+    await expect(attached.joined).rejects.toThrow('closed')
+    expect(h.room.players()).toEqual([])
+    h.room.close()
+  })
+
+  it('closes a connection that opens and never says hello', async () => {
+    const h = host()
+    const pair = linkPair()
+    const attached = h.room.attach(pair.host.link)
+    await later(60_000)
+    // Not open yet, as while a player still scans: no hurry.
+    expect(pair.host.connection.state).toBe('connecting')
+    pair.open()
+    await later(14_000)
+    expect(pair.host.connection.state).toBe('open')
+    await later(2000)
+    await expect(attached.joined).rejects.toThrow('timeout')
+    expect(pair.host.connection.state).toBe('closed')
+    h.room.close()
+  })
+
   it('makes invitations that can be cancelled before anyone joins', async () => {
     const h = host()
     const pair = linkPair()
     const attached = h.room.attach(pair.host.link)
     attached.cancel()
-    expect(pair.host.pc.connectionState).toBe('closed')
+    expect(pair.host.connection.state).toBe('closed')
     h.room.close()
   })
 })
@@ -297,7 +324,7 @@ describe('leaving and rejoining', () => {
     const again = await join(h.room, 'Guesty', first.token)
     expect(again.guest.id).toBe(1)
     expect(h.leaves.map(([, reason]) => reason)).toEqual(['replaced'])
-    expect(first.pair.host.pc.connectionState).toBe('closed')
+    expect(first.pair.host.connection.state).toBe('closed')
     expect(h.room.players()).toHaveLength(1)
     h.room.close()
   })

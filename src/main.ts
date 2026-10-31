@@ -3,6 +3,7 @@ import { unpack } from '@fionapreroll/p2p'
 import { setLanguage } from './i18n'
 import { isApp, nativeScannerReady } from './native'
 import { settings } from './settings'
+import { startJoin } from './ui/connect'
 import { homeScreen, playerName } from './ui/home'
 import { hostScreen } from './ui/host'
 import { joinScreen } from './ui/join'
@@ -16,8 +17,8 @@ void nativeScannerReady()
 function home(): void {
   homeScreen({
     host: (name) => hostScreen(name, home),
-    join: (name) => joinScreen(name, home),
-    rejoin: (name, game) => joinScreen(name, home, { rejoin: game.host }),
+    join: (name) => startJoin(name, home),
+    rejoin: (name, game) => startJoin(name, home, { rejoin: game.host }),
     resume: (name, game) => hostScreen(name, home, game),
     settings: () => settingsScreen(home),
   })

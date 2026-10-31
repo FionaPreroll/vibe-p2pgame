@@ -1,11 +1,13 @@
-import type { Link } from './link.ts'
+import type { Channel } from './channel.ts'
+import type { Connection, ConnectionState } from './connection.ts'
 
 /**
  * Two phones connected in memory, for tests: what one side sends on a channel arrives on the
- * other side's channel of the same name, a moment later, as over WebRTC. No browser needed,
- * so the host and players can be tested in Node, with fake timers.
+ * other side's channel of the same name, a moment later, as over a real connection. No browser
+ * needed, so a game's host and players can be tested in Node, with fake timers.
  */
-export class FakeChannel extends EventTarget {
+export class FakeChannel implements Channel {
+  private readonly events = new EventTarget()
   readyState: RTCDataChannelState = 'connecting'
   peer: FakeChannel | undefined
   /** Every message this side sent, as the other side received it. */
@@ -20,84 +22,95 @@ export class FakeChannel extends EventTarget {
     const peer = this.peer
     if (this.dropping || !peer) return
     queueMicrotask(() => {
-      if (peer.readyState === 'open') peer.dispatchEvent(new MessageEvent('message', { data }))
+      if (peer.readyState === 'open')
+        peer.events.dispatchEvent(new MessageEvent('message', { data }))
     })
   }
 
-  open(): void {
-    this.readyState = 'open'
-    this.dispatchEvent(new Event('open'))
-  }
-
-  close(): void {
-    if (this.readyState === 'closed') return
-    this.readyState = 'closed'
-    this.dispatchEvent(new Event('close'))
-    this.peer?.close()
+  addEventListener(type: 'message', listener: (event: MessageEvent) => void): void {
+    this.events.addEventListener(type, listener as EventListener)
   }
 }
 
-export class FakePeerConnection extends EventTarget {
-  connectionState: RTCPeerConnectionState = 'new'
-  readonly channels: FakeChannel[] = []
-  peer: FakePeerConnection | undefined
+/** One side of a connection in memory. */
+export class FakeConnection implements Connection {
+  state: ConnectionState = 'connecting'
+  peer: FakeConnection | undefined
+  readonly control = new FakeChannel()
+  readonly fast = new FakeChannel()
+  private readonly listeners: (() => void)[] = []
 
+  constructor(readonly minStateIntervalMs?: number) {}
+
+  onStateChange(listener: () => void): void {
+    this.listeners.push(listener)
+  }
+
+  /** Both sides are connected, as when the codes have been scanned. */
+  connect(): void {
+    if (this.state !== 'connecting') return
+    for (const channel of [this.control, this.fast]) channel.readyState = 'open'
+    this.change('open')
+  }
+
+  /** This side hangs up; the other side notices, as WebRTC does after a while. */
   close(): void {
-    if (this.connectionState === 'closed') return
-    this.connectionState = 'closed'
-    this.dispatchEvent(new Event('connectionstatechange'))
-    for (const channel of this.channels) channel.close()
+    if (this.state === 'closed') return
+    this.change('closed')
     this.peer?.fail()
   }
 
-  /** The other side is gone: WebRTC notices after a while and reports a failed connection. */
+  /** The other side is gone, or the line broke. */
   fail(): void {
-    if (this.connectionState === 'closed' || this.connectionState === 'failed') return
-    this.connectionState = 'failed'
-    this.dispatchEvent(new Event('connectionstatechange'))
+    this.change('closed')
   }
 
-  connect(): void {
-    this.connectionState = 'connected'
-    this.dispatchEvent(new Event('connectionstatechange'))
+  private change(state: ConnectionState): void {
+    if (this.state === state) return
+    this.state = state
+    if (state === 'closed')
+      for (const channel of [this.control, this.fast]) channel.readyState = 'closed'
+    for (const listener of [...this.listeners]) listener()
   }
 }
 
 export interface FakeSide {
-  readonly link: Link
-  readonly pc: FakePeerConnection
+  /** The side as a `Connection`, to hand to a room. */
+  readonly link: Connection
+  readonly connection: FakeConnection
   readonly control: FakeChannel
   readonly fast: FakeChannel
 }
 
-/** A connection between a host and a player; `open` connects it, as scanning both codes does. */
-export function linkPair(): { host: FakeSide; guest: FakeSide; open(): void } {
-  const host = side()
-  const guest = side()
-  host.pc.peer = guest.pc
-  guest.pc.peer = host.pc
+/**
+ * A connection between a host and a player; `open` connects it, as scanning both codes does.
+ * `minStateIntervalMs` makes the host's side a slow connection (see `Connection`).
+ */
+export function linkPair(options: { minStateIntervalMs?: number } = {}): {
+  host: FakeSide
+  guest: FakeSide
+  open(): void
+} {
+  const host = new FakeConnection(options.minStateIntervalMs)
+  const guest = new FakeConnection()
+  host.peer = guest
+  guest.peer = host
   host.control.peer = guest.control
   guest.control.peer = host.control
   host.fast.peer = guest.fast
   guest.fast.peer = host.fast
+  const side = (connection: FakeConnection): FakeSide => ({
+    link: connection,
+    connection,
+    control: connection.control,
+    fast: connection.fast,
+  })
   return {
-    host,
-    guest,
+    host: side(host),
+    guest: side(guest),
     open() {
-      for (const s of [host, guest]) {
-        s.pc.connect()
-        s.control.open()
-        s.fast.open()
-      }
+      host.connect()
+      guest.connect()
     },
   }
-}
-
-function side(): FakeSide {
-  const pc = new FakePeerConnection()
-  const control = new FakeChannel()
-  const fast = new FakeChannel()
-  pc.channels.push(control, fast)
-  const link = { pc, control, fast } as unknown as Link
-  return { link, pc, control, fast }
 }

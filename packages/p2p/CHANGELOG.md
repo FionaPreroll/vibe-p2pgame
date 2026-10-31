@@ -4,6 +4,19 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+### Added
+
+- `Connection`: rooms work on any connection, not only WebRTC. `createOffer` and `answerOffer` make one over WebRTC, as before.
+- `packetConnection` turns any transport that carries text messages, such as Bluetooth, into a `Connection`. It checks what the transport hands over: only text no longer than `MAX_MESSAGE_LENGTH`, on one of the two channels, while open.
+- `minStateIntervalMs` on a connection: a host sends a slow connection fewer states, and the others as many as before.
+- `helloTimeoutMs` for `HostRoom`: a connection that is open but says no hello is closed after 15 seconds.
+
+### Changed
+
+- `HostRoom.attach` and `GuestRoom.join` take a `Connection`. `opened` and `onLost` work on any `Connection`.
+- `HostRoom.attach`'s `joined` also rejects with `closed`, when the connection closes before the player's hello, and with `timeout`, instead of waiting for ever.
+- `linkPair` from `@fionapreroll/p2p/testing` gives `FakeConnection`s: `connection.state`, `connection.close()` and `connection.fail()` replace the former fake `pc`.
+
 ## [0.1.1] - 2026-10-31
 
 ### Fixed

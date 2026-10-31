@@ -96,6 +96,28 @@ Open the camera **before** making the offer: Chrome puts a page's real local add
 
 `unpack` also reads a link with the code in its fragment, such as `https://example.com/game/#o=<code>`: put the offer in such a link, and a player can scan it with the phone's own camera app to open your game and join.
 
+### Other transports, such as Bluetooth
+
+Rooms work on any `Connection`: WebRTC is one, and `packetConnection` makes one from any transport that carries text messages. The transport sends each message with its channel, and hands what arrives to `receive`; the connection checks it.
+
+```ts
+import { packetConnection } from '@fionapreroll/p2p'
+
+const connection = packetConnection(
+  {
+    send: (channel, data) => radio.send(peerId, channel, data), // 'control' or 'fast'
+    close: () => radio.disconnect(peerId),
+  },
+  { minStateIntervalMs: 1000 / 15 }, // a slow link: the host sends it 15 states a second
+)
+radio.onMessage = (peerId, channel, data) => connection.receive(channel, data)
+radio.onConnected = () => connection.markOpen()
+radio.onDisconnected = () => connection.markClosed()
+room.attach(connection) // or GuestRoom.join(connection, …)
+```
+
+A transport may drop `fast` messages when it is busy, as WebRTC's unreliable channel does; `control` messages must arrive, in order. One room can mix transports: some players over WebRTC, others over Bluetooth.
+
 ## Entry points
 
 | Import                      | What it has                                                                                                                                                                                                                                                      |
@@ -112,6 +134,7 @@ Anyone can make a QR code, and any phone that pairs can send whatever it likes:
 - Codes are read strictly by the ICE grammar: ICE characters for credentials, IP or mDNS addresses, at most six candidates. No field can smuggle a line into the SDP the browser reads.
 - Messages longer than 16 KB are dropped unread; the rest is parsed as JSON and checked field by field, the game's part by the game's parsers. Write those with the checks of the main entry point: `isNumber` turns down Infinity, which JSON reads from `1e999`.
 - Names lose control and formatting characters and are cut to 16 characters.
+- A connection that opens but says no hello is closed after 15 seconds, so a phone cannot hold one without joining.
 - A player only ever sends input for themselves. Player tokens never leave the host's room, so nobody can take another player's place by guessing.
 - The connection is encrypted by WebRTC (DTLS), but a paired phone can still lie about its own input: the game decides what is possible.
 

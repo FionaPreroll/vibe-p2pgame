@@ -431,3 +431,31 @@ button.danger {
   justify-content: center;
   min-height: 100%;
 }
+
+.choice {
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+.requests,
+.hosts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.requests li {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.request {
+  font-weight: 600;
+}
+
+.hosts .host {
+  width: 100%;
+}
