@@ -1,0 +1,10 @@
+# Coverage is reported on every pull request but never fails it: the screens, the camera and
+# WebRTC are tested in the browser by Playwright, which these unit test numbers do not see.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true

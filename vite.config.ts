@@ -10,5 +10,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [serviceWorker(), ...(mode === 'phone' ? [basicSsl()] : [])],
   test: {
     include: ['src/**/*.test.ts', 'tools/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      // Every source file, so files without tests count as uncovered instead of missing.
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts'],
+      // lcov for Codecov, a table for the terminal.
+      reporter: ['text', 'lcov'],
+    },
   },
 }))
