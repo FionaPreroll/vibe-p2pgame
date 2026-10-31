@@ -9,8 +9,8 @@ const WELCOME_TIMEOUT_MS = 10_000
 /** A player's phone: it sends where the player steers, and shows what the host sends back. */
 export class GuestSession implements Session {
   readonly isHost = false
-  /** Called once if the host is gone. */
-  onLost: () => void = () => {}
+  /** Called once if the host is gone: `ended` if the host ended the game on purpose. */
+  onLost: (ended: boolean) => void = () => {}
   private state: Snapshot | null = null
   private steer: Target = null
   private ping: number | null = null
@@ -21,13 +21,20 @@ export class GuestSession implements Session {
   private constructor(
     private readonly link: Link,
     private readonly id: number,
+    /** The host's name, to offer rejoining their game. */
+    readonly host: string,
+    /** True if the host gave this player back their place and score. */
+    readonly rejoined: boolean,
   ) {
+    listen<ToGuest>(link.control, (message) => {
+      if (message.type === 'bye') this.lose(true)
+    })
     listen<ToGuest>(link.fast, (message) => {
       this.lastSeen = performance.now()
       if (message.type === 'state') this.state = message.state
       else if (message.type === 'pong') this.ping = performance.now() - message.sent
     })
-    onLost(link, () => this.lose())
+    onLost(link, () => this.lose(false))
     this.timers.push(
       window.setInterval(() => {
         send(link.fast, {
@@ -36,26 +43,30 @@ export class GuestSession implements Session {
           y: this.steer?.y ?? null,
           ping: this.ping,
         })
-        if (performance.now() - this.lastSeen > SILENCE_MS) this.lose()
+        if (performance.now() - this.lastSeen > SILENCE_MS) this.lose(false)
       }, TICK_MS),
       window.setInterval(() => send(link.fast, { type: 'ping', sent: performance.now() }), PING_MS),
     )
   }
 
-  /** Waits for the connection, says hello and resolves once the host has let the player in. */
-  static async join(link: Link, name: string): Promise<GuestSession> {
+  /**
+   * Waits for the connection, says hello and resolves once the host has let the player in.
+   * The token lets the host recognise a player who comes back.
+   */
+  static async join(link: Link, name: string, token: string): Promise<GuestSession> {
     await opened(link)
-    const id = await new Promise<number>((resolve, reject) => {
+    const welcome = await new Promise<Extract<ToGuest, { type: 'welcome' }>>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('timeout')), WELCOME_TIMEOUT_MS)
       listen<ToGuest>(link.control, (message) => {
-        if (message.type === 'welcome' && typeof message.id === 'number') resolve(message.id)
+        if (message.type === 'welcome' && typeof message.id === 'number') resolve(message)
         else if (message.type === 'full') reject(new Error('full'))
         else return
         clearTimeout(timer)
       })
-      send(link.control, { type: 'hello', name })
+      send(link.control, { type: 'hello', name, token })
     })
-    return new GuestSession(link, id)
+    const host = typeof welcome.host === 'string' ? welcome.host : '?'
+    return new GuestSession(link, welcome.id, host, welcome.rejoined === true)
   }
 
   selfId(): number {
@@ -80,9 +91,9 @@ export class GuestSession implements Session {
     this.link.pc.close()
   }
 
-  private lose(): void {
+  private lose(ended: boolean): void {
     if (this.lost) return
     this.close()
-    this.onLost()
+    this.onLost(ended)
   }
 }

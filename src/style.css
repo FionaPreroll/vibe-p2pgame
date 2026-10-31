@@ -390,3 +390,44 @@ label {
 .toast.gone {
   opacity: 0;
 }
+
+.home-header {
+  justify-content: space-between;
+}
+
+select {
+  font: inherit;
+  width: 100%;
+  padding: 0.6em 0.8em;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0f1226;
+  color: var(--text);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-weight: 500;
+}
+
+.toggle input {
+  width: 1.3rem;
+  height: 1.3rem;
+  accent-color: var(--accent);
+}
+
+button.danger {
+  color: #ff8a9a;
+  border-color: rgba(255, 84, 112, 0.5);
+}
+
+.roster li.away {
+  opacity: 0.5;
+}
+
+.lost {
+  justify-content: center;
+  min-height: 100%;
+}

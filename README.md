@@ -19,6 +19,12 @@ Browsers can only act as a Bluetooth _central_: Web Bluetooth connects to device
 
 Each pairing takes two scans, one in each direction. Players connect only to the host (a star), so each new player scans codes with the host and nobody else; up to 8 phones can play.
 
+**Dropped out?** A player whose connection breaks sees **Rejoin** straight away. A player whose page closed finds **Rejoin …’s game** on the start screen. Either way, the host taps **Add player** and both phones scan codes again. The host recognises the player by a token their browser keeps, and gives back their place, color and score, even in the middle of a round. Until then, everyone sees the player as _away_ between rounds.
+
+**Host's page closed?** The host's phone saves the game every few seconds. On the start screen, **Continue your game with …** brings back the players and scores, and the players rejoin as above. When the host ends the game with ×, everyone is told and nothing is kept.
+
+**Settings** (⚙ on the start screen): your name, the language, vibration, keeping the screen on, and the round length when hosting. The camera you last scanned with is also remembered, with its zoom and brightness. Everything is stored in this browser's local storage only, and _Delete all saved data_ removes it.
+
 **Offline:** open the page once while online. A service worker keeps all of its files, so after that it also starts on a hotspot without internet, and browsers can install it as an app. Phones only allow the camera on HTTPS pages, so serve it over HTTPS, for example from GitHub Pages.
 
 **Camera won't focus?** Many phones can't focus on a screen held close. Below the camera picture:
@@ -45,7 +51,8 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 - **Real addresses instead of mDNS**: Chrome hides local IPs behind random `….local` names unless the page may use the camera. That is why the host opens the camera _before_ making the offer, and why the player has already scanned before making the answer. Real IPs avoid depending on mDNS, which not every hotspot passes on. Even if only one side's address can be reached, ICE still connects through peer-reflexive candidates.
 - **Two data channels per player** (`src/net/link.ts`): `control` is reliable, for hello and welcome; `fast` is unordered with no retransmits, like UDP, for input, state and pings. Both are negotiated up front, so no signaling is needed after the scans.
 - **Host-authoritative** (`src/session/host.ts`): the host steps the rules (`src/game/sim.ts`, pure TypeScript) and sends complete snapshots, so a lost packet is simply replaced by the next one. Players smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds.
-- **Leaving**: a phone that closes, fails or stays silent for 8 seconds is dropped. If the host leaves, the players' phones return to the start.
+- **Leaving and rejoining** (`src/session/seats.ts`, `saved.ts`): a phone that closes, fails or stays silent for 8 seconds is dropped, but its seat is kept under its browser's token. A `hello` with that token gets the same id and score back. If the same browser says hello while its old connection has not timed out yet, the old one is dropped first. The host saves the seats every 2 seconds and when the page is hidden. When the host ends the game, it sends `bye`, so players know there is nothing to rejoin.
+- **Storage** (`src/storage.ts`, `src/settings.ts`): everything lives in `localStorage` under the `vibe-p2pgame:` prefix. Every stored value is checked on reading, and an invalid value falls back to its default.
 
 ## Layout
 
@@ -54,9 +61,10 @@ src/
   game/      sim.ts: the rules, pure and tested; draw.ts: the canvas
   net/       signal.ts: SDP ↔ short code; link.ts: WebRTC; protocol.ts: messages
   qr/        qr.ts: QR codes as SVG (uqr); scanner.ts: camera, focus, zoom, decoding
-  session/   host.ts and guest.ts: the two sides of a game
+  session/   host.ts and guest.ts: the two sides of a game; seats.ts and saved.ts: rejoining
   ui/        the screens, plain DOM without a framework; scanPanel.ts: the camera view
   i18n.ts    every visible text, in English and German
+  settings.ts, storage.ts   what the browser remembers
 tools/       serviceWorker.ts: writes the offline worker into the build
 tests/e2e/   Playwright: two browser profiles pair through text codes and play
 ```
@@ -90,4 +98,4 @@ pnpm check
 - Tested end to end in Chromium only (two profiles on one machine). Real phones, iOS Safari and Firefox still need testing on a hotspot.
 - Some Wi-Fi networks, such as public or guest networks, isolate their clients. There the phones cannot see each other, but a phone's own hotspot does not do this.
 - If the host's screen turns off or the host switches apps, the browser throttles the game loop and the round stutters for everyone. A screen wake lock keeps the screen on while the game is open, where the browser supports it.
-- There is no reconnecting: a player who drops out joins again with new codes.
+- Rejoining still takes a new pair of scans: WebRTC needs a new offer and answer for every connection, and there is no server to exchange them.

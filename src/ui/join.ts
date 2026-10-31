@@ -3,17 +3,28 @@ import { answerOffer } from '../net/link'
 import type { Signal } from '../net/signal'
 import { qrElement } from '../qr/qr'
 import { GuestSession } from '../session/guest'
+import { forgetJoinedGame, playerToken, rememberJoinedGame } from '../session/saved'
 import { pastedSignal, textCodes } from './codes'
 import { h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
 import { scanPanel } from './scanPanel'
 
+export interface JoinOptions {
+  /** The host's code from a link: no scanning needed. */
+  readonly offer?: Signal
+  /** The host of a game this phone dropped out of, to say how rejoining works. */
+  readonly rejoin?: string
+}
+
 /**
  * Joins a game: scan the host's code, show the answer code until the host has scanned it,
- * then play. `offer` skips the scanning when the page was opened from the host's link.
+ * then play. Rejoining works the same way: the host knows the player again by the browser's
+ * token and gives back their place and score.
  */
-export function joinScreen(name: string, onLeave: () => void, offer?: Signal): void {
+export function joinScreen(name: string, onLeave: () => void, options: JoinOptions = {}): void {
+  const { offer, rejoin } = options
   const step = h('p', {}, t('joinStep1'))
+  const hint = rejoin ? h('p', { class: 'muted' }, t('rejoinHint', { host: rejoin })) : null
   const qrBox = h('div', { class: 'qr-box' })
   const status = h('p', { class: 'status', role: 'status' } as Partial<HTMLParagraphElement>)
   let answerCode: string | null = null
@@ -33,18 +44,20 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
     scan.element.hidden = true
     codes.element.open = false
     status.textContent = t('connecting')
+    hint?.remove()
     try {
       const { link, code } = await answerOffer(signal)
       answerCode = code
       step.textContent = t('joinStep2')
       qrBox.replaceChildren(qrElement(code))
       codes.refresh()
-      const session = await GuestSession.join(link, name).catch((error: unknown) => {
+      const session = await GuestSession.join(link, name, playerToken()).catch((error: unknown) => {
         link.pc.close()
         throw error
       })
       if (left) return session.close()
-      play(session, onLeave)
+      rememberJoinedGame(session.host)
+      play(session, name, onLeave)
     } catch (error) {
       if (left) return
       status.textContent =
@@ -54,7 +67,7 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
         h('button', {
           type: 'button',
           textContent: t('tryAgain'),
-          onclick: () => joinScreen(name, onLeave),
+          onclick: () => joinScreen(name, onLeave, { rejoin }),
         }),
       )
     }
@@ -95,6 +108,7 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
         h('h2', {}, t('join')),
       ),
       step,
+      hint,
       scan.element,
       qrBox,
       status,
@@ -113,7 +127,7 @@ export function joinScreen(name: string, onLeave: () => void, offer?: Signal): v
   })
 }
 
-function play(session: GuestSession, onLeave: () => void): void {
+function play(session: GuestSession, name: string, onLeave: () => void): void {
   const screen = gameScreen(
     session,
     (state) => [
@@ -127,10 +141,39 @@ function play(session: GuestSession, onLeave: () => void): void {
       onLeave()
     },
   )
-  session.onLost = () => {
+  session.onLost = (ended) => {
     screen.destroy()
-    toast(t('lost'))
-    onLeave()
+    if (ended) {
+      forgetJoinedGame()
+      toast(t('ended', { host: session.host }))
+      onLeave()
+    } else {
+      lostScreen(name, session.host, onLeave)
+    }
   }
   show(screen.element)
+  if (session.rejoined) toast(t('welcomeBack'))
+}
+
+/** The host is out of reach: rejoin straight away, or go back to the start. */
+function lostScreen(name: string, host: string, onLeave: () => void): void {
+  show(
+    h(
+      'div',
+      { class: 'screen lost' },
+      h('h2', {}, t('lost')),
+      h('p', {}, t('lostHelp')),
+      h(
+        'div',
+        { class: 'buttons column' },
+        h('button', {
+          type: 'button',
+          class: 'primary',
+          textContent: t('rejoinNow'),
+          onclick: () => joinScreen(name, onLeave, { rejoin: host }),
+        }),
+        h('button', { type: 'button', textContent: t('home'), onclick: onLeave }),
+      ),
+    ),
+  )
 }

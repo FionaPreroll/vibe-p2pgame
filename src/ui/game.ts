@@ -2,6 +2,7 @@ import { Painter, playerColor } from '../game/draw'
 import { type Player, type Snapshot, winners } from '../game/sim'
 import { t } from '../i18n'
 import type { Session } from '../session/session'
+import { settings } from '../settings'
 import { h } from './dom'
 
 const KEYS: Record<string, [number, number]> = {
@@ -72,10 +73,13 @@ export function gameScreen(
   window.addEventListener('keydown', onKey)
   window.addEventListener('keyup', onKey)
 
-  const wakeLock = navigator.wakeLock?.request('screen').catch(() => null)
+  const wakeLock = settings().keepScreenOn
+    ? navigator.wakeLock?.request('screen').catch(() => null)
+    : undefined
   let sheetKey = ''
   let scoresKey = ''
-  let lastScore = 0
+  // Unknown until the first snapshot, so a score kept from before rejoining does not buzz.
+  let lastScore: number | null = null
   let frame = 0
 
   const render = () => {
@@ -91,8 +95,10 @@ export function gameScreen(
     }
     painter.draw(state, session.selfId(), session.target())
     if (state) {
-      if (me && me.score > lastScore) navigator.vibrate?.(me.score - lastScore > 1 ? 80 : 25)
-      lastScore = me?.score ?? 0
+      if (me && lastScore !== null && me.score > lastScore && settings().vibration) {
+        navigator.vibrate?.(me.score - lastScore > 1 ? 80 : 25)
+      }
+      lastScore = me?.score ?? null
       timer.textContent =
         state.phase === 'play' ? t('timeLeft', { s: Math.ceil(state.timeLeft) }) : ''
       const ranked = [...state.players].sort((a, b) => b.score - a.score)
@@ -106,7 +112,7 @@ export function gameScreen(
       const nextSheet =
         state.phase === 'play'
           ? ''
-          : `${state.phase}|${state.players.map((p) => `${p.id}:${p.name}:${p.score}:${pingBand(p)}`)}`
+          : `${state.phase}|${state.players.map((p) => `${p.id}:${p.name}:${p.score}:${pingBand(p)}`)}|${state.away?.map((p) => p.id)}`
       if (nextSheet !== sheetKey) {
         sheetKey = nextSheet
         sheetBox.hidden = state.phase === 'play'
@@ -128,7 +134,10 @@ export function gameScreen(
   }
 }
 
-/** The players, best first, with their pings: what everyone sees between rounds. */
+/**
+ * The players, best first, with their pings: what everyone sees between rounds. Players who
+ * dropped out follow, marked away, as they may come back.
+ */
 export function roster(state: Snapshot, selfId: number | null): HTMLElement {
   const ranked = [...state.players].sort((a, b) => b.score - a.score || a.id - b.id)
   return h(
@@ -146,6 +155,15 @@ export function roster(state: Snapshot, selfId: number | null): HTMLElement {
           p.id === 0 ? t('host_') : p.ping === null ? '…' : t('pingMs', { ms: p.ping }),
         ),
         h('span', { class: 'score' }, String(p.score)),
+      ),
+    ),
+    ...(state.away ?? []).map((p) =>
+      h(
+        'li',
+        { class: 'away' },
+        dot(p.id),
+        h('span', { class: 'name' }, p.name),
+        h('span', { class: 'ping' }, t('away')),
       ),
     ),
   )

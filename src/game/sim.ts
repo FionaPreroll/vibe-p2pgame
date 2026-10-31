@@ -44,6 +44,8 @@ export interface Snapshot {
   timeLeft: number
   players: Player[]
   sparks: Spark[]
+  /** Players who dropped out and may rejoin. The host fills this in; the rules ignore it. */
+  away?: { id: number; name: string }[]
 }
 
 export interface World extends Snapshot {
@@ -79,9 +81,9 @@ export function removePlayer(world: World, id: number): void {
   world.players = world.players.filter((p) => p.id !== id)
 }
 
-export function startRound(world: World): void {
+export function startRound(world: World, seconds = ROUND_SECONDS): void {
   world.phase = 'play'
-  world.timeLeft = ROUND_SECONDS
+  world.timeLeft = seconds
   world.sparks = []
   for (const player of world.players) player.score = 0
 }

@@ -1,24 +1,28 @@
 import './style.css'
-import { language, t } from './i18n'
+import { setLanguage } from './i18n'
 import { unpack } from './net/signal'
-import { homeScreen, savedName } from './ui/home'
+import { settings } from './settings'
+import { homeScreen, playerName } from './ui/home'
 import { hostScreen } from './ui/host'
 import { joinScreen } from './ui/join'
+import { settingsScreen } from './ui/settings'
 
-document.documentElement.lang = language
-document.title = t('title')
+setLanguage(settings().language)
 
 function home(): void {
-  homeScreen(
-    (name) => hostScreen(name, home),
-    (name) => joinScreen(name, home),
-  )
+  homeScreen({
+    host: (name) => hostScreen(name, home),
+    join: (name) => joinScreen(name, home),
+    rejoin: (name, game) => joinScreen(name, home, { rejoin: game.host }),
+    resume: (name, game) => hostScreen(name, home, game),
+    settings: () => settingsScreen(home),
+  })
 }
 
 // Opened from the host's QR code with the phone's camera app: join at once.
 const offer = unpack(location.hash)
 if (location.hash) history.replaceState(null, '', location.pathname + location.search)
-if (offer?.type === 'offer') joinScreen(savedName(), home, offer)
+if (offer?.type === 'offer') joinScreen(playerName(), home, { offer })
 else home()
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

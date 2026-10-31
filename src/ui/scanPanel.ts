@@ -1,6 +1,7 @@
 import { t } from '../i18n'
 import { type Signal, unpack } from '../net/signal'
 import { cameraIds, decodePhoto, type Range, type Scanner, startScanner } from '../qr/scanner'
+import { settings, updateCamera } from '../settings'
 import { h } from './dom'
 
 export interface ScanPanel {
@@ -22,7 +23,8 @@ export interface ScanPanel {
  * - brightness, against a code that glares;
  * - switching between the phone's cameras, as some have one that focuses closer;
  * - a photo taken with the phone's own camera app, which focuses better than the browser.
- * The sliders show only where the camera has the setting.
+ * The sliders show only where the camera has the setting. The camera, its zoom and its
+ * brightness are remembered for the next time.
  */
 export function scanPanel(
   type: Signal['type'],
@@ -78,11 +80,23 @@ export function scanPanel(
     return false
   }
 
+  /**
+   * Opens a camera: the one asked for, or the one remembered from last time, or the back
+   * camera. The remembered zoom and brightness come back with the remembered camera.
+   */
   const start = async (deviceId?: string): Promise<boolean> => {
     scanner?.stop()
     scanner = null
+    const saved = settings().camera
+    const wanted = deviceId ?? saved.deviceId ?? undefined
+    const open = (id?: string) => startScanner(video, (text) => take([text]), id)
     try {
-      const started = await startScanner(video, (text) => take([text]), deviceId)
+      // A remembered camera may be gone, or the browser may have new ids for its cameras.
+      const started = await open(wanted).catch((error: unknown) => {
+        if (wanted === undefined) throw error
+        updateCamera({ deviceId: null, zoom: null, exposure: null })
+        return open()
+      })
       if (done) {
         started.stop()
         return true
@@ -94,16 +108,28 @@ export function scanPanel(
       live.hidden = true
       return false
     }
+    const camera = scanner
+    if (deviceId !== undefined) {
+      // Another camera chosen: remember it, without the settings of the one before.
+      updateCamera({ deviceId: camera.deviceId ?? null, zoom: null, exposure: null })
+    } else if (camera.deviceId !== undefined && camera.deviceId === saved.deviceId) {
+      await restore(camera, 'zoom', saved.zoom)
+      await restore(camera, 'exposure', saved.exposure)
+    }
     showLive(true)
     sliders.replaceChildren(
       ...[
-        slider(t('zoom'), scanner.zoom, scanner.get('zoom'), (v) => scanner?.set('zoom', v)),
-        slider(t('brightness'), scanner.exposure, scanner.get('exposure'), (v) =>
-          scanner?.set('exposure', v),
-        ),
+        slider(t('zoom'), camera.zoom, camera.get('zoom'), (v) => {
+          void camera.set('zoom', v)
+          updateCamera({ deviceId: camera.deviceId ?? null, zoom: v })
+        }),
+        slider(t('brightness'), camera.exposure, camera.get('exposure'), (v) => {
+          void camera.set('exposure', v)
+          updateCamera({ deviceId: camera.deviceId ?? null, exposure: v })
+        }),
       ].filter((s) => s !== null),
     )
-    help.textContent = scanner.zoom || scanner.exposure ? t('scanHelp') : t('scanHelpBasic')
+    help.textContent = camera.zoom || camera.exposure ? t('scanHelp') : t('scanHelpBasic')
     cameras = await cameraIds()
     switcher.hidden = cameras.length < 2
     return true
@@ -163,6 +189,18 @@ export function scanPanel(
     element,
     ready: start(),
     stop,
+  }
+}
+
+/** Sets a remembered zoom or brightness again, if the camera still allows that value. */
+async function restore(
+  camera: Scanner,
+  setting: 'zoom' | 'exposure',
+  value: number | null,
+): Promise<void> {
+  const range = setting === 'zoom' ? camera.zoom : camera.exposure
+  if (value !== null && range !== null && value >= range.min && value <= range.max) {
+    await camera.set(setting, value)
   }
 }
 

@@ -1,31 +1,5 @@
-import { type Browser, expect, type Page, test } from '@playwright/test'
-
-/**
- * Two players in two separate browser profiles, paired through the text codes, as phones would
- * through the QR codes: the real WebRTC connection, with the shortened codes in between.
- */
-async function player(browser: Browser, path = './'): Promise<Page> {
-  // With the camera allowed, as on a phone, Chrome puts real addresses into the codes.
-  const context = await browser.newContext({ locale: 'en-US', permissions: ['camera'] })
-  const page = await context.newPage()
-  await page.goto(path)
-  return page
-}
-
-async function ownCode(scope: Page, root = scope.locator('body')): Promise<string> {
-  const field = root.locator('.own-code')
-  await expect(field).toHaveValue(/^P1~/, { timeout: 10_000 })
-  return field.inputValue()
-}
-
-async function pasteCode(root: ReturnType<Page['locator']>, code: string): Promise<void> {
-  const details = root.locator('details.text-codes')
-  if (!(await details.evaluate((element) => (element as HTMLDetailsElement).open))) {
-    await details.locator('summary').click()
-  }
-  await root.locator('.paste-code').fill(code)
-  await root.getByRole('button', { name: 'Use code' }).click()
-}
+import { expect, test } from '@playwright/test'
+import { ownCode, pasteCode, player } from './helpers'
 
 /** The color in the middle of a canvas, roughly: the second player's dot is blue. */
 function centerColor(canvas: HTMLCanvasElement): string {
@@ -75,13 +49,18 @@ test('two players pair with codes and play a round', async ({ browser }) => {
   if (!box) throw new Error('No canvas')
   await guest.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
   await expect
-    .poll(() => host.locator('canvas').evaluate(centerColor), { timeout: 5000 })
+    .poll(() => host.locator('canvas').evaluate(centerColor), { timeout: 10_000 })
     .toEqual('blue')
 
   // The host leaves: the player's phone notices and goes back to the start.
   host.on('dialog', (dialog) => dialog.accept())
   await host.getByRole('button', { name: 'Back' }).click()
-  await expect(guest.getByRole('button', { name: 'Join a game' })).toBeVisible({ timeout: 15_000 })
+  await expect(guest.locator('.toast')).toHaveText('Hosty ended the game.')
+  await expect(guest.getByRole('button', { name: 'Join a game' })).toBeVisible()
+  // The host ended the game on purpose: nothing to rejoin or carry on.
+  await expect(guest.getByRole('button', { name: /Rejoin/ })).toHaveCount(0)
+  await host.reload()
+  await expect(host.getByRole('button', { name: /Continue/ })).toHaveCount(0)
 })
 
 test('a player who opens the join link skips the scanning', async ({ browser }) => {

@@ -2,14 +2,19 @@ import { t } from '../i18n'
 import type { Signal } from '../net/signal'
 import { qrElement } from '../qr/qr'
 import { HostSession, type Pairing } from '../session/host'
+import type { HostedGame } from '../session/saved'
+import { settings } from '../settings'
 import { joinLink, pastedSignal, textCodes } from './codes'
 import { h, show, toast } from './dom'
 import { gameScreen, result, roster } from './game'
 import { scanPanel } from './scanPanel'
 
-/** Hosts a game: the arena at once, and between rounds the buttons to add players and start. */
-export function hostScreen(name: string, onLeave: () => void): void {
-  const session = new HostSession(name)
+/**
+ * Hosts a game: the arena at once, and between rounds the buttons to add players and start.
+ * `saved` carries on a game this phone hosted before, with its players and scores.
+ */
+export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame): void {
+  const session = new HostSession(name, saved)
   session.onLeave = (left) => toast(t('playerLeft', { name: left }))
   const screen = gameScreen(
     session,
@@ -28,7 +33,7 @@ export function hostScreen(name: string, onLeave: () => void): void {
           type: 'button',
           class: 'primary',
           textContent: state.phase === 'over' ? t('again') : t('start'),
-          onclick: () => session.start(),
+          onclick: () => session.start(settings().roundSeconds),
         }),
       ),
     ],
@@ -62,10 +67,10 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
     scan.stop()
     status.textContent = t('connecting')
     try {
-      const joined = await pairing.accept(signal)
+      const { name, rejoined } = await pairing.accept(signal)
       pairing = null
       close()
-      toast(t('connected', { name: joined }))
+      toast(t(rejoined ? 'rejoined' : 'connected', { name }))
     } catch (error) {
       status.textContent =
         error instanceof Error && error.message === 'full' ? t('full') : t('connectFailed')

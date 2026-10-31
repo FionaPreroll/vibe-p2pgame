@@ -1,4 +1,7 @@
-/** Every text players see, in English and German. The browser's language picks one. */
+/**
+ * Every text players see, in English and German. The browser's language picks one, unless
+ * the player chose one in the settings.
+ */
 const en = {
   title: 'Spark Hunt',
   tagline: 'A game for phones side by side: no internet, no server, no app.',
@@ -56,6 +59,32 @@ const en = {
   tie: 'Tie: {names}',
   noWinner: 'Nobody caught a spark.',
   lobby: 'Warm up while more players join.',
+  settings: 'Settings',
+  languageLabel: 'Language',
+  languageAuto: 'Like the browser',
+  vibration: 'Vibrate when catching a spark',
+  keepScreenOn: 'Keep the screen on during a game',
+  roundLength: 'Round length when hosting',
+  seconds: '{s} seconds',
+  cameraSaved: 'The camera you last used to scan is remembered, with its zoom and brightness.',
+  resetCamera: 'Forget camera',
+  cameraForgotten: 'Camera forgotten.',
+  clearData: 'Delete all saved data',
+  clearConfirm: 'Delete your name, settings and saved games in this browser?',
+  savedLocally: 'Everything is saved in this browser only.',
+  rejoin: 'Rejoin {host}’s game',
+  resume: 'Continue your game',
+  resumeWith: 'Continue your game with {names}',
+  rejoinHint:
+    '{host} taps “Add player”, then you scan the code. You get your place and score back.',
+  rejoined: '{name} is back.',
+  welcomeBack: 'Welcome back! Your score is kept.',
+  lostHelp:
+    'Check that you are still on the same Wi-Fi, then rejoin: you keep your place and score.',
+  rejoinNow: 'Rejoin',
+  home: 'Home',
+  ended: '{host} ended the game.',
+  away: 'away',
 }
 
 const de: Record<TextKey, string> = {
@@ -116,16 +145,59 @@ const de: Record<TextKey, string> = {
   tie: 'Unentschieden: {names}',
   noWinner: 'Niemand hat einen Funken gefangen.',
   lobby: 'Wärm dich auf, während weitere Spieler dazukommen.',
+  settings: 'Einstellungen',
+  languageLabel: 'Sprache',
+  languageAuto: 'Wie der Browser',
+  vibration: 'Vibrieren beim Fangen eines Funkens',
+  keepScreenOn: 'Bildschirm während des Spiels anlassen',
+  roundLength: 'Rundenlänge als Host',
+  seconds: '{s} Sekunden',
+  cameraSaved:
+    'Die Kamera, mit der du zuletzt gescannt hast, wird gemerkt, mit Zoom und Helligkeit.',
+  resetCamera: 'Kamera vergessen',
+  cameraForgotten: 'Kamera vergessen.',
+  clearData: 'Alle gespeicherten Daten löschen',
+  clearConfirm: 'Name, Einstellungen und gespeicherte Spiele in diesem Browser löschen?',
+  savedLocally: 'Alles wird nur in diesem Browser gespeichert.',
+  rejoin: 'Zurück ins Spiel von {host}',
+  resume: 'Dein Spiel fortsetzen',
+  resumeWith: 'Dein Spiel mit {names} fortsetzen',
+  rejoinHint:
+    '{host} tippt auf „Mitspieler hinzufügen“, dann scannst du den Code. Du bekommst deinen Platz und deine Punkte zurück.',
+  rejoined: '{name} ist zurück.',
+  welcomeBack: 'Willkommen zurück! Deine Punkte sind erhalten.',
+  lostHelp:
+    'Prüfe, ob du noch im selben WLAN bist, und steig wieder ein: Platz und Punkte bleiben erhalten.',
+  rejoinNow: 'Wieder einsteigen',
+  home: 'Startseite',
+  ended: '{host} hat das Spiel beendet.',
+  away: 'weg',
 }
 
 export type TextKey = keyof typeof en
 const TEXTS = { en, de }
 export type Language = keyof typeof TEXTS
 
-export const language: Language =
-  typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('de')
+function browserLanguage(): Language {
+  return typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('de')
     ? 'de'
     : 'en'
+}
+
+let language: Language = browserLanguage()
+
+export function currentLanguage(): Language {
+  return language
+}
+
+/** Switches the language for every text made from now on: screens show it once rebuilt. */
+export function setLanguage(choice: Language | 'auto'): void {
+  language = choice === 'auto' ? browserLanguage() : choice
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = language
+    document.title = t('title')
+  }
+}
 
 /** The text for a key in the player's language, with `{name}` placeholders filled in. */
 export function t(key: TextKey, params: Record<string, string | number> = {}): string {

@@ -83,6 +83,16 @@ describe('step', () => {
     expect(world.sparks).toEqual([])
   })
 
+  it('lasts as long as the host chose', () => {
+    const world = createWorld(5)
+    addPlayer(world, 0, 'Ada')
+    startRound(world, 30)
+    step(world, still, 29)
+    expect(world.phase).toBe('play')
+    step(world, still, 2)
+    expect(world.phase).toBe('over')
+  })
+
   it('replays the same sparks from the same seed', () => {
     const run = () => {
       const world = createWorld(42)
