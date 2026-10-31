@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
       provider: 'v8',
       // Every source file, so files without tests count as uncovered instead of missing.
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/testing.ts'],
       // lcov for Codecov, a table for the terminal.
       reporter: ['text', 'lcov'],
     },

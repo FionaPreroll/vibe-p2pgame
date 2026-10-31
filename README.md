@@ -58,12 +58,23 @@ Each pairing takes two scans, one in each direction. Players connect only to the
 - **Leaving and rejoining** (`src/session/seats.ts`, `saved.ts`): a phone that closes, fails or stays silent for 8 seconds is dropped, but its seat is kept under its browser's token. A `hello` with that token gets the same id and score back. If the same browser says hello while its old connection has not timed out yet, the old one is dropped first. The host saves the seats every 2 seconds and when the page is hidden. When the host ends the game, it sends `bye`, so players know there is nothing to rejoin.
 - **Storage** (`src/storage.ts`, `src/settings.ts`): everything lives in `localStorage` under the `vibe-p2pgame:` prefix. Every stored value is checked on reading, and an invalid value falls back to its default.
 
+## Security
+
+Anyone can make a QR code, and any phone that pairs can send whatever it likes, so neither side trusts the other:
+
+- **Codes** (`unpack` in `src/net/signal.ts`) are read strictly by the ICE grammar: credentials only of ICE characters, addresses only as IPv4, IPv6 or mDNS names, at most six candidates, and a length limit. No field can smuggle a line into the SDP the browser reads.
+- **Messages** (`src/net/protocol.ts`) longer than 16 KB are dropped unread. The rest is parsed as JSON and checked field by field (`parseToHost`, `parseToGuest`, `parseSnapshot`), and anything unexpected is dropped. Coordinates must be finite (JSON reads `1e999` as Infinity) and are kept inside the arena. A snapshot is drawn only when all of it is sound.
+- **Names** lose control and formatting characters, such as a right-to-left override, and are cut to 16 characters.
+- **The host** decides everything: a player only steers their own dot and cannot name an id. The host answers pings only with a number, and lets in one player per connection and up to eight players in all. Player tokens never leave the host, so nobody can take another player's place.
+- **Limits:** the connection is encrypted by WebRTC (DTLS), but a phone that pairs can still lie about its own input; the game does not check what is humanly possible. A rejoining player is known by their browser's token, which is safe only as long as that token stays secret.
+
 ## Layout
 
 ```
 src/
   game/      sim.ts: the rules, pure and tested; draw.ts: the canvas
-  net/       signal.ts: SDP ↔ short code; link.ts: WebRTC; protocol.ts: messages
+  net/       signal.ts: SDP ↔ short code; link.ts: WebRTC; protocol.ts: messages, checked;
+             testing.ts: connections in memory, for tests
   qr/        qr.ts: QR codes as SVG (uqr); scanner.ts: camera, focus, zoom, decoding
   session/   host.ts and guest.ts: the two sides of a game; seats.ts and saved.ts: rejoining
   ui/        the screens, plain DOM without a framework; scanPanel.ts: the camera view
@@ -89,7 +100,10 @@ pnpm dev
 pnpm check
 ```
 
-`pnpm check` runs the type check, Biome and the unit tests. `pnpm test:coverage` also measures coverage; CI uploads it to Codecov. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
+`pnpm check` runs the type check, Biome and the unit tests:
+
+- `src/session/p2p.test.ts` connects real host and player sessions through connections in memory (`src/net/testing.ts`), with fake timers. It covers joining, steering, pings, a full game, versions, silence, leaving and rejoining, and attacks from players and hosts.
+- `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the code format, the message parsers, the rules, and the host and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it. `pnpm test:coverage` also measures coverage; CI uploads it to Codecov. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
 
 **On phones:** `pnpm dev:phone` serves the game to the local network over HTTPS with a self-signed certificate (phones only open the camera on HTTPS pages). Open the address it prints on each phone and accept the certificate warning once. Alternatively, deploy to GitHub Pages and use that URL.
 

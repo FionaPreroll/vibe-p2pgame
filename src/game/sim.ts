@@ -209,7 +209,8 @@ function nearestInReach(
 }
 
 function move(player: Player, target: Target, dt: number): void {
-  if (target === null) return
+  // The host checks every target it is sent; this keeps a position finite whatever comes.
+  if (target === null || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return
   const dx = target.x - player.x
   const dy = target.y - player.y
   const distance = Math.hypot(dx, dy)

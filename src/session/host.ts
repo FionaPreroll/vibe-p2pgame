@@ -11,11 +11,11 @@ import {
   type World,
 } from '../game/sim'
 import { acceptAnswer, createOffer, type Link, onLost, opened } from '../net/link'
-import { listen, PROTOCOL, send, type ToGuest, type ToHost } from '../net/protocol'
+import { cleanName, listen, PROTOCOL, parseToHost, send, type ToGuest } from '../net/protocol'
 import type { Signal } from '../net/signal'
 import { forgetHostedGame, type HostedGame, saveHostedGame } from './saved'
 import { Seats } from './seats'
-import { cleanName, type Session, SILENCE_MS, TICK_MS } from './session'
+import { type Session, SILENCE_MS, TICK_MS } from './session'
 
 const HOST_ID = 0
 /** How often the host saves the game, so a reloaded page can carry on. */
@@ -63,7 +63,7 @@ export class HostSession implements Session {
   private readonly seats: Seats
   private last = performance.now()
   private lastSave = 0
-  private readonly timer: number
+  private readonly timer: ReturnType<typeof setInterval>
   private readonly onPageHide = () => this.save()
 
   constructor(
@@ -72,8 +72,8 @@ export class HostSession implements Session {
   ) {
     addPlayer(this.world, HOST_ID, name).score = saved?.hostScore ?? 0
     this.seats = new Seats(saved?.nextId ?? HOST_ID + 1, saved?.players)
-    this.timer = window.setInterval(() => this.tick(), TICK_MS)
-    window.addEventListener('pagehide', this.onPageHide)
+    this.timer = setInterval(() => this.tick(), TICK_MS)
+    globalThis.addEventListener?.('pagehide', this.onPageHide)
     this.save()
   }
 
@@ -100,37 +100,48 @@ export class HostSession implements Session {
 
   async pair(): Promise<Pairing> {
     const { link, code } = await createOffer()
-    let joined = false
-    // Listening starts now, before the channel opens, so the player's hello cannot slip by.
-    const hello = new Promise<Joined>((resolve, reject) => {
-      listen<ToHost>(link.control, (message) => {
-        if (message.type !== 'hello' || joined) return
-        const token = typeof message.token === 'string' ? message.token.slice(0, 64) : ''
-        const returning = [...this.guests].find(([, guest]) => guest.token === token)
-        // The same browser again, while its old connection has not timed out yet: the old
-        // one is dead, as a browser only ever plays from one page.
-        if (message.version !== PROTOCOL) {
-          send(link.control, { type: 'mismatch', version: PROTOCOL })
-          setTimeout(() => link.pc.close(), 500)
-          return reject(new Error('version'))
-        }
-        if (returning && token) this.drop(returning[0], false)
-        if (this.world.players.length >= MAX_PLAYERS) {
-          send(link.control, { type: 'full' })
-          setTimeout(() => link.pc.close(), 500)
-          return reject(new Error('full'))
-        }
-        joined = true
-        resolve(this.admit(link, cleanName(message.name, '?'), token))
-      })
-    })
+    const attached = this.attach(link)
     return {
       code,
       accept: async (answer) => {
         await acceptAnswer(link, answer)
         await opened(link)
-        return hello
+        return attached.joined
       },
+      cancel: attached.cancel,
+    }
+  }
+
+  /**
+   * Takes a new connection into the game: waits for the player's hello, then lets them in, or
+   * tells them why not. Listening starts at once, before the channels open, so the hello
+   * cannot slip by. Only the first hello counts.
+   */
+  attach(link: Link): { joined: Promise<Joined>; cancel(): void } {
+    let joined = false
+    const hello = new Promise<Joined>((resolve, reject) => {
+      listen(link.control, parseToHost, (message) => {
+        if (message.type !== 'hello' || joined) return
+        joined = true
+        if (message.version !== PROTOCOL) {
+          send(link.control, { type: 'mismatch', version: PROTOCOL })
+          setTimeout(() => link.pc.close(), 500)
+          return reject(new Error('version'))
+        }
+        // The same browser again, while its old connection has not timed out yet: the old
+        // one is dead, as a browser only ever plays from one page.
+        const returning = [...this.guests].find(([, guest]) => guest.token === message.token)
+        if (returning && message.token) this.drop(returning[0], false)
+        if (this.world.players.length >= MAX_PLAYERS) {
+          send(link.control, { type: 'full' })
+          setTimeout(() => link.pc.close(), 500)
+          return reject(new Error('full'))
+        }
+        resolve(this.admit(link, cleanName(message.name, '?'), message.token))
+      })
+    })
+    return {
+      joined: hello,
       cancel: () => {
         if (!joined) link.pc.close()
       },
@@ -143,7 +154,7 @@ export class HostSession implements Session {
    */
   close(ended = true): void {
     clearInterval(this.timer)
-    window.removeEventListener('pagehide', this.onPageHide)
+    globalThis.removeEventListener?.('pagehide', this.onPageHide)
     if (ended) {
       forgetHostedGame()
       for (const guest of this.guests.values()) send(guest.link.control, { type: 'bye' })
@@ -166,15 +177,17 @@ export class HostSession implements Session {
     this.guests.set(id, guest)
     addPlayer(this.world, id, name).score = score
     send(link.control, { type: 'welcome', id, host: this.name, rejoined, version: PROTOCOL })
-    listen<ToHost>(link.fast, (message) => {
+    // Only `fast` carries messages after the hello; whatever else arrives is dropped.
+    listen(link.fast, parseToHost, (message) => {
       guest.lastSeen = performance.now()
       if (message.type === 'ping') {
         send(link.fast, { type: 'pong', sent: message.sent })
       } else if (message.type === 'input') {
+        // The parser has made both finite and inside the arena, or both null.
         const { x, y, ping } = message
-        this.targets.set(id, typeof x === 'number' && typeof y === 'number' ? { x, y } : null)
+        this.targets.set(id, x !== null && y !== null ? { x, y } : null)
         const player = this.world.players.find((p) => p.id === id)
-        if (player) player.ping = typeof ping === 'number' ? Math.round(ping) : null
+        if (player) player.ping = ping === null ? null : Math.round(ping)
       }
     })
     onLost(link, () => this.drop(id))

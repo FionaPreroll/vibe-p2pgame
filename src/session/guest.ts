@@ -1,6 +1,6 @@
 import type { Snapshot, Target } from '../game/sim'
 import { type Link, onLost, opened } from '../net/link'
-import { listen, PROTOCOL, send, type ToGuest } from '../net/protocol'
+import { listen, PROTOCOL, parseToGuest, send, type ToGuest } from '../net/protocol'
 import { type Session, SILENCE_MS, TICK_MS } from './session'
 
 const PING_MS = 1000
@@ -15,7 +15,7 @@ export class GuestSession implements Session {
   private steer: Target = null
   private ping: number | null = null
   private lastSeen = performance.now()
-  private readonly timers: number[] = []
+  private readonly timers: ReturnType<typeof setInterval>[] = []
   private lost = false
 
   private constructor(
@@ -26,17 +26,18 @@ export class GuestSession implements Session {
     /** True if the host gave this player back their place and score. */
     readonly rejoined: boolean,
   ) {
-    listen<ToGuest>(link.control, (message) => {
+    listen(link.control, parseToGuest, (message) => {
       if (message.type === 'bye') this.lose(true)
     })
-    listen<ToGuest>(link.fast, (message) => {
+    // Snapshots are checked whole by the parser: a bad one is dropped, the next one drawn.
+    listen(link.fast, parseToGuest, (message) => {
       this.lastSeen = performance.now()
       if (message.type === 'state') this.state = message.state
       else if (message.type === 'pong') this.ping = performance.now() - message.sent
     })
     onLost(link, () => this.lose(false))
     this.timers.push(
-      window.setInterval(() => {
+      setInterval(() => {
         send(link.fast, {
           type: 'input',
           x: this.steer?.x ?? null,
@@ -45,7 +46,7 @@ export class GuestSession implements Session {
         })
         if (performance.now() - this.lastSeen > SILENCE_MS) this.lose(false)
       }, TICK_MS),
-      window.setInterval(() => send(link.fast, { type: 'ping', sent: performance.now() }), PING_MS),
+      setInterval(() => send(link.fast, { type: 'ping', sent: performance.now() }), PING_MS),
     )
   }
 
@@ -57,8 +58,8 @@ export class GuestSession implements Session {
     await opened(link)
     const welcome = await new Promise<Extract<ToGuest, { type: 'welcome' }>>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('timeout')), WELCOME_TIMEOUT_MS)
-      listen<ToGuest>(link.control, (message) => {
-        if (message.type === 'welcome' && typeof message.id === 'number') {
+      listen(link.control, parseToGuest, (message) => {
+        if (message.type === 'welcome') {
           // A host without a version, or another one, sends snapshots this phone misreads.
           if (message.version === PROTOCOL) resolve(message)
           else reject(new Error('version'))
@@ -69,8 +70,7 @@ export class GuestSession implements Session {
       })
       send(link.control, { type: 'hello', name, token, version: PROTOCOL })
     })
-    const host = typeof welcome.host === 'string' ? welcome.host : '?'
-    return new GuestSession(link, welcome.id, host, welcome.rejoined === true)
+    return new GuestSession(link, welcome.id, welcome.host, welcome.rejoined)
   }
 
   selfId(): number {

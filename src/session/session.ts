@@ -15,9 +15,3 @@ export interface Session {
 export const SILENCE_MS = 8000
 /** How often the host sends the state, and players their input. */
 export const TICK_MS = 1000 / 30
-
-/** A name as other players see it: short, single line, never empty. */
-export function cleanName(name: unknown, fallback: string): string {
-  const text = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, 16) : ''
-  return text || fallback
-}

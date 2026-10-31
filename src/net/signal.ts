@@ -41,6 +41,23 @@ const MAGIC = 'P1'
 /** Enough for a hotspot, and keeps the QR code small on phones with many network interfaces. */
 const MAX_CANDIDATES = 6
 const SETUP_CODES = { actpass: 'x', active: 'a', passive: 'p' } as const
+/**
+ * What a code may hold, after the ICE grammar (RFC 8839): credentials of `ice-char`s only, and
+ * addresses that are IPv4, IPv6 or an mDNS name. A QR code is anyone's to make, and every field
+ * goes into the SDP the browser reads, so a line break or anything else must not get through.
+ */
+const UFRAG = /^[A-Za-z0-9+/]{4,256}$/
+const PWD = /^[A-Za-z0-9+/]{22,256}$/
+const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/
+const IPV6 = /^[0-9A-Fa-f:.]{2,45}$/
+const MDNS = /^[0-9A-Za-z-]{1,63}\.local$/
+/** Long enough for any real code, and a bound on what is parsed at all. */
+const MAX_CODE_LENGTH = 2048
+
+/** Whether an address may stand in a candidate: an IP address or an mDNS name. */
+export function isAddress(address: string): boolean {
+  return IPV4.test(address) || (address.includes(':') && IPV6.test(address)) || MDNS.test(address)
+}
 
 /** Reads the parts of a browser's SDP that the other side needs. */
 export function fromSdp(type: SignalType, sdp: string): Signal {
@@ -64,7 +81,7 @@ export function fromSdp(type: SignalType, sdp: string): Signal {
     // foundation component protocol priority address port "typ" type …
     const [, component, protocol, , address, port, , kind] = line.trim().split(' ')
     if (component !== '1' || protocol?.toLowerCase() !== 'udp' || kind !== 'host') continue
-    if (address === undefined || port === undefined) continue
+    if (address === undefined || port === undefined || !isAddress(address)) continue
     if (candidates.some((c) => c.address === address && c.port === Number(port))) continue
     candidates.push({ address, port: Number(port) })
   }
@@ -129,6 +146,7 @@ export function pack(signal: Signal): string {
  * anything else, such as a QR code that belongs to something else.
  */
 export function unpack(text: string): Signal | undefined {
+  if (text.length > MAX_CODE_LENGTH) return undefined
   let code = text.includes('#') ? text.slice(text.indexOf('#') + 1) : text
   try {
     code = decodeURIComponent(code)
@@ -143,15 +161,21 @@ export function unpack(text: string): Signal | undefined {
   const role = (Object.keys(SETUP_CODES) as Signal['setup'][]).find(
     (key) => SETUP_CODES[key] === setup,
   )
-  if (role === undefined || !ufrag || !pwd) return undefined
+  if (role === undefined || !UFRAG.test(ufrag ?? '') || !PWD.test(pwd ?? '')) return undefined
+  if (ufrag === undefined || pwd === undefined) return undefined
   const bytes = fromBase64Url(fingerprint ?? '')
   if (bytes?.length !== 32) return undefined
   const list: Candidate[] = []
-  for (const entry of candidates === '' ? [] : candidates.split('!')) {
+  const entries = candidates === '' ? [] : candidates.split('!')
+  if (entries.length > MAX_CANDIDATES) return undefined
+  for (const entry of entries) {
     const comma = entry.lastIndexOf(',')
-    const port = Number(entry.slice(comma + 1))
-    if (comma < 1 || !Number.isInteger(port) || port < 1 || port > 65535) return undefined
-    list.push({ address: entry.slice(0, comma), port })
+    const address = entry.slice(0, comma)
+    const portText = entry.slice(comma + 1)
+    const port = Number(portText)
+    if (comma < 1 || !/^\d{1,5}$/.test(portText) || port < 1 || port > 65535) return undefined
+    if (!isAddress(address)) return undefined
+    list.push({ address, port })
   }
   return {
     type: type === 'o' ? 'offer' : 'answer',
