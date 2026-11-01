@@ -4,6 +4,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
 ### Added
 
 - `GuestRoom.traffic()` and `HostRoom.traffic(id)`: messages and characters sent and received on a connection, and on a player's side the pings sent, answered and lost. A ping unanswered for `PING_LOST_MS`, 3 seconds, counts as lost.
@@ -45,7 +47,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 - Checks for writing parsers, and name cleaning.
 - Connections in memory for tests (`@fionapreroll/p2p/testing`).
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.2.0...HEAD
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.0...HEAD
+[0.3.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.2.0...p2p-v0.3.0
 [0.2.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.1.1...p2p-v0.2.0
 [0.1.1]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.1.0...p2p-v0.1.1
 [0.1.0]: https://github.com/FionaPreroll/vibe-p2pgame/tree/p2p-v0.1.0/packages/p2p
