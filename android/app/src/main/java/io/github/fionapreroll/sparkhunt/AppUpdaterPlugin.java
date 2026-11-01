@@ -1,15 +1,22 @@
 package io.github.fionapreroll.sparkhunt;
 
 import android.content.Intent;
+import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.content.IntentCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -17,6 +24,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -235,7 +243,12 @@ public class AppUpdaterPlugin extends Plugin {
     /**
      * Hands the downloaded APK to Android's installer. Without the right to install apps, it opens
      * that setting instead and rejects with the code "permission": the player allows it there and
-     * taps Install again.
+     * the app goes on.
+     *
+     * The APK goes into a PackageInstaller session, which tells how it goes as "install" events:
+     * "confirm" when Android's dialog asking the player is open, "success", "aborted" when the
+     * player said no, or "failure" with Android's message. Where a session cannot be made, the APK
+     * is opened with the installer the old way, which tells nothing.
      */
     @PluginMethod
     public void install(PluginCall call) {
@@ -254,12 +267,115 @@ public class AppUpdaterPlugin extends Plugin {
             call.reject("Nothing downloaded", "nothing-downloaded");
             return;
         }
+        execute(() -> {
+            try {
+                installWithSession(apk);
+                JSObject result = new JSObject();
+                result.put("way", "session");
+                call.resolve(result);
+            } catch (Exception e) {
+                try {
+                    installWithIntent(apk);
+                    JSObject result = new JSObject();
+                    result.put("way", "intent");
+                    call.resolve(result);
+                } catch (Exception again) {
+                    call.reject("The installer did not open: " + again.getMessage(), "installer", again);
+                }
+            }
+        });
+    }
+
+    private BroadcastReceiver installResults;
+
+    private String resultAction() {
+        return getContext().getPackageName() + ".INSTALL_RESULT";
+    }
+
+    private void installWithSession(File apk) throws IOException {
+        listenForInstallResults();
+        PackageInstaller installer = getContext().getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(getContext().getPackageName());
+        int id = installer.createSession(params);
+        try (PackageInstaller.Session session = installer.openSession(id)) {
+            try (InputStream in = new FileInputStream(apk); OutputStream out = session.openWrite("spark-hunt.apk", 0, apk.length())) {
+                byte[] buffer = new byte[64 * 1024];
+                int read;
+                while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+                session.fsync(out);
+            }
+            Intent callback = new Intent(resultAction()).setPackage(getContext().getPackageName());
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+            PendingIntent pending = PendingIntent.getBroadcast(getContext(), id, callback, flags);
+            session.commit(pending.getIntentSender());
+        } catch (IOException | RuntimeException e) {
+            installer.abandonSession(id);
+            throw e;
+        }
+    }
+
+    /** Android's answers about a session: the dialog to show the player, and how it ended. */
+    private synchronized void listenForInstallResults() {
+        if (installResults != null) return;
+        installResults = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+                String message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+                JSObject event = new JSObject();
+                if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                    Intent confirm = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent.class);
+                    if (confirm == null) {
+                        event.put("status", "failure");
+                        message = "No confirmation dialog";
+                    } else {
+                        // From the activity in front, so Android lets the dialog open.
+                        Activity activity = getActivity();
+                        confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        try {
+                            if (activity != null) activity.startActivity(confirm);
+                            else getContext().startActivity(confirm);
+                            event.put("status", "confirm");
+                        } catch (Exception e) {
+                            event.put("status", "failure");
+                            message = "The confirmation dialog did not open: " + e.getMessage();
+                        }
+                    }
+                } else if (status == PackageInstaller.STATUS_SUCCESS) {
+                    event.put("status", "success");
+                } else if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
+                    event.put("status", "aborted");
+                } else {
+                    event.put("status", "failure");
+                }
+                String text = message == null ? "" : message;
+                event.put("message", text.length() > 200 ? text.substring(0, 200) : text);
+                notifyListeners("install", event);
+            }
+        };
+        ContextCompat.registerReceiver(getContext(), installResults, new IntentFilter(resultAction()), ContextCompat.RECEIVER_NOT_EXPORTED);
+    }
+
+    /** The old way: opens the APK with the installer, which tells nothing back. */
+    private void installWithIntent(File apk) {
         Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", apk);
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "application/vnd.android.package-archive");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-        getContext().startActivity(intent);
-        call.resolve();
+        Activity activity = getActivity();
+        if (activity != null) activity.startActivity(intent);
+        else getContext().startActivity(intent);
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        if (installResults != null) {
+            try {
+                getContext().unregisterReceiver(installResults);
+            } catch (IllegalArgumentException ignored) {}
+            installResults = null;
+        }
     }
 
     private long downloadedBuild() {

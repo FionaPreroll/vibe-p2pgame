@@ -50,6 +50,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- An update no longer hangs at "Android's installer takes over" when the installer does not open: the dialog now says when Android waits for your confirmation, when the update was cancelled or failed, and offers to try again if the installer stays closed.
 - The app's texts fit the app: no more "no app", the phone instead of the browser, Bluetooth on the start screen, and no tip to open a page once online. Phones of different versions say how to update both the website and the app.
 - A new screen opens at its top, instead of scrolled down as far as the screen before.
 - The back button no longer closes the Android app from every screen: it goes back from the settings and other screens and closes dialogs, does nothing during a game, and leaves the app only from the start screen.

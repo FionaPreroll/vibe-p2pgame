@@ -102,7 +102,12 @@ const en = {
   updatePause: 'Pause',
   updateResume: 'Resume',
   updatePaused: 'Paused at {percent} %. It goes on from there, also after closing the app.',
-  updateInstalling: 'Android’s installer takes over now.',
+  updateInstalling: 'Opening Android’s installer…',
+  updateConfirm: 'Confirm the update in Android’s dialog.',
+  updateInstalled: 'Installed. The app starts again in its new version.',
+  updateAborted: 'The update was not installed. Tap Install to try again.',
+  updateInstallFailed: 'Android could not install the update: {message}',
+  updateNoInstaller: 'Android’s installer did not open. Tap Install to try again.',
   updatePermission:
     'Allow Spark Hunt to install apps in the settings that have just opened, then come back: installing goes on by itself.',
   updateFailed: 'The download stopped. Try again: it goes on where it stopped.',
@@ -335,7 +340,14 @@ const de: Record<TextKey, string> = {
   updatePause: 'Pausieren',
   updateResume: 'Fortsetzen',
   updatePaused: 'Angehalten bei {percent} %. Es geht dort weiter, auch nach dem Schließen der App.',
-  updateInstalling: 'Jetzt übernimmt der Installer von Android.',
+  updateInstalling: 'Androids Installer öffnet sich…',
+  updateConfirm: 'Bestätige die Aktualisierung in Androids Dialog.',
+  updateInstalled: 'Installiert. Die App startet in ihrer neuen Version neu.',
+  updateAborted:
+    'Die Aktualisierung wurde nicht installiert. Tippe auf Installieren, um es noch einmal zu versuchen.',
+  updateInstallFailed: 'Android konnte die Aktualisierung nicht installieren: {message}',
+  updateNoInstaller:
+    'Androids Installer hat sich nicht geöffnet. Tippe auf Installieren, um es noch einmal zu versuchen.',
   updatePermission:
     'Erlaube Funkenjagd in den eben geöffneten Einstellungen, Apps zu installieren, und komm dann zurück: Die Installation geht von selbst weiter.',
   updateFailed:

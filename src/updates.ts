@@ -43,10 +43,11 @@ export interface Updater {
   downloaded(): Promise<{ build: number }>
   /** Whether the app may hand APKs to the installer, without opening any setting. */
   canInstall(): Promise<{ allowed: boolean }>
-  install(): Promise<void>
+  /** Hands the APK to Android's installer: as a session, which tells how it goes, or not. */
+  install(): Promise<{ way?: string }>
   addListener(
-    event: 'progress',
-    listener: (progress: unknown) => void,
+    event: 'progress' | 'install',
+    listener: (value: unknown) => void,
   ): Promise<PluginListenerHandle>
 }
 
@@ -75,6 +76,48 @@ export function parseRelease(value: unknown): Release | undefined {
   const sound =
     Number.isSafeInteger(size) && (size as number) > 0 && (size as number) <= MAX_APK_BYTES
   return { build: build as number, commit, size: sound ? (size as number) : null }
+}
+
+/** What Android's installer says about a session (see AppUpdaterPlugin.install). */
+export interface InstallEvent {
+  /** Its dialog asking the player is open, the update is in, the player said no, or it failed. */
+  readonly status: 'confirm' | 'success' | 'aborted' | 'failure'
+  /** Android's own words, for a failure. */
+  readonly message: string
+}
+
+const INSTALL_STATUSES: readonly InstallEvent['status'][] = [
+  'confirm',
+  'success',
+  'aborted',
+  'failure',
+]
+
+/** An install event from the native side, checked. */
+export function parseInstallEvent(value: unknown): InstallEvent | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const { status, message } = value as Record<string, unknown>
+  if (!INSTALL_STATUSES.includes(status as InstallEvent['status'])) return undefined
+  return {
+    status: status as InstallEvent['status'],
+    message: typeof message === 'string' ? message.slice(0, 200) : '',
+  }
+}
+
+/** Calls back with what Android's installer says; the result stops listening. */
+export async function onInstallEvent(
+  listener: (event: InstallEvent) => void,
+  updater: Updater = AppUpdater,
+): Promise<() => void> {
+  const handle = await updater
+    .addListener('install', (value) => {
+      const event = parseInstallEvent(value)
+      if (!event) return
+      log('updates', `installer: ${event.status}${event.message ? ` (${event.message})` : ''}`)
+      listener(event)
+    })
+    .catch(() => null)
+  return () => void handle?.remove()
 }
 
 /** A progress event from the native side, checked. */
@@ -208,8 +251,8 @@ export async function continueInstall(updater: Updater = AppUpdater): Promise<In
 
 async function handOver(updater: Updater): Promise<InstallResult> {
   try {
-    await updater.install()
-    log('updates', 'handed to the installer')
+    const way = (await updater.install())?.way
+    log('updates', `handed to the installer${way ? ` (${way})` : ''}`)
     return 'installing'
   } catch (error) {
     log('updates', `not installed: ${describeError(error)}`)

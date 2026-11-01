@@ -6,6 +6,7 @@ import {
   installUpdate,
   isDownloaded,
   network,
+  onInstallEvent,
   type Progress,
   partialBytes,
   pauseUpdate,
@@ -45,6 +46,9 @@ function askOnce(): Promise<boolean> {
     cancelOnBack(modal, answer(false))
   })
 }
+
+/** How long Android's installer has to say something before the player may try again. */
+const INSTALLER_WAIT_MS = 6000
 
 /**
  * A new version: download and install it now, or later. The dialog says how large the download
@@ -100,6 +104,36 @@ export function offer(release: Release, updater: Updater = AppUpdater): void {
             : t('updateFailed')
     if (result === 'installing' || result === 'permission') bar.hidden = true
     if (result === 'permission') waitForPermission()
+    if (result === 'installing') void watchInstaller()
+  }
+
+  // Android's installer says how it goes; if it says nothing, as when its dialog did not
+  // open, the player can try again after a few seconds.
+  let stopWatching: (() => void) | null = null
+  const offerAgain = (text: string) => {
+    status.textContent = text
+    install.textContent = t('updateInstall')
+    install.hidden = false
+    install.disabled = false
+  }
+  const watchInstaller = async () => {
+    stopWatching?.()
+    let heard = false
+    const stop = await onInstallEvent((event) => {
+      heard = true
+      if (event.status === 'confirm') status.textContent = t('updateConfirm')
+      else if (event.status === 'success') status.textContent = t('updateInstalled')
+      else if (event.status === 'aborted') offerAgain(t('updateAborted'))
+      else offerAgain(t('updateInstallFailed', { message: event.message || '?' }))
+    }, updater)
+    const timer = setTimeout(() => {
+      if (!heard && document.visibilityState === 'visible') offerAgain(t('updateNoInstaller'))
+    }, INSTALLER_WAIT_MS)
+    stopWatching = () => {
+      clearTimeout(timer)
+      stop()
+      stopWatching = null
+    }
   }
 
   // Back from the setting: go on, once, if the player allowed it.
@@ -108,9 +142,9 @@ export function offer(release: Release, updater: Updater = AppUpdater): void {
     waiting = () => {
       if (document.visibilityState !== 'visible') return
       stopWaiting()
-      void continueInstall(updater).then((result) => {
-        if (result === 'installing') showResult(result)
-      })
+      // A moment for the app to be in front again: Android opens the installer's dialog only
+      // over an app in front.
+      setTimeout(() => void continueInstall(updater).then((result) => showResult(result)), 500)
     }
     document.addEventListener('visibilitychange', waiting)
   }
@@ -123,6 +157,7 @@ export function offer(release: Release, updater: Updater = AppUpdater): void {
   install.onclick = async () => {
     install.disabled = true
     stopWaiting()
+    stopWatching?.()
     if (await isDownloaded(release, updater)) {
       showResult(await installUpdate(release, () => {}, updater))
       return
@@ -150,6 +185,7 @@ export function offer(release: Release, updater: Updater = AppUpdater): void {
   }
   later.onclick = () => {
     stopWaiting()
+    stopWatching?.()
     // What is downloaded stays, for the next time.
     if (running) void pauseUpdate(updater)
     modal.remove()

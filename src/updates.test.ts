@@ -7,6 +7,8 @@ vi.mock('@capacitor/core', () => ({ registerPlugin: () => ({}) }))
 const { forgetSettings, settings, updateSettings } = await import('./settings')
 const {
   availableUpdate,
+  onInstallEvent,
+  parseInstallEvent,
   checkForUpdate,
   continueInstall,
   installUpdate,
@@ -321,5 +323,35 @@ describe('formatBytes', () => {
     expect(formatBytes(12_600_000)).toBe('12.6 MB')
     expect(formatBytes(400_000)).toBe('0.4 MB')
     expect(formatBytes(128_400_000)).toBe('128 MB')
+  })
+})
+
+describe('the installer’s answers', () => {
+  it('are read only when sound', () => {
+    expect(parseInstallEvent({ status: 'confirm' })).toEqual({ status: 'confirm', message: '' })
+    expect(
+      parseInstallEvent({ status: 'failure', message: 'x'.repeat(500) })?.message,
+    ).toHaveLength(200)
+    for (const value of [null, 'success', { status: 'done' }, { status: 1 }]) {
+      expect(parseInstallEvent(value)).toBeUndefined()
+    }
+  })
+
+  it('reach the dialog, and stop when it stops listening', async () => {
+    let send: ((value: unknown) => void) | undefined
+    const { fake, remove } = updater({
+      addListener: vi.fn(async (_: string, listener: (value: unknown) => void) => {
+        send = listener
+        return { remove }
+      }),
+    })
+    const heard: string[] = []
+    const stop = await onInstallEvent((event) => heard.push(event.status), fake)
+    send?.({ status: 'confirm' })
+    send?.({ status: 'nonsense' })
+    send?.({ status: 'aborted', message: 'User cancelled' })
+    expect(heard).toEqual(['confirm', 'aborted'])
+    stop()
+    expect(remove).toHaveBeenCalledOnce()
   })
 })
