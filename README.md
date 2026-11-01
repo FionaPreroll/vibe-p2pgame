@@ -80,7 +80,7 @@ Every phone samples its connections once a second: the ping, messages and data p
 - **Data:** the camera you last scanned with is remembered, with its zoom and brightness; _Delete all saved data_ removes everything, which is stored on the phone only;
 - **Help:** the debug report.
 
-ⓘ on the start screen, beside ⚙, opens **About Spark Hunt**: the build (in the app also its build number), the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
+ⓘ on the start screen, beside ⚙, opens **About Spark Hunt**: the build (in the app also its build number), the contact address fipreroll+app@gmail.com, the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
 
 The website and the app say what is true where they run: the app speaks of the phone instead of the browser, mentions Bluetooth on the start screen, and leaves out the website's tip to open the page once online. On Android phones, the website offers the app.
 

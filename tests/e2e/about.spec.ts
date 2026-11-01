@@ -19,6 +19,10 @@ test('the About view shows the changelog and the licenses of other people’s co
     'href',
     'https://github.com/FionaPreroll/vibe-p2pgame',
   )
+  await expect(page.getByRole('link', { name: 'fipreroll+app@gmail.com' })).toHaveAttribute(
+    'href',
+    'mailto:fipreroll+app@gmail.com',
+  )
 
   // The newest changes are open; nothing of the file's link definitions shows.
   const changelog = page.locator('.changelog')

@@ -5,6 +5,8 @@ import { isApp } from '../native'
 import { h, show } from './dom'
 
 export const REPOSITORY = 'https://github.com/FionaPreroll/vibe-p2pgame'
+/** Where players write to, about the game. */
+export const CONTACT = 'fipreroll+app@gmail.com'
 
 /** A package in the bundle, as the build lists it in licenses.json (see tools/licenses.ts). */
 interface License {
@@ -95,6 +97,13 @@ export function aboutScreen(onBack: () => void): void {
       h('p', {}, t('tagline')),
       build,
       h('p', {}, link(REPOSITORY, t('aboutSource'))),
+      // A mail link opens the mail app in place, in the app as in a browser: no new window.
+      h(
+        'p',
+        {},
+        `${t('aboutContact')} `,
+        h('a', { href: `mailto:${CONTACT}`, textContent: CONTACT }),
+      ),
       h('h3', {}, t('changelogTitle')),
       t('changelogNote') ? h('p', { class: 'muted' }, t('changelogNote')) : null,
       changelogView(changelog),

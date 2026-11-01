@@ -2,7 +2,8 @@
   "name": "vibe-p2pgame",
   "version": "0.1.0",
   "private": true,
-  "description": "A browser game for phones that pair over WebRTC with QR codes: no server, no internet.",
+  "description": "A game for phones side by side, in the browser and as an Android app: paired by QR code over Wi-Fi or by Bluetooth, without internet or a server.",
+  "author": "FionaPreroll <fipreroll+app@gmail.com>",
   "type": "module",
   "packageManager": "pnpm@12.15.0",
   "engines": {
