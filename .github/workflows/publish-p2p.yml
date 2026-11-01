@@ -1,14 +1,21 @@
 name: Publish p2p
 
-# Publishes @fionapreroll/p2p to GitHub's npm registry, in one of two ways:
-# - Run workflow (Actions tab, on main): publishes the version in packages/p2p/package.json,
-#   then tags the commit p2p-vX.Y.Z.
-# - Pushing a tag p2p-vX.Y.Z: publishes that version; the tag must match package.json.
+# Publishes a library of packages/ to GitHub's npm registry: @fionapreroll/p2p or
+# @fionapreroll/p2p-nearby, in one of two ways:
+# - Run workflow (Actions tab, on main), choosing the package: publishes the version in its
+#   package.json, then tags the commit p2p-vX.Y.Z or p2p-nearby-vX.Y.Z.
+# - Pushing such a tag: publishes that package's version; the tag must match its package.json.
 
 on:
   push:
-    tags: ["p2p-v*"]
+    tags: ["p2p-v*", "p2p-nearby-v*"]
   workflow_dispatch:
+    inputs:
+      package:
+        description: Which library to publish
+        type: choice
+        options: [p2p, p2p-nearby]
+        default: p2p
 
 permissions:
   contents: write
@@ -33,13 +40,28 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Check the version
         id: version
+        env:
+          CHOSEN: ${{ inputs.package }}
         run: |
-          version=$(node -p "require('./packages/p2p/package.json').version")
-          tag="p2p-v$version"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            case "$GITHUB_REF_NAME" in
+              p2p-nearby-v*) package=p2p-nearby ;;
+              *) package=p2p ;;
+            esac
+          else
+            package="$CHOSEN"
+          fi
+          dir="packages/$package"
+          version=$(node -p "require('./$dir/package.json').version")
+          tag="$package-v$version"
+          {
+            echo "package=$package"
+            echo "tag=$tag"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             if [ "$tag" != "$GITHUB_REF_NAME" ]; then
-              echo "::error::Tag $GITHUB_REF_NAME does not match packages/p2p/package.json ($version)"
+              echo "::error::Tag $GITHUB_REF_NAME does not match $dir/package.json ($version)"
               exit 1
             fi
           else
@@ -48,16 +70,16 @@ jobs:
               exit 1
             fi
             if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
-              echo "::error::$tag exists already: raise the version in packages/p2p/package.json first"
+              echo "::error::$tag exists already: raise the version in $dir/package.json first"
               exit 1
             fi
           fi
-          if ! grep -q "^## \[$version\] - " packages/p2p/CHANGELOG.md; then
-            echo "::error::packages/p2p/CHANGELOG.md has no section for $version"
+          if ! grep -q "^## \[$version\] - " "$dir/CHANGELOG.md"; then
+            echo "::error::$dir/CHANGELOG.md has no section for $version"
             exit 1
           fi
       - run: pnpm check
-      - run: pnpm --filter @fionapreroll/p2p publish --no-git-checks
+      - run: pnpm --filter "@fionapreroll/${{ steps.version.outputs.package }}" publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Only once the package is out, so a failed run leaves no tag behind and can be run again.
@@ -65,8 +87,10 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           TAG: ${{ steps.version.outputs.tag }}
+          PACKAGE: ${{ steps.version.outputs.package }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git tag -a "$TAG" -m "@fionapreroll/p2p ${TAG#p2p-v}"
+          git tag -a "$TAG" -m "@fionapreroll/$PACKAGE $VERSION"
           git push origin "$TAG"

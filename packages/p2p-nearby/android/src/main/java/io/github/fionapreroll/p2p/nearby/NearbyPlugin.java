@@ -1,4 +1,4 @@
-package io.github.fionapreroll.sparkhunt;
+package io.github.fionapreroll.p2p.nearby;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
@@ -45,10 +45,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
- * Bluetooth for src/bluetooth.ts, through Google's Nearby Connections: the host advertises, players
- * discover it, and a star of connections carries the game's messages, each tagged with its channel.
+ * The native side of @fionapreroll/p2p-nearby (src/index.ts), through Google's Nearby Connections:
+ * the host advertises, players discover it, and a star of connections carries the game's messages,
+ * each tagged with its channel.
  * Nearby finds phones over Bluetooth Low Energy and connects them over Bluetooth, and moves to a
  * faster Wi-Fi link between them where it can without disturbing the phone's own Wi-Fi.
  *
@@ -74,8 +76,12 @@ import java.util.Set;
 )
 public class NearbyPlugin extends Plugin {
 
-    /** Both sides look for this service only: other apps' Nearby traffic never reaches the game. */
-    private static final String SERVICE_ID = "io.github.fionapreroll.sparkhunt.game";
+    /**
+     * Both sides look for the game's own service only, which the game names when it starts: other
+     * apps' Nearby traffic never reaches it.
+     */
+    private static final Pattern SERVICE = Pattern.compile("[A-Za-z0-9._-]{3,64}");
+    private String serviceId = null;
     private static final int MAX_NAME_LENGTH = 64;
     /** Connection requests waiting for the host's answer at once; more are turned down. */
     private static final int MAX_PENDING = 4;
@@ -126,7 +132,9 @@ public class NearbyPlugin extends Plugin {
     public void start(PluginCall call) {
         String role = call.getString("role", "");
         log("start " + role + " (Android " + Build.VERSION.SDK_INT + ")");
-        if ((!"host".equals(role) && !"player".equals(role)) || shorten(call.getString("name", "")).isEmpty()) {
+        String service = call.getString("service", "");
+        if ((!"host".equals(role) && !"player".equals(role)) || shorten(call.getString("name", "")).isEmpty()
+                || !SERVICE.matcher(service).matches()) {
             call.reject("Bad arguments");
             return;
         }
@@ -163,6 +171,7 @@ public class NearbyPlugin extends Plugin {
 
     private void begin(PluginCall call) {
         String name = shorten(call.getString("name", ""));
+        serviceId = call.getString("service", "");
         String role = call.getString("role", "");
         // Nearby's own errors say little when the radio is off: this is checked first.
         if (Boolean.FALSE.equals(bluetoothEnabled())) {
@@ -175,7 +184,7 @@ public class NearbyPlugin extends Plugin {
             client.stopAdvertising();
             AdvertisingOptions options = new AdvertisingOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
             client
-                .startAdvertising(name, SERVICE_ID, lifecycle, options)
+                .startAdvertising(name, serviceId, lifecycle, options)
                 .addOnSuccessListener(unused -> {
                     advertising = true;
                     log("advertising");
@@ -189,7 +198,7 @@ public class NearbyPlugin extends Plugin {
             discovering = false;
             DiscoveryOptions options = new DiscoveryOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
             client
-                .startDiscovery(SERVICE_ID, discovery, options)
+                .startDiscovery(serviceId, discovery, options)
                 .addOnSuccessListener(unused -> {
                     discovering = true;
                     log("discovering");
@@ -365,7 +374,7 @@ public class NearbyPlugin extends Plugin {
     private final EndpointDiscoveryCallback discovery = new EndpointDiscoveryCallback() {
         @Override
         public void onEndpointFound(String endpointId, DiscoveredEndpointInfo info) {
-            if (!SERVICE_ID.equals(info.getServiceId())) return;
+            if (serviceId == null || !serviceId.equals(info.getServiceId())) return;
             log("found " + endpointId);
             JSObject found = new JSObject();
             found.put("endpointId", endpointId);

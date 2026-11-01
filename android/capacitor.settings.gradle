@@ -7,3 +7,6 @@ project(':capacitor-mlkit-barcode-scanning').projectDir = new File('../node_modu
 
 include ':capacitor-app'
 project(':capacitor-app').projectDir = new File('../node_modules/.pnpm/@capacitor+app@8.1.2_@capacitor+core@8.6.0/node_modules/@capacitor/app/android')
+
+include ':fionapreroll-p2p-nearby'
+project(':fionapreroll-p2p-nearby').projectDir = new File('../node_modules/@fionapreroll/p2p-nearby/android')

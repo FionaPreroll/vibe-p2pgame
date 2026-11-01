@@ -1,0 +1,60 @@
+{
+  "name": "@fionapreroll/p2p-nearby",
+  "version": "0.1.0",
+  "description": "Bluetooth for @fionapreroll/p2p in Android apps made with Capacitor: Google's Nearby Connections as a Connection, for rooms to play over without Wi-Fi.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FionaPreroll/vibe-p2pgame.git",
+    "directory": "packages/p2p-nearby"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing.d.ts",
+        "default": "./dist/testing.js"
+      }
+    }
+  },
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "android/build.gradle",
+    "android/src/main/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/p2p-nearby",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0",
+    "@fionapreroll/p2p": "^0.3.0"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^8.6.0",
+    "@fionapreroll/p2p": "workspace:*",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

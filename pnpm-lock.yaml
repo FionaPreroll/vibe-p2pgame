@@ -181,6 +181,9 @@ importers:
       '@fionapreroll/p2p':
         specifier: workspace:*
         version: link:packages/p2p
+      '@fionapreroll/p2p-nearby':
+        specifier: workspace:*
+        version: link:packages/p2p-nearby
     devDependencies:
       '@biomejs/biome':
         specifier: 2.6.3
@@ -225,6 +228,21 @@ importers:
       fast-check:
         specifier: ^4.10.2
         version: 4.10.2
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(vite@8.3.5(@types/node@24.19.2))
+
+  packages/p2p-nearby:
+    devDependencies:
+      '@capacitor/core':
+        specifier: ^8.6.0
+        version: 8.6.0
+      '@fionapreroll/p2p':
+        specifier: workspace:*
+        version: link:../p2p
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

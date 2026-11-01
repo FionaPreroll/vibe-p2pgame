@@ -26,7 +26,7 @@ export interface ReportSources {
   }
   /** The app's build, in the app. */
   readonly appInfo?: () => Promise<{ build: number; name: string }>
-  /** NearbyPlugin's diagnostics, in the app. */
+  /** Nearby's diagnostics, in the app (see `@fionapreroll/p2p-nearby`). */
   readonly bluetooth?: () => Promise<Record<string, unknown>>
 }
 
@@ -134,7 +134,7 @@ export async function reportSources(): Promise<ReportSources> {
     },
   }
   if (!app) return { now: new Date(), app, browser }
-  const [{ AppUpdater }, { Nearby }] = await Promise.all([
+  const [{ AppUpdater }, { bluetooth }] = await Promise.all([
     import('./updates'),
     import('./bluetooth'),
   ])
@@ -143,7 +143,7 @@ export async function reportSources(): Promise<ReportSources> {
     app,
     browser,
     appInfo: () => AppUpdater.info(),
-    bluetooth: () => Nearby.diagnostics(),
+    bluetooth: () => bluetooth().diagnostics(),
   }
 }
 

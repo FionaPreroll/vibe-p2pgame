@@ -50,18 +50,6 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- In-app updates: hands a new APK from the game's release to Android's installer, which asks. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- Bluetooth between phones (NearbyPlugin), as Google's Nearby Connections needs it on each
-         Android version; the app asks at runtime only for what the phone's version needs. -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <!-- Location on every version: Nearby wants it to discover games nearby, even on Android 17
-         (8034 MISSING_PERMISSION_ACCESS_COARSE_LOCATION). Only players are asked, not hosts. -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <!-- Bluetooth between phones: @fionapreroll/p2p-nearby brings its permissions in its own
+         manifest (packages/p2p-nearby/android/src/main/AndroidManifest.xml), merged in here. -->
 </manifest>

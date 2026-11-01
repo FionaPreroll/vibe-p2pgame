@@ -4,3 +4,5 @@ coverage
 test-results
 playwright-report
 *.local
+packages/*/android/build
+packages/*/android/.gradle

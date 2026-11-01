@@ -131,6 +131,8 @@ room.attach(connection) // or GuestRoom.join(connection, …)
 
 A transport may drop `fast` messages when it is busy, as WebRTC's unreliable channel does; `control` messages must arrive, in order. One room can mix transports: some players over WebRTC, others over Bluetooth.
 
+For Bluetooth in Android apps made with Capacitor, [`@fionapreroll/p2p-nearby`](../p2p-nearby/README.md) does this with Google's Nearby Connections: advertising, finding games nearby, comparing a code, and each player's `Connection`. It is a package of its own, so that apps without Bluetooth get none of its native code, Google Play services or permissions.
+
 ## Entry points
 
 | Import                      | What it has                                                                                                                                                                                                                                                      |

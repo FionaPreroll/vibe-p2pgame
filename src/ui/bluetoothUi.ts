@@ -1,4 +1,4 @@
-import { BluetoothStartError, bluetooth, type JoinRequest, type Peer } from '../bluetooth'
+import { bluetooth, type JoinRequest, NearbyStartError, type Peer } from '../bluetooth'
 import { t } from '../i18n'
 import { describeError, log } from '../log'
 import { GuestSession } from '../session/guest'
@@ -15,7 +15,7 @@ import { joinScreen, play } from './join'
 
 /** Why Bluetooth did not start, for the player, with the code a debug report explains. */
 export function startErrorText(error: unknown): string {
-  if (!(error instanceof BluetoothStartError)) return `${t('btOff')} (${describeError(error)})`
+  if (!(error instanceof NearbyStartError)) return `${t('btOff')} (${describeError(error)})`
   const text = {
     permission: t('btPermission'),
     unavailable: t('btUnavailable'),

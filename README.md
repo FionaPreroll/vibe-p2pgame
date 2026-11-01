@@ -9,7 +9,7 @@ A game for phones lying side by side, with **no internet and no server**. The ph
 - **Play in the browser:** <https://fionapreroll.github.io/vibe-p2pgame/>
 - **Android app:** [`spark-hunt.apk`](https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk), always the newest build (see [Android app](#android-app))
 
-The networking is a library of its own, [`@fionapreroll/p2p`](packages/p2p/README.md), for other games to use too.
+The networking is a library of its own, [`@fionapreroll/p2p`](packages/p2p/README.md), for other games to use too, and Bluetooth for Android apps a second one, [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md).
 
 <table>
   <tr>
@@ -133,7 +133,7 @@ These are debug builds, for playing with friends, not for the Play Store: a Play
 
 ### The library and the game
 
-Everything that is not Spark Hunt's own lives in the library [`@fionapreroll/p2p`](packages/p2p/README.md) (`packages/p2p`): the short codes, WebRTC connections, connections over any other transport, the rooms for host and players, QR codes and the camera, and the means to check and test it all. The game builds on it, in `src/`.
+Everything that is not Spark Hunt's own lives in the library [`@fionapreroll/p2p`](packages/p2p/README.md) (`packages/p2p`): the short codes, WebRTC connections, connections over any other transport, the rooms for host and players, QR codes and the camera, and the means to check and test it all. Bluetooth in Android apps is a library beside it, [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md) (`packages/p2p-nearby`), a Capacitor plugin with its native side, so that apps without Bluetooth get none of it. The game builds on both, in `src/`.
 
 The host decides everything. Its room (`HostRoom`) lets players in and carries the messages; on every tick, 30 times a second, the game steps its rules (`src/game/sim.ts`, pure TypeScript) and sends every player a complete snapshot, so a lost packet is simply replaced by the next one. Players send only where they steer, and smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds. Before the first round, the rules run in free play: everything moves, nothing scores.
 
@@ -156,7 +156,7 @@ Rooms work on any `Connection`, whatever carries it: WebRTC, Bluetooth, or memor
 
 ### Bluetooth
 
-Browsers cannot do this: Web Bluetooth can only connect to devices, and a web page cannot advertise itself, so two phones in Chrome cannot find each other (and iOS has no Web Bluetooth at all). The Android app can, through Google's Nearby Connections (`NearbyPlugin.java` in the Android project, `src/bluetooth.ts` in the game):
+Browsers cannot do this: Web Bluetooth can only connect to devices, and a web page cannot advertise itself, so two phones in Chrome cannot find each other (and iOS has no Web Bluetooth at all). The Android app can, through Google's Nearby Connections, from the library `@fionapreroll/p2p-nearby` (`packages/p2p-nearby`: `src/index.ts` and the native `NearbyPlugin.java`); `src/bluetooth.ts` gives it Spark Hunt's own service:
 
 - Nearby finds phones over Bluetooth Low Energy, connects them over Bluetooth, and moves to a faster Wi-Fi link between them only where that does not take a phone off its own Wi-Fi.
 - One host takes several players at once, in Nearby's star strategy, as the game's own. Bluetooth allows up to seven connections a phone: the game's eight players, with the host.
@@ -178,13 +178,15 @@ Anyone can make a QR code, any phone nearby can ask over Bluetooth, and any phon
 - **Messages** longer than 16 KB are dropped unread. The rest is parsed as JSON and checked field by field: the room's own part by the library, Spark Hunt's input and snapshots by `parseInput` and `parseSnapshot` in `src/net/protocol.ts`. Anything unexpected is dropped. Coordinates must be finite (JSON reads `1e999` as Infinity) and are kept inside the arena. A snapshot is drawn only when all of it is sound.
 - **Names** lose control and formatting characters, such as a right-to-left override, and are cut to 16 characters.
 - **The host** decides everything: a player only steers their own dot and cannot name an id. The host answers pings only with a number, lets in one player per connection and up to eight in all, and closes a connection that opens but says no hello within 15 seconds. Player tokens never leave the host, so nobody can take another player's place.
-- **Bluetooth:** the native side looks for this game's service only, keeps at most four requests waiting, takes messages only from accepted connections, only as bytes of at most 32 KB on a known channel and at most 120 a second, and drops fast messages while the link is busy. `src/bluetooth.ts` checks every native event again, field by field, and ends any connection it did not ask for or accept; `packetConnection` checks each message once more. Nearby encrypts its connections, and the code both phones show lets the host see that the player is who they seem.
+- **Bluetooth:** the native side looks for this game's service only, keeps at most four requests waiting, takes messages only from accepted connections, only as bytes of at most 32 KB on a known channel and at most 120 a second, and drops fast messages while the link is busy. `@fionapreroll/p2p-nearby` checks every native event again, field by field, and ends any connection it did not ask for or accept; `packetConnection` checks each message once more. Nearby encrypts its connections, and the code both phones show lets the host see that the player is who they seem.
 - **App updates** are read and downloaded only from this repository's releases, over HTTPS, and Android installs an update only if it is signed with the same key as the app installed.
 - **Limits:** the connections are encrypted, but a phone that pairs can still lie about its own input; the game does not check what is humanly possible. A rejoining player is known by their browser's token, which is safe only as long as it stays secret. The debug key that signs the APKs is public on purpose, so it proves only that an update comes from a build of this project, not from whom.
 
 ## Layout
 
 ```
+packages/p2p-nearby/   the library @fionapreroll/p2p-nearby: Bluetooth through Nearby Connections, a
+                Capacitor plugin (src/: the TypeScript side; android/: NearbyPlugin and its permissions)
 packages/p2p/   the library @fionapreroll/p2p, with its own README and CHANGELOG
   src/          signal.ts: codes; link.ts: WebRTC; connection.ts: connections of any kind;
                 packet.ts: connections over message transports; channel.ts: messages and checks;
@@ -199,7 +201,7 @@ src/
   input.ts      keys and game controllers, and their bindings
   markdown.ts   reads the changelog and the privacy policy for the game (ui/markdownView.ts)
   native.ts     what the Android app adds: Google's scanner
-  bluetooth.ts  Bluetooth between app phones
+  bluetooth.ts  Bluetooth between app phones: Spark Hunt's service for @fionapreroll/p2p-nearby
   log.ts, report.ts   the log and the debug report
   updates.ts    updates of the app from its release
   i18n.ts       every visible text, in English and German
@@ -228,7 +230,7 @@ pnpm check
 
 `pnpm check` runs the type check, Biome and the unit tests of the game and the library:
 
-- `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds.
+- `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds. `packages/p2p-nearby/src/nearby.test.ts` plays Bluetooth between fake phones (`NearbyAir` from that library's `testing` entry point), against a misbehaving native side too, and `src/bluetooth.test.ts` plays Spark Hunt over it.
 - `src/bluetooth.test.ts` plays Spark Hunt over Bluetooth against a fake Nearby: several fake phones that advertise, ask, answer and carry messages between them, and native events that misbehave.
 - `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the codes, the room's messages, the game's parsers and rules, and hosts and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it.
 
@@ -248,7 +250,7 @@ pnpm android:sync
 cd android && ./gradlew assembleDebug
 ```
 
-`pnpm android:sync` builds the game and copies it into the Android project; run it after every change to the game. `pnpm exec cap open android` opens the project in Android Studio, and `pnpm icons:android` draws the app's icon and splash screen from `public/icon.svg`. Native features go through `src/native.ts`, `src/bluetooth.ts` and `src/updates.ts`, which do nothing in a browser, so the website and the app stay one codebase. The app's permissions are in `android/app/src/main/AndroidManifest.xml`, each with a comment why. Every build is signed with the same debug key, `android/app/debug.keystore`, in the repository on purpose, so that each APK installs over the one before.
+`pnpm android:sync` builds the game and copies it into the Android project; run it after every change to the game. `pnpm exec cap open android` opens the project in Android Studio, and `pnpm icons:android` draws the app's icon and splash screen from `public/icon.svg`. Native features go through `src/native.ts`, `src/bluetooth.ts` and `src/updates.ts`, which do nothing in a browser, so the website and the app stay one codebase. The app's permissions are in `android/app/src/main/AndroidManifest.xml`, each with a comment why; those for Bluetooth come with `@fionapreroll/p2p-nearby`, in `packages/p2p-nearby/android/src/main/AndroidManifest.xml`, merged in by Android's build. Every build is signed with the same debug key, `android/app/debug.keystore`, in the repository on purpose, so that each APK installs over the one before.
 
 ## Workflow
 
@@ -259,13 +261,13 @@ cd android && ./gradlew assembleDebug
 
 ### What CI does
 
-| Workflow          | When                                 | What                                                                                                                         |
-| ----------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`          | Pull requests and pushes to `main`   | Type check, Biome, unit tests with coverage to Codecov, library build, end-to-end tests                                      |
-| `deploy.yml`      | Pushes to `main`, or by hand         | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_         |
-| `android.yml`     | Pull requests and pushes to `main`   | Builds the APK; from `main`, replaces it in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json` |
-| `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` | Publishes the library to GitHub's npm registry and tags the version                                                          |
-| `screenshots.yml` | By hand                              | Takes the README's screenshots anew and opens a pull request with them, if any changed                                       |
+| Workflow          | When                                                    | What                                                                                                                         |
+| ----------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`          | Pull requests and pushes to `main`                      | Type check, Biome, unit tests with coverage to Codecov, library build, end-to-end tests                                      |
+| `deploy.yml`      | Pushes to `main`, or by hand                            | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_         |
+| `android.yml`     | Pull requests and pushes to `main`                      | Builds the APK; from `main`, replaces it in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json` |
+| `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` or `p2p-nearby-v…` | Publishes a library, chosen when run by hand, to GitHub's npm registry and tags the version                                  |
+| `screenshots.yml` | By hand                                                 | Takes the README's screenshots anew and opens a pull request with them, if any changed                                       |
 
 ### Changelog and game versions
 
@@ -280,10 +282,10 @@ To bring them up to date, run **Update screenshots** in the Actions tab (`.githu
 
 ### Library versions
 
-`packages/p2p` is a pnpm workspace package. The game uses it as `workspace:*`, straight from its sources, so a change to the library is tested with the game at once; `pnpm build:p2p` builds the package into `packages/p2p/dist`. The library has its own version and `packages/p2p/CHANGELOG.md`, apart from the game's. A version is published only when asked:
+`packages/p2p` and `packages/p2p-nearby` are pnpm workspace packages. The game uses them as `workspace:*`, straight from their sources, so a change to a library is tested with the game at once; `pnpm build:p2p` builds both into their `dist` folders. Each library has its own version and `CHANGELOG.md`, apart from the game's. A version is published only when asked:
 
-1. Move the entries under `## [Unreleased]` in `packages/p2p/CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in `packages/p2p/package.json` to the same, and bring that to `main`.
-2. In the Actions tab, run **Publish p2p** on `main`. It checks that the version is new and in the changelog, runs every check, publishes the package, and then tags the commit `p2p-vx.y.z`. Pushing such a tag yourself publishes too, once it matches the version in `packages/p2p/package.json`.
+1. Move the entries under `## [Unreleased]` in the library's `CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in its `package.json` to the same, and bring that to `main`.
+2. In the Actions tab, run **Publish p2p** on `main`, choosing the library. It checks that the version is new and in the changelog, runs every check, publishes the package, and then tags the commit `p2p-vx.y.z` or `p2p-nearby-vx.y.z`. Pushing such a tag yourself publishes too, once it matches the version in the library's `package.json`.
 
 Games that use the library install it as its [README](packages/p2p/README.md) describes, with a token that may read packages.
 
