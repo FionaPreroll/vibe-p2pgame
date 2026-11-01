@@ -153,6 +153,68 @@ describe('between two phones', () => {
   })
 })
 
+describe('when the native side fails', () => {
+  it('turns down the requests nobody answered when the host stops advertising', async () => {
+    const { air, host, hostPhone, requests } = await phones()
+    const late = nearby(air.phone('PLAY2'))
+    await late.look('Cy')
+    late.dial({ endpointId: 'HOST1', name: 'Hosty' }, 'Cy')
+    await later(0)
+    expect(requests.map((r) => r.endpointId)).toEqual(['PLAY2'])
+    await host.stop()
+    expect(hostPhone.rejected).toEqual(['PLAY2'])
+    expect(hostPhone.role).toBeNull()
+    // Gone with the stop: it cannot be accepted any more.
+    expect(host.accept(requests[0] as JoinRequest)).toBeNull()
+  })
+
+  it('closes the connection when the host’s yes does not reach Nearby', async () => {
+    const { host, hostPhone, player, found, requests } = await phones()
+    player.dial(found[0] as Peer, 'Bo')
+    await later(0)
+    hostPhone.accept = async () => {
+      throw new Error('8011 endpoint unknown')
+    }
+    const connection = host.accept(requests[0] as JoinRequest)
+    await later(0)
+    expect(connection?.state).toBe('closed')
+  })
+
+  it('closes the player’s connection when asking fails, with the code in the log', async () => {
+    const { player, found } = await phones()
+    const { connection } = player.dial({ ...(found[0] as Peer), endpointId: 'GONE1' }, 'Bo')
+    await later(0)
+    expect(connection.state).toBe('closed')
+    expect(lines).toContain('could not ask GONE1: nearby-8011: not found')
+  })
+
+  it('closes the player’s connection when its own yes does not reach Nearby', async () => {
+    const { player, playerPhone, found } = await phones()
+    playerPhone.accept = async () => {
+      throw new Error('radio off')
+    }
+    const { connection } = player.dial(found[0] as Peer, 'Bo')
+    await later(0)
+    expect(connection.state).toBe('closed')
+  })
+
+  it('ends the connection before when the player asks the same host again', async () => {
+    const { player, found } = await phones()
+    const first = player.dial(found[0] as Peer, 'Bo')
+    player.dial(found[0] as Peer, 'Bo')
+    expect(first.connection.state).toBe('closed')
+  })
+
+  it('gives the native side’s diagnostics for a report', async () => {
+    const { player } = await phones()
+    expect(await player.diagnostics()).toEqual({
+      sdk: 34,
+      bluetooth: 'on',
+      log: ['+0s start player'],
+    })
+  })
+})
+
 describe('starting', () => {
   it('says why it cannot start, and keeps the native code and message for a report', async () => {
     for (const [code, kind, shown] of [

@@ -214,7 +214,7 @@ src/
 android/        the Android app's project (Capacitor), with capacitor.config.ts at the top
 tools/          serviceWorker.ts: writes the offline worker into the build; licenses.ts: the list of bundled
                 packages and their licenses; androidIcons.ts: the app's icons
-tests/e2e/      Playwright: two browser profiles pair through text codes and play
+tests/e2e/      Playwright: two browser profiles pair through text codes and play; controllers, keys and the joystick
 ```
 
 ## Development
@@ -237,6 +237,7 @@ pnpm check
 
 - `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds. `packages/p2p-nearby/src/nearby.test.ts` plays Bluetooth between fake phones (`NearbyAir` from that library's `testing` entry point), against a misbehaving native side too, and `src/bluetooth.test.ts` plays Spark Hunt over it.
 - `src/bluetooth.test.ts` plays Spark Hunt over Bluetooth against a fake Nearby: several fake phones that advertise, ask, answer and carry messages between them, and native events that misbehave.
+- Screens that only the app shows run in [happy-dom](https://github.com/capricorn86/happy-dom) (`// @vitest-environment happy-dom` at a file's top), against fakes of the native side: `src/ui/updates.test.ts` plays the update dialog through with a fake AppUpdaterPlugin (size, mobile data, progress, pause and resume, permission, the installer's answers or silence), and `src/ui/bluetoothUi.test.ts` the host's dialog and the player's screen on the fake Nearby. `packages/p2p/src/link.test.ts` checks the WebRTC side with a stand-in `RTCPeerConnection`: the channels' settings, the state, and gathering that never ends.
 - `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the codes, the room's messages, the game's parsers and rules, and hosts and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it.
 
 **Logs and the debug report:** `log()` from `src/log.ts` keeps the last 300 lines in memory, and NearbyPlugin keeps its own; `src/report.ts` puts both into the debug report. A log line says what happened, never what was said: `log()` masks anything that looks like a code, an address or a token, and a test checks that the report holds none.
@@ -247,7 +248,7 @@ pnpm check
 
 | Flag      | Tests                                             | Measures                                                                                                                | Locally                                             |
 | --------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `unit`    | Vitest, in Node                                   | `src/`, both libraries' `src/` and `tools/`                                                                             | `pnpm test:coverage` → `coverage/lcov.info`         |
+| `unit`    | Vitest, in Node, and happy-dom for app screens    | `src/`, both libraries' `src/` and `tools/`                                                                             | `pnpm test:coverage` → `coverage/lcov.info`         |
 | `e2e`     | Playwright, in Chromium (`tests/e2e/coverage.ts`) | the same TypeScript as the browser runs it, through the build's source maps: the screens, WebRTC and the camera too     | `pnpm test:e2e:coverage` → `coverage/e2e/lcov.info` |
 | `android` | JUnit, with JaCoCo                                | all the Java: the app's (`AppUpdaterPlugin`, `UpdateRules`) and the Bluetooth library's (`NearbyPlugin`, `NearbyRules`) | `./gradlew testDebugUnitTest` in `android/`         |
 
