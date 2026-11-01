@@ -194,6 +194,17 @@ const en = {
   pressButton: 'Press a button…',
   resetBindings: 'Reset keys and buttons',
   bindingsReset: 'Keys and buttons reset.',
+  aboutTitle: 'About Spark Hunt',
+  aboutBuild: 'Web build {commit}, from {date}.',
+  aboutSource: 'Source code and issues on GitHub',
+  changelogTitle: 'What’s new',
+  changelogNote: '',
+  changelogUnreleased: 'This version',
+  licensesTitle: 'Other people’s code',
+  licensesNote:
+    'Spark Hunt is built with these open-source libraries, under their licenses. Tap one for its license text.',
+  licensesNative: 'The Android app also contains:',
+  licensesMissing: 'The list is part of the built game, not of the development server.',
 }
 
 const de: Record<TextKey, string> = {
@@ -392,6 +403,17 @@ const de: Record<TextKey, string> = {
   pressButton: 'Knopf drücken…',
   resetBindings: 'Tasten und Knöpfe zurücksetzen',
   bindingsReset: 'Tasten und Knöpfe zurückgesetzt.',
+  aboutTitle: 'Über Funkenjagd',
+  aboutBuild: 'Web-Build {commit} vom {date}.',
+  aboutSource: 'Quellcode und Fehlermeldungen auf GitHub',
+  changelogTitle: 'Was ist neu',
+  changelogNote: 'Die Liste der Änderungen ist auf Englisch.',
+  changelogUnreleased: 'Diese Version',
+  licensesTitle: 'Code von anderen',
+  licensesNote:
+    'Funkenjagd nutzt diese Open-Source-Bibliotheken, unter ihren Lizenzen. Tippe auf eine für ihren Lizenztext.',
+  licensesNative: 'Die Android-App enthält außerdem:',
+  licensesMissing: 'Die Liste gehört zum gebauten Spiel, nicht zum Entwicklungsserver.',
 }
 
 export type TextKey = keyof typeof en

@@ -75,7 +75,7 @@ Every phone samples its connections once a second: the ping, messages and data p
 - **Controls:** the joystick on the screen, and the keys and controller buttons;
 - **App,** in the Android app: whether to look for updates;
 - **Data:** the camera you last scanned with is remembered, with its zoom and brightness; _Delete all saved data_ removes everything, which is stored on the phone only;
-- **Help:** the debug report and the network report.
+- **Help:** the debug report, the network report, and **About Spark Hunt**: the build, the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
 
 **Something does not work?** _Create debug report_ under _Help_ in the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, a summary of the last game's connection, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
 
@@ -167,6 +167,7 @@ src/
   ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view;
                 joystick.ts; netGraph.ts and netReport.ts: the connection's graph and report
   input.ts      keys and game controllers, and their bindings
+  markdown.ts   reads the changelog for the About view (ui/about.ts)
   native.ts     what the Android app adds: Google's scanner
   bluetooth.ts  Bluetooth between app phones
   log.ts, report.ts   the log and the debug report
@@ -174,7 +175,8 @@ src/
   i18n.ts       every visible text, in English and German
   settings.ts, storage.ts   what the phone remembers
 android/        the Android app's project (Capacitor), with capacitor.config.ts at the top
-tools/          serviceWorker.ts: writes the offline worker into the build; androidIcons.ts: the app's icons
+tools/          serviceWorker.ts: writes the offline worker into the build; licenses.ts: the list of bundled
+                packages and their licenses; androidIcons.ts: the app's icons
 tests/e2e/      Playwright: two browser profiles pair through text codes and play
 ```
 

@@ -838,3 +838,56 @@ a.button.primary {
   border: 1px solid rgba(255, 138, 60, 0.5);
   color: #ffc9a3;
 }
+
+/* About: the changelog and other people's code. */
+.changelog details,
+.license-list details {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0;
+}
+
+.changelog summary,
+.license-list summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.changelog h4 {
+  margin: 0.6rem 0 0.2rem;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.changelog ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.license-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.license-list > li:not(:has(details)) {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.license-text {
+  white-space: pre-wrap;
+  font-size: 0.7rem;
+  max-height: 16rem;
+  overflow: auto;
+  background: #0f1226;
+  padding: 0.6rem;
+  border-radius: 8px;
+}
+
+.about a {
+  color: var(--accent);
+}

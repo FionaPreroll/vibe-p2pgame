@@ -22,6 +22,7 @@ import {
 } from '../settings'
 import { clearAll } from '../storage'
 import { checkForUpdate } from '../updates'
+import { aboutScreen } from './about'
 import { h, show, toast } from './dom'
 import { netReportDialog } from './netReport'
 import { reportDialog } from './report'
@@ -146,6 +147,11 @@ export function settingsScreen(onBack: () => void): void {
           type: 'button',
           textContent: t('netTitle'),
           onclick: () => netReportDialog(),
+        }),
+        h('button', {
+          type: 'button',
+          textContent: t('aboutTitle'),
+          onclick: () => aboutScreen(() => settingsScreen(onBack)),
         }),
       ),
     ),

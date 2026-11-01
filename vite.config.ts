@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { defineConfig } from 'vitest/config'
+import { licenses } from './tools/licenses.ts'
 import { serviceWorker } from './tools/serviceWorker.ts'
 
 /** Which build this is, for the debug report: the commit, from CI or from git, and the time. */
@@ -24,7 +25,7 @@ export default defineConfig(({ mode }) => ({
   base: './',
   // Phones only open the camera on HTTPS pages, so `pnpm dev:phone` serves with a self-signed
   // certificate that the phone has to accept once.
-  plugins: [serviceWorker(), ...(mode === 'phone' ? [basicSsl()] : [])],
+  plugins: [licenses(), serviceWorker(), ...(mode === 'phone' ? [basicSsl()] : [])],
   test: {
     include: ['src/**/*.test.ts', 'tools/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
     coverage: {
