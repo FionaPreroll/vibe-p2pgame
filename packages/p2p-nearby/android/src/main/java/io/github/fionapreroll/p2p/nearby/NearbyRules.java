@@ -26,7 +26,11 @@ final class NearbyRules {
     static final int MAX_FAST_IN_FLIGHT = 2;
     /** Lines kept for the debug report: what happened, never what was said. */
     static final int MAX_LOG_LINES = 200;
-    /** The largest message Nearby carries as bytes (ConnectionsClient.MAX_BYTES_DATA_SIZE). */
+    /**
+     * The largest message sent or taken, in bytes: 32 KB, well above what a game sends (the
+     * library reads 16 384 characters at most) and within what Nearby carries as bytes
+     * (ConnectionsClient.MAX_BYTES_DATA_SIZE; see NearbyRulesAndroidTest).
+     */
     static final int MAX_BYTES = 32768;
 
     /**
