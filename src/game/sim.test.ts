@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   ARENA,
   addPlayer,
+  allReady,
   BLAST_SECONDS,
+  COUNTDOWN_SECONDS,
   createWorld,
   MINE_ARM_SECONDS,
   MINE_PENALTY,
@@ -54,7 +56,7 @@ describe('step', () => {
     const world = createWorld(3)
     const near = addPlayer(world, 0, 'Ada')
     const far = addPlayer(world, 1, 'Bo')
-    startRound(world)
+    startRound(world, ROUND_SECONDS, 0)
     world.sparks = [{ id: 99, x: 500, y: 500, gold: false }]
     Object.assign(near, { x: 500 + 10, y: 500 })
     Object.assign(far, { x: 500 - 20, y: 500 })
@@ -69,7 +71,7 @@ describe('step', () => {
   it('counts a golden spark three times', () => {
     const world = createWorld(3)
     const player = addPlayer(world, 0, 'Ada')
-    startRound(world)
+    startRound(world, ROUND_SECONDS, 0)
     world.sparks = [{ id: 99, x: player.x, y: player.y, gold: true }]
     expect(step(world, still, 0.01)).toEqual([{ playerId: 0, points: 3 }])
     expect(player.score).toBe(3)
@@ -96,7 +98,7 @@ describe('step', () => {
     const world = createWorld(5)
     const player = addPlayer(world, 0, 'Ada')
     player.score = 4
-    startRound(world)
+    startRound(world, ROUND_SECONDS, 0)
     expect(world).toMatchObject({ phase: 'play', timeLeft: ROUND_SECONDS })
     expect(player.score).toBe(0)
     step(world, still, ROUND_SECONDS - 1)
@@ -107,10 +109,55 @@ describe('step', () => {
     expect(world.sparks).toEqual([])
   })
 
+  it('counts down before a round, with nothing on the board, then plays its full length', () => {
+    const world = createWorld(5)
+    const player = addPlayer(world, 0, 'Ada')
+    startRound(world, 30)
+    expect(world).toMatchObject({ phase: 'countdown', timeLeft: COUNTDOWN_SECONDS })
+    const target = { x: player.x + 100, y: player.y }
+    step(world, new Map([[0, target]]), 1)
+    // The dots move, but nothing is put down yet.
+    expect(player.x).toBeGreaterThan(target.x - 100)
+    expect(world.sparks).toEqual([])
+    expect(world.mines).toEqual([])
+    step(world, still, COUNTDOWN_SECONDS)
+    expect(world).toMatchObject({ phase: 'play', timeLeft: 30 })
+    step(world, still, 0.01)
+    expect(world.sparks.length).toBeGreaterThan(0)
+  })
+
+  it('keeps every player’s sparks, gold and mines of the round, and clears them anew', () => {
+    const world = createWorld(3)
+    const player = addPlayer(world, 0, 'Ada')
+    startRound(world, ROUND_SECONDS, 0)
+    world.sparks = [
+      { id: 97, x: player.x, y: player.y, gold: true },
+      { id: 98, x: player.x, y: player.y, gold: false },
+    ]
+    world.mines = [{ id: 99, x: player.x, y: player.y, armIn: 0 }]
+    step(world, still, 0.01)
+    expect(player).toMatchObject({ caught: 2, gold: 1, hits: 1, score: 2 })
+    player.ready = true
+    startRound(world)
+    expect(player).toMatchObject({ caught: 0, gold: 0, hits: 0, score: 0, ready: false })
+  })
+
+  it('knows when everyone but the host is ready, and that the host alone is not', () => {
+    const world = createWorld(3)
+    addPlayer(world, 0, 'Host')
+    expect(allReady(world)).toBe(false)
+    const a = addPlayer(world, 1, 'Ada')
+    const b = addPlayer(world, 2, 'Bo')
+    a.ready = true
+    expect(allReady(world)).toBe(false)
+    b.ready = true
+    expect(allReady(world)).toBe(true)
+  })
+
   it('lasts as long as the host chose', () => {
     const world = createWorld(5)
     addPlayer(world, 0, 'Ada')
-    startRound(world, 30)
+    startRound(world, 30, 0)
     step(world, still, 29)
     expect(world.phase).toBe('play')
     step(world, still, 2)
@@ -158,7 +205,7 @@ describe('mines', () => {
     const world = createWorld(3)
     const victim = addPlayer(world, 0, 'Ada')
     const other = addPlayer(world, 1, 'Bo')
-    startRound(world)
+    startRound(world, ROUND_SECONDS, 0)
     world.mines = [{ id: 99, x: victim.x + MINE_RADIUS, y: victim.y, armIn: 0 }]
     Object.assign(other, { x: victim.x + MINE_RADIUS * 2 + 20, y: victim.y })
     const catches = step(world, still, 0.01)
@@ -186,7 +233,7 @@ describe('mines', () => {
     addPlayer(world, 0, 'Ada')
     step(world, still, 0.01)
     expect(world.mines.length).toBeGreaterThan(0)
-    startRound(world)
+    startRound(world, ROUND_SECONDS, 0)
     expect(world.mines).toEqual([])
   })
 })

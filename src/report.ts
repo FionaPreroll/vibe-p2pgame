@@ -56,7 +56,7 @@ export async function debugReport(sources: ReportSources): Promise<string> {
     `- Can do: ${Object.entries(sources.browser.features)
       .map(([feature, ok]) => `${feature} ${yes(ok)}`)
       .join(', ')}`,
-    `- Settings: language ${s.language}, vibration ${on(s.vibration)}, keep screen on ${on(s.keepScreenOn)}, round ${s.roundSeconds} s, camera remembered ${yes(s.camera.deviceId !== null)}, updates ${on(s.checkUpdates)} (asked ${yes(s.updatesAsked)}), joystick ${s.joystick}, connection graph ${on(s.netGraph)}`,
+    `- Settings: language ${s.language}, vibration ${on(s.vibration)}, keep screen on ${on(s.keepScreenOn)}, round ${s.roundSeconds} s, camera remembered ${yes(s.camera.deviceId !== null)}, updates ${on(s.checkUpdates)} (asked ${yes(s.updatesAsked)}), joystick ${s.joystick}, connection graph ${on(s.netGraph)}, sound ${on(s.sound)}`,
     `- Saved: hosted game ${hosted ? `with ${hosted.players.length} other player(s)` : 'none'}, joined game ${yes(joined !== null)}`,
   )
   if (sources.bluetooth) {

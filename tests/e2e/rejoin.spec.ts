@@ -10,8 +10,8 @@ test('a player who drops out rejoins with their place', async ({ browser }) => {
   await pair(host, guest)
   const guestRow = host.locator('.roster li', { hasText: 'Guesty' })
   // The first player to join gets the second color, blue.
-  const blue = 'rgb(77, 163, 255)'
-  await expect(guestRow.locator('.dot')).toHaveCSS('background-color', blue)
+  const blue = '#4da3ff'
+  await expect(guestRow.locator('.dot circle')).toHaveAttribute('fill', blue)
 
   // The player's page closes, as when the browser is swiped away.
   const context = guest.context()
@@ -32,7 +32,7 @@ test('a player who drops out rejoins with their place', async ({ browser }) => {
   // The same place, so the same color, and nobody is away any more.
   await expect(host.locator('.roster li.away')).toHaveCount(0)
   await expect(host.locator('.roster li')).toHaveCount(2)
-  await expect(guestRow.locator('.dot')).toHaveCSS('background-color', blue)
+  await expect(guestRow.locator('.dot circle')).toHaveAttribute('fill', blue)
 })
 
 test('a host whose page reloads carries on, and the player can rejoin', async ({ browser }) => {

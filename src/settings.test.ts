@@ -30,6 +30,7 @@ describe('parseSettings', () => {
         buttons: { up: null, down: 13, left: 14, right: 15, start: 0 },
       },
       netGraph: false,
+      sound: false,
     }
     expect(parseSettings(stored)).toEqual(stored)
   })
@@ -47,6 +48,7 @@ describe('parseSettings', () => {
       joystick: 'middle',
       bindings: 'wasd',
       netGraph: 'on',
+      sound: 'loud',
     })
     expect(settings).toEqual({ ...DEFAULTS, keepScreenOn: false })
   })

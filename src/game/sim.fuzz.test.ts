@@ -71,14 +71,15 @@ describe('the rules, fuzzed', () => {
             expect(thing.x >= 0 && thing.x <= ARENA && thing.y >= 0 && thing.y <= ARENA).toBe(true)
           }
           expect(world.timeLeft >= 0 && world.timeLeft <= Math.max(seconds, 60)).toBe(true)
-          if (a.kind === 'step' && world.phase !== 'over') {
+          if (a.kind === 'step' && world.phase !== 'over' && world.phase !== 'countdown') {
             // Players who leave leave their sparks and mines behind, until they are taken.
             expect(world.sparks.length).toBeGreaterThanOrEqual(sparkCount(world.players.length))
             expect(world.sparks.length).toBeLessThanOrEqual(sparkCount(MAX_PLAYERS))
             expect(world.mines.length).toBeGreaterThanOrEqual(mineCount(world.players.length))
             expect(world.mines.length).toBeLessThanOrEqual(mineCount(MAX_PLAYERS))
           }
-          if (world.phase === 'over') expect(world.sparks.length + world.mines.length).toBe(0)
+          if (world.phase === 'over' || world.phase === 'countdown')
+            expect(world.sparks.length + world.mines.length).toBe(0)
           const ids = [...world.sparks, ...world.mines, ...world.blasts].map((t) => t.id)
           expect(new Set(ids).size).toBe(ids.length)
         }

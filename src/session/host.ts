@@ -2,9 +2,11 @@ import type { Connection } from '@fionapreroll/p2p'
 import { HOST_ID, HostRoom, type Joined, type Pairing } from '@fionapreroll/p2p/room'
 import {
   addPlayer,
+  allReady,
   type Catch,
   createWorld,
   MAX_PLAYERS,
+  ROUND_SECONDS,
   removePlayer,
   type Snapshot,
   startRound,
@@ -12,8 +14,9 @@ import {
   type Target,
   type World,
 } from '../game/sim'
+import { log } from '../log'
 import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
-import { PROTOCOL, parseInput } from '../net/protocol'
+import { type PlayerInput, PROTOCOL, parseInput } from '../net/protocol'
 import { forgetHostedGame, type HostedGame, saveHostedGame } from './saved'
 import type { Session } from './session'
 
@@ -21,6 +24,10 @@ export type { Joined, Pairing }
 
 /** How often the host saves the game, so a reloaded page can carry on. */
 const SAVE_MS = 2000
+/** A player whose connection stalled this often in the last ten seconds keeps stalling. */
+export const STALLS_TO_WARN = 3
+/** The host hears about the same player's stalls at most this often. */
+const STALL_WARNING_MS = 60_000
 
 /**
  * The host's side of Spark Hunt: the room of `@fionapreroll/p2p` lets players in and out and
@@ -28,6 +35,9 @@ const SAVE_MS = 2000
  *
  * Players who drop out keep their place in the room, and their score here, and the host saves
  * the game every few seconds, so that after a reload it can carry on with the same players.
+ *
+ * Players may only watch: they leave the field, keeping their score, and come back between
+ * rounds. After a round, once every player is ready, the next one starts by itself.
  */
 export class HostSession implements Session {
   readonly isHost = true
@@ -36,10 +46,17 @@ export class HostSession implements Session {
   onLeave: (name: string) => void = () => {}
   /** Called with every spark caught and every mine touched. */
   onCatch: (caught: Catch) => void = () => {}
-  private readonly room: HostRoom<Target, Snapshot>
+  /** Called when a player's connection keeps stalling, with their name, now and then. */
+  onStalling: (name: string) => void = () => {}
+  /** The length of a round the next one gets when it starts by itself. */
+  roundSeconds = ROUND_SECONDS
+  private readonly room: HostRoom<PlayerInput, Snapshot>
   private readonly targets = new Map<number, Target>()
   /** The scores of players who are away, for when they rejoin. */
   private readonly awayScores = new Map<number, number>()
+  /** Players who only watch, with their names and scores, for when they play again. */
+  private readonly watchers = new Map<number, { name: string; score: number }>()
+  private readonly stallWarnings = new Map<number, number>()
   readonly net: NetLog = startNetLog(HOST_ID, performance.now())
   private lastSave = 0
   private lastSample = performance.now()
@@ -48,7 +65,7 @@ export class HostSession implements Session {
   constructor(name: string, saved?: HostedGame | null) {
     addPlayer(this.world, HOST_ID, name).score = saved?.hostScore ?? 0
     for (const p of saved?.players ?? []) this.awayScores.set(p.id, p.score)
-    this.room = new HostRoom<Target, Snapshot>({
+    this.room = new HostRoom<PlayerInput, Snapshot>({
       name,
       version: PROTOCOL,
       parseInput,
@@ -67,15 +84,16 @@ export class HostSession implements Session {
     }
     this.room.onLeave = (player, reason) => {
       this.awayScores.set(player.id, this.scoreOf(player.id))
+      this.watchers.delete(player.id)
       this.targets.delete(player.id)
       removePlayer(this.world, player.id)
       this.net.forget(player.id)
       this.save()
       if (reason === 'lost') this.onLeave(player.name)
     }
-    this.room.onInput = (player, target) => {
-      this.targets.set(player.id, target)
+    this.room.onInput = (player, input) => {
       this.net.arrived(player.id, performance.now())
+      this.input(player.id, player.name, input)
     }
     this.room.onTick = (dt) => this.tick(dt)
     globalThis.addEventListener?.('pagehide', this.onPageHide)
@@ -86,9 +104,16 @@ export class HostSession implements Session {
     return HOST_ID
   }
 
-  /** The game as this phone draws it: the world, and the players away, without their tokens. */
+  /**
+   * The game as this phone draws it: the world, the players away, without their tokens, and
+   * those who watch.
+   */
   snapshot(): Snapshot {
-    return { ...this.world, away: this.room.awaySeats().map(({ id, name }) => ({ id, name })) }
+    return {
+      ...this.world,
+      away: this.room.awaySeats().map(({ id, name }) => ({ id, name })),
+      watching: [...this.watchers].map(([id, { name }]) => ({ id, name })),
+    }
   }
 
   setTarget(target: Target): void {
@@ -99,10 +124,12 @@ export class HostSession implements Session {
     return this.targets.get(HOST_ID) ?? null
   }
 
-  /** A new round, from nothing for everyone, away or not. */
+  /** A new round, from nothing for everyone, away, watching or not. */
   start(seconds: number): void {
+    this.roundSeconds = seconds
     startRound(this.world, seconds)
     for (const id of this.awayScores.keys()) this.awayScores.set(id, 0)
+    for (const watcher of this.watchers.values()) watcher.score = 0
   }
 
   pair(): Promise<Pairing> {
@@ -126,7 +153,34 @@ export class HostSession implements Session {
   }
 
   private scoreOf(id: number): number {
-    return this.world.players.find((p) => p.id === id)?.score ?? this.awayScores.get(id) ?? 0
+    return (
+      this.world.players.find((p) => p.id === id)?.score ??
+      this.watchers.get(id)?.score ??
+      this.awayScores.get(id) ??
+      0
+    )
+  }
+
+  /**
+   * A player's input: where they steer, ready or not between rounds, and whether they only
+   * watch. Watching starts at any time; playing again only between rounds, so nobody drops into
+   * a round half-way.
+   */
+  private input(id: number, name: string, input: PlayerInput): void {
+    const between = this.world.phase === 'lobby' || this.world.phase === 'over'
+    const watcher = this.watchers.get(id)
+    if (watcher && !input.watch && between) {
+      this.watchers.delete(id)
+      addPlayer(this.world, id, name).score = watcher.score
+    } else if (!watcher && input.watch) {
+      this.watchers.set(id, { name, score: this.scoreOf(id) })
+      this.targets.delete(id)
+      removePlayer(this.world, id)
+    }
+    const player = this.world.players.find((p) => p.id === id)
+    if (!player) return
+    this.targets.set(id, input.target)
+    if (between) player.ready = input.ready
   }
 
   private save(): void {
@@ -139,8 +193,24 @@ export class HostSession implements Session {
     })
   }
 
+  /** Tells the host, now and then, when a player's connection keeps stalling. */
+  private warnOfStalls(id: number, now: number): void {
+    const t = (now - this.net.startedAt) / 1000
+    if (this.net.stallsSince(id, t - 10) < STALLS_TO_WARN) return
+    if (now - (this.stallWarnings.get(id) ?? Number.NEGATIVE_INFINITY) < STALL_WARNING_MS) return
+    this.stallWarnings.set(id, now)
+    log('net', `player ${id}'s connection keeps stalling`)
+    const player = this.world.players.find((p) => p.id === id) ?? this.watchers.get(id)
+    if (player) this.onStalling(player.name)
+  }
+
   private tick(dt: number): Snapshot {
     for (const caught of step(this.world, this.targets, dt)) this.onCatch(caught)
+    // A rematch: once everyone is ready after a round, the next one starts.
+    if (this.world.phase === 'over' && allReady(this.world, HOST_ID)) {
+      log('game', 'everyone is ready: the next round starts')
+      this.start(this.roundSeconds)
+    }
     for (const { id, ping } of this.room.players()) {
       const player = this.world.players.find((p) => p.id === id)
       if (player) player.ping = ping
@@ -152,6 +222,7 @@ export class HostSession implements Session {
       for (const { id, ping } of this.room.players()) {
         const traffic = this.room.traffic(id)
         if (traffic) this.net.sample(id, now, { ping, traffic })
+        this.warnOfStalls(id, now)
       }
     }
     return compact(this.snapshot())
@@ -178,5 +249,6 @@ function compact(state: Snapshot): Snapshot {
       age: Math.round(b.age * 100) / 100,
     })),
     away: state.away,
+    watching: state.watching,
   }
 }

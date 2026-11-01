@@ -30,6 +30,40 @@ export function playerColor(id: number): string {
   return COLORS[id % COLORS.length] ?? '#ffffff'
 }
 
+/** A regular polygon or star as an SVG path, in a box from -1 to 1. */
+function polygon(points: number, outer: number, inner = outer, turn = 0): string {
+  const corners = inner === outer ? points : points * 2
+  const path: string[] = []
+  for (let i = 0; i < corners; i++) {
+    const radius = i % 2 === 1 && inner !== outer ? inner : outer
+    const angle = turn - Math.PI / 2 + (i / corners) * Math.PI * 2
+    path.push(
+      `${i === 0 ? 'M' : 'L'}${(Math.cos(angle) * radius).toFixed(3)} ${(Math.sin(angle) * radius).toFixed(3)}`,
+    )
+  }
+  return `${path.join('')}Z`
+}
+
+/**
+ * A shape for every player besides the colour, so that players who tell colours apart badly
+ * still tell the dots apart: as SVG paths in a box from -1 to 1, filled even-odd.
+ */
+export const SHAPES = [
+  // A ring.
+  'M0.6 0A0.6 0.6 0 1 1 -0.6 0A0.6 0.6 0 1 1 0.6 0ZM0.28 0A0.28 0.28 0 1 0 -0.28 0A0.28 0.28 0 1 0 0.28 0Z',
+  polygon(3, 0.72),
+  'M-0.5 -0.5H0.5V0.5H-0.5Z',
+  polygon(4, 0.72),
+  polygon(5, 0.75, 0.32),
+  'M-0.2 -0.7H0.2V-0.2H0.7V0.2H0.2V0.7H-0.2V0.2H-0.7V-0.2H-0.2Z',
+  polygon(6, 0.62),
+  polygon(4, 0.75, 0.2, Math.PI / 4),
+]
+
+export function playerShape(id: number): string {
+  return SHAPES[id % SHAPES.length] ?? SHAPES[0] ?? ''
+}
+
 /**
  * Draws snapshots on a canvas. Snapshots arrive about 30 times a second; in between, every dot
  * glides toward its newest position, so the picture runs at the screen's own frame rate.
@@ -118,6 +152,7 @@ export class Painter {
       c.arc(shown.x, shown.y, PLAYER_RADIUS, 0, Math.PI * 2)
       c.fill()
       c.shadowBlur = 0
+      this.drawShape(player.id, shown.x, shown.y)
       if (player.id === selfId) {
         c.strokeStyle = '#ffffff'
         c.lineWidth = 5
@@ -131,6 +166,18 @@ export class Painter {
     for (const id of this.shown.keys()) if (!present.has(id)) this.shown.delete(id)
     for (const blast of snapshot.blasts ?? []) this.drawBlast(blast, snapshot.phase !== 'lobby')
     this.drawPopups(snapshot, dt)
+  }
+
+  /** The player's shape, dark on the dot. */
+  private drawShape(id: number, x: number, y: number): void {
+    if (typeof Path2D === 'undefined') return
+    const c = this.context
+    c.save()
+    c.translate(x, y)
+    c.scale(PLAYER_RADIUS * 0.75, PLAYER_RADIUS * 0.75)
+    c.fillStyle = 'rgba(11, 13, 26, 0.6)'
+    c.fill(new Path2D(playerShape(id)), 'evenodd')
+    c.restore()
   }
 
   /**

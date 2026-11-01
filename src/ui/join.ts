@@ -1,5 +1,6 @@
 import { answerOffer, type Signal } from '@fionapreroll/p2p'
 import { qrElement } from '@fionapreroll/p2p/qr'
+import type { Snapshot } from '../game/sim'
 import { t } from '../i18n'
 import { describeError, log } from '../log'
 import { GuestSession } from '../session/guest'
@@ -141,7 +142,7 @@ export function play(session: GuestSession, name: string, onLeave: () => void): 
     (state) => [
       state.phase === 'over' ? result(state) : h('p', {}, t('steer')),
       roster(state, session.selfId()),
-      h('p', { class: 'muted' }, t('waitHost')),
+      ...nextRound(session, state),
       networkButton(session),
     ],
     () => {
@@ -193,4 +194,49 @@ function lostScreen(name: string, host: string, onLeave: () => void): void {
     ),
     onLeave,
   )
+}
+
+/**
+ * Between rounds, on a player's phone: ready for the next round, and only watching or playing
+ * along. After a round, once every player is ready, the next one starts by itself.
+ */
+function nextRound(session: GuestSession, state: Snapshot): HTMLElement[] {
+  if (session.watching()) {
+    return [
+      h('p', { class: 'muted' }, t('watchingNote')),
+      h(
+        'div',
+        { class: 'buttons' },
+        h('button', {
+          type: 'button',
+          class: 'primary',
+          textContent: t('playAlong'),
+          onclick: () => session.setWatching(false),
+        }),
+      ),
+    ]
+  }
+  const ready = h('button', {
+    type: 'button',
+    class: session.ready() ? 'ready-on' : 'primary',
+    textContent: t(session.ready() ? 'readyDone' : 'readyButton'),
+    onclick: () => {
+      session.setReady(!session.ready())
+      ready.textContent = t(session.ready() ? 'readyDone' : 'readyButton')
+      ready.className = session.ready() ? 'ready-on' : 'primary'
+    },
+  })
+  return [
+    h('p', { class: 'muted' }, t('waitHost'), state.phase === 'over' ? ` ${t('rematchNote')}` : ''),
+    h(
+      'div',
+      { class: 'buttons' },
+      ready,
+      h('button', {
+        type: 'button',
+        textContent: t('watchOnly'),
+        onclick: () => session.setWatching(true),
+      }),
+    ),
+  ]
 }

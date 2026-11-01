@@ -88,6 +88,7 @@ export function settingsScreen(onBack: () => void): void {
 
       h('h3', {}, t('sectionGame')),
       h('label', {}, t('roundLength'), rounds),
+      toggle(t('soundSetting'), current.sound, (on) => updateSettings({ sound: on })),
       toggle(t('vibration'), current.vibration, (on) => updateSettings({ vibration: on })),
       toggle(t('keepScreenOn'), current.keepScreenOn, (on) => updateSettings({ keepScreenOn: on })),
       toggle(t('netGraphSetting'), current.netGraph, (on) => updateSettings({ netGraph: on })),

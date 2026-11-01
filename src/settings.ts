@@ -23,6 +23,7 @@ export interface Settings {
   readonly bindings: Bindings
   /** The small graph of the connection while playing. */
   readonly netGraph: boolean
+  readonly sound: boolean
 }
 
 export type JoystickSide = 'off' | 'left' | 'right'
@@ -51,6 +52,7 @@ export const DEFAULTS: Settings = {
   joystick: 'off',
   bindings: DEFAULT_BINDINGS,
   netGraph: true,
+  sound: true,
 }
 
 /**
@@ -81,6 +83,7 @@ export function parseSettings(stored: unknown, oldName?: unknown): Settings {
       : DEFAULTS.joystick,
     bindings: s.bindings === undefined ? DEFAULT_BINDINGS : parseBindings(s.bindings),
     netGraph: typeof s.netGraph === 'boolean' ? s.netGraph : DEFAULTS.netGraph,
+    sound: typeof s.sound === 'boolean' ? s.sound : DEFAULTS.sound,
   }
 }
 

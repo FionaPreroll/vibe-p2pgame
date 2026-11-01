@@ -1,11 +1,15 @@
 import { expect, test } from '@playwright/test'
 import { ownCode, pair, pasteCode, player } from './helpers'
 
-/** The color in the middle of a canvas, roughly: the second player's dot is blue. */
+/**
+ * The color beside the middle of a canvas, roughly: the second player's dot is blue. Beside,
+ * as the middle of a dot holds its shape: 25 of the arena's 1000 units to the right.
+ */
 function centerColor(canvas: HTMLCanvasElement): string {
   const context = canvas.getContext('2d')
+  const beside = Math.min(canvas.width, canvas.height) * 0.025
   const [r = 0, g = 0, b = 0] =
-    context?.getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data ?? []
+    context?.getImageData(canvas.width / 2 + beside, canvas.height / 2, 1, 1).data ?? []
   return b > 200 && r < 120 && g > 120 ? 'blue' : `rgb(${r}, ${g}, ${b})`
 }
 

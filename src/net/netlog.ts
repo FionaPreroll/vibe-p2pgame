@@ -143,6 +143,11 @@ export class NetLog {
     return this.samples.filter((s) => s.peer === peer)
   }
 
+  /** The seconds of a connection with a stall, from second `t` of the log on. */
+  stallsSince(peer: number, t: number): number {
+    return this.samples.filter((s) => s.peer === peer && s.t >= t && s.gap >= STALL_MS).length
+  }
+
   /** Every connection with samples, by id. */
   peerIds(): number[] {
     return [...new Set(this.samples.map((s) => s.peer))].sort((a, b) => a - b)

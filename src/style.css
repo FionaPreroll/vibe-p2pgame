@@ -891,3 +891,72 @@ a.button.primary {
 .about a {
   color: var(--accent);
 }
+
+/* After a round: what everyone caught and touched. */
+table.stats {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+}
+
+.stats th {
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.stats td,
+.stats th {
+  padding: 0.2rem 0.3rem;
+}
+
+.stats td:first-child {
+  width: 100%;
+}
+
+.stats .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats .score {
+  font-weight: 700;
+}
+
+.stats tr.away {
+  opacity: 0.5;
+}
+
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(107, 224, 107, 0.15);
+  color: #6be06b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+svg.dot {
+  width: 1em;
+  height: 1em;
+}
+
+button.mute {
+  flex: none;
+  font-size: 1.1rem;
+}
+
+button.ready-on {
+  border-color: #6be06b;
+  color: #6be06b;
+}

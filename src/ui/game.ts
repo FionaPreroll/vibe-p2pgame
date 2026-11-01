@@ -1,10 +1,11 @@
-import { Painter, playerColor } from '../game/draw'
+import { Painter, playerColor, playerShape } from '../game/draw'
 import { type Player, type Snapshot, winners } from '../game/sim'
 import { t } from '../i18n'
 import { Controls } from '../input'
 import { STALL_MS } from '../net/netlog'
 import type { Session } from '../session/session'
-import { settings } from '../settings'
+import { settings, updateSettings } from '../settings'
+import { play, scoreSound, unlockSound } from '../sound'
 import { h } from './dom'
 import { joystick } from './joystick'
 import { drawNetGraph, pingQuality, worstLatest } from './netGraph'
@@ -77,7 +78,22 @@ export function gameScreen(
   const bannerTitle = h('strong', {})
   const bannerNote = h('span', {})
   const banner = h('div', { class: 'banner', hidden: true }, bannerTitle, bannerNote)
-  const flash = h('div', { class: 'flash', hidden: true, ariaHidden: 'true' }, t('go'))
+  const flash = h('div', { class: 'flash', hidden: true, ariaHidden: 'true' })
+  const mute = h('button', {
+    type: 'button',
+    class: 'icon mute',
+    onclick: () => {
+      updateSettings({ sound: !settings().sound })
+      showMute()
+    },
+  })
+  const showMute = () => {
+    const on = settings().sound
+    mute.textContent = on ? '🔊' : '🔇'
+    mute.ariaLabel = t(on ? 'soundOff' : 'soundOn')
+    mute.title = mute.ariaLabel
+  }
+  showMute()
   // Clock or banner in a line of their own, always as high, so they never cover the arena and
   // the arena keeps its size as a round starts.
   const status = h('div', { class: 'status' }, clock, banner)
@@ -87,7 +103,7 @@ export function gameScreen(
   const element = h(
     'div',
     { class: `screen game${pad ? ` joystick-${options.joystick}` : ''}` },
-    h('div', { class: 'hud' }, leave, scores, options.netGraph && net),
+    h('div', { class: 'hud' }, leave, scores, options.netGraph && net, mute),
     status,
     stage,
     sheetBox,
@@ -110,6 +126,10 @@ export function gameScreen(
     }
   })
   const controls = new Controls(() => settings().bindings)
+  // Browsers allow sound only after a touch or a key.
+  const unlock = () => unlockSound()
+  window.addEventListener('pointerdown', unlock)
+  window.addEventListener('keydown', unlock)
   let steering = false
 
   const wakeLock = options.keepScreenOn
@@ -120,6 +140,7 @@ export function gameScreen(
   let bannerKey = ''
   let netSamples = -1
   let lastPhase: Snapshot['phase'] | null = null
+  let countdownShown = 0
   let roundSeconds = 0
   // Unknown until the first snapshot, so a score kept from before rejoining does not buzz.
   let lastScore: number | null = null
@@ -140,13 +161,17 @@ export function gameScreen(
       steering = false
       session.setTarget(null)
     }
-    if (input.start && onStart && state && state.phase !== 'play') onStart()
+    if (input.start && onStart && state && (state.phase === 'lobby' || state.phase === 'over'))
+      onStart()
     painter.draw(state, session.selfId(), session.target())
     if (state) {
-      if (me && lastScore !== null && me.score !== lastScore && settings().vibration) {
+      if (me && lastScore !== null && me.score !== lastScore && state.phase === 'play') {
         // A short buzz for a spark, a longer one for gold, and a double one for a mine.
         const change = me.score - lastScore
-        navigator.vibrate?.(change < 0 ? [70, 50, 70] : change > 1 ? 80 : 25)
+        if (settings().vibration)
+          navigator.vibrate?.(change < 0 ? [70, 50, 70] : change > 1 ? 80 : 25)
+        const sound = scoreSound(change)
+        if (sound) play(sound, settings().sound)
       }
       lastScore = me?.score ?? null
       showPhase(state)
@@ -165,16 +190,14 @@ export function gameScreen(
           ),
         )
       }
-      const nextSheet =
-        state.phase === 'play'
-          ? ''
-          : `${state.phase}|${state.players.map((p) => `${p.id}:${p.name}:${p.score}:${pingBand(p)}`)}|${state.away?.map((p) => p.id)}`
+      const inRound = state.phase === 'play' || state.phase === 'countdown'
+      const nextSheet = inRound
+        ? ''
+        : `${state.phase}|${state.players.map((p) => `${p.id}:${p.name}:${p.score}:${pingBand(p)}:${p.ready}`)}|${state.away?.map((p) => p.id)}|${state.watching?.map((p) => p.id)}`
       if (nextSheet !== sheetKey) {
         sheetKey = nextSheet
-        sheetBox.hidden = state.phase === 'play'
-        sheetBox.replaceChildren(
-          ...(state.phase === 'play' ? [] : sheet(state).filter((node) => node !== null)),
-        )
+        sheetBox.hidden = inRound
+        sheetBox.replaceChildren(...(inRound ? [] : sheet(state).filter((node) => node !== null)))
       }
     }
     if (options.netGraph && session.net.samples.length !== netSamples) {
@@ -184,17 +207,39 @@ export function gameScreen(
     frame = requestAnimationFrame(render)
   }
 
-  /** The clock in a round, the banner between rounds, and "Go!" as a round starts. */
+  /** Shows a big word or number over the arena, for a moment. */
+  function flashText(text: string) {
+    flash.textContent = text
+    flash.hidden = false
+    flash.classList.remove('show')
+    void flash.offsetWidth
+    flash.classList.add('show')
+  }
+
+  /**
+   * The countdown, the clock in a round, the banner between rounds, and "Go!" as a round
+   * starts, with their sounds.
+   */
   function showPhase(state: Snapshot) {
+    const on = settings().sound
+    if (state.phase === 'countdown') {
+      const number = Math.ceil(state.timeLeft)
+      if (lastPhase !== 'countdown' || number !== countdownShown) {
+        countdownShown = number
+        if (number > 0) {
+          flashText(String(number))
+          play('tick', on)
+        }
+      }
+    }
+    if (state.phase === 'over' && lastPhase === 'play') play('end', on)
     if (state.phase === 'play') {
       if (lastPhase !== 'play') {
         // The round's length, for the bar: the time left at its start.
         roundSeconds = Math.max(1, Math.ceil(state.timeLeft))
         if (lastPhase !== null) {
-          flash.hidden = false
-          flash.classList.remove('show')
-          void flash.offsetWidth
-          flash.classList.add('show')
+          flashText(t('go'))
+          play('go', on)
         }
       }
       const seconds = Math.ceil(state.timeLeft)
@@ -204,7 +249,7 @@ export function gameScreen(
       clock.classList.toggle('urgent', seconds <= URGENT_SECONDS)
     }
     clock.hidden = state.phase !== 'play'
-    const nextBanner = state.phase === 'play' ? '' : state.phase
+    const nextBanner = state.phase === 'play' || state.phase === 'countdown' ? '' : state.phase
     if (nextBanner !== bannerKey) {
       bannerKey = nextBanner
       banner.hidden = nextBanner === ''
@@ -234,6 +279,8 @@ export function gameScreen(
     destroy() {
       cancelAnimationFrame(frame)
       controls.destroy()
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
       void wakeLock?.then((lock) => lock?.release())
     },
   }
@@ -250,11 +297,69 @@ export function networkButton(session: Session): HTMLElement {
 }
 
 /**
- * The players, best first, with their pings: what everyone sees between rounds. Players who
- * dropped out follow, marked away, as they may come back.
+ * The players, best first: what everyone sees between rounds. Before the first round, with
+ * their pings; after a round, with what each caught and touched. Who is ready for the next
+ * round says so. Players who dropped out follow, marked away, as they may come back, and those
+ * who only watch.
  */
 export function roster(state: Snapshot, selfId: number | null): HTMLElement {
   const ranked = [...state.players].sort((a, b) => b.score - a.score || a.id - b.id)
+  const others = [
+    ...(state.away ?? []).map((p) => ({ ...p, label: t('away') })),
+    ...(state.watching ?? []).map((p) => ({ ...p, label: t('watchingLabel') })),
+  ]
+  const name = (p: Player) =>
+    h(
+      'span',
+      { class: 'name' },
+      p.name,
+      p.id === selfId ? ` (${t('you')})` : '',
+      p.ready ? h('span', { class: 'badge' }, `✓ ${t('readyLabel')}`) : null,
+    )
+  if (state.phase === 'over') {
+    const cell = (text: string | number, label = '') =>
+      h('td', { class: 'num', title: label }, String(text))
+    return h(
+      'table',
+      { class: 'roster stats' },
+      h(
+        'thead',
+        {},
+        h(
+          'tr',
+          {},
+          h('th', {}),
+          h('th', { class: 'num' }, t('statsCaught')),
+          h('th', { class: 'num' }, t('statsGold')),
+          h('th', { class: 'num' }, t('statsHits')),
+          h('th', { class: 'num' }, t('statsScore')),
+        ),
+      ),
+      h(
+        'tbody',
+        {},
+        ...ranked.map((p) =>
+          h(
+            'tr',
+            {},
+            h('td', {}, h('span', { class: 'who' }, dot(p.id), name(p))),
+            cell(p.caught),
+            cell(p.gold),
+            cell(p.hits),
+            h('td', { class: 'num score' }, String(p.score)),
+          ),
+        ),
+        ...others.map((p) =>
+          h(
+            'tr',
+            { class: 'away' },
+            h('td', {}, h('span', { class: 'who' }, dot(p.id), p.name)),
+            h('td', { colSpan: 4, class: 'num' }, p.label),
+          ),
+        ),
+      ),
+    )
+  }
   return h(
     'ul',
     { class: 'roster' },
@@ -263,7 +368,7 @@ export function roster(state: Snapshot, selfId: number | null): HTMLElement {
         'li',
         {},
         dot(p.id),
-        h('span', { class: 'name' }, p.name, p.id === selfId ? ` (${t('you')})` : ''),
+        name(p),
         h(
           'span',
           { class: 'ping' },
@@ -272,13 +377,13 @@ export function roster(state: Snapshot, selfId: number | null): HTMLElement {
         h('span', { class: 'score' }, String(p.score)),
       ),
     ),
-    ...(state.away ?? []).map((p) =>
+    ...others.map((p) =>
       h(
         'li',
         { class: 'away' },
         dot(p.id),
         h('span', { class: 'name' }, p.name),
-        h('span', { class: 'ping' }, t('away')),
+        h('span', { class: 'ping' }, p.label),
       ),
     ),
   )
@@ -297,10 +402,22 @@ export function result(state: Snapshot): HTMLElement {
   return h('p', { class: 'result' }, text)
 }
 
-function dot(id: number): HTMLElement {
-  const element = h('span', { class: 'dot' })
-  element.style.background = playerColor(id)
-  return element
+/** A player's colour and shape, as small as a letter. */
+export function dot(id: number): Element {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('viewBox', '-1 -1 2 2')
+  svg.setAttribute('class', 'dot')
+  svg.setAttribute('aria-hidden', 'true')
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+  circle.setAttribute('r', '1')
+  circle.setAttribute('fill', playerColor(id))
+  const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  shape.setAttribute('d', playerShape(id))
+  shape.setAttribute('fill', 'rgba(11, 13, 26, 0.6)')
+  shape.setAttribute('fill-rule', 'evenodd')
+  shape.setAttribute('transform', 'scale(0.8)')
+  svg.append(circle, shape)
+  return svg
 }
 
 /** Pings rounded to 5 ms, so the sheet is not rebuilt for every millisecond of jitter. */

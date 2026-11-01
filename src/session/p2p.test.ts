@@ -77,7 +77,8 @@ describe('Spark Hunt between phones', () => {
     const { pair, guest } = await join(host)
     guest.setTarget({ x: 0, y: 1000 })
     host.start(5)
-    await later(6000)
+    // Three seconds of countdown, then the round.
+    await later(9000)
     const states = pair.host.fast.sent.filter((m) => m.includes('"state"'))
     expect(states.length).toBeGreaterThan(100)
     for (const message of states) expect(parseSnapshot(JSON.parse(message).data)).toBeDefined()
@@ -139,6 +140,65 @@ describe('the network log', () => {
     expect(last?.gap).toBeGreaterThanOrEqual(1000)
     expect(last?.inRate).toBe(0)
     expect(guest.net.summary()[0]?.stalls).toBeGreaterThan(0)
+    host.close()
+  })
+})
+
+describe('rounds', () => {
+  it('start by themselves after a round once every player is ready, and not before', async () => {
+    const host = new HostSession('Hosty')
+    const one = await join(host, 'One')
+    const two = await join(host, 'Two')
+    host.start(5)
+    await later(9000)
+    expect(host.world.phase).toBe('over')
+    one.guest.setReady(true)
+    await later(500)
+    expect(player(host, 1).ready).toBe(true)
+    expect(host.world.phase).toBe('over')
+    two.guest.setReady(true)
+    await later(500)
+    expect(host.world.phase).toBe('countdown')
+    expect(host.world.roundSeconds).toBe(5)
+    // Ready ends with the start, on the players' phones too, so the next round waits again.
+    await later(500)
+    expect(one.guest.ready()).toBe(false)
+    expect(host.world.players.every((p) => !p.ready)).toBe(true)
+    host.close()
+  })
+
+  it('show players who only watch apart, and let them play again between rounds', async () => {
+    const host = new HostSession('Hosty')
+    const { guest } = await join(host)
+    player(host, 1).score = 4
+    guest.setWatching(true)
+    await later(200)
+    expect(host.world.players.map((p) => p.id)).toEqual([0])
+    expect(guest.snapshot()?.watching).toEqual([{ id: 1, name: 'Guesty' }])
+    host.start(5)
+    await later(1000)
+    guest.setWatching(false)
+    await later(500)
+    // Not in the middle of a round.
+    expect(host.world.players.map((p) => p.id)).toEqual([0])
+    await later(8000)
+    expect(host.world.phase).toBe('over')
+    await later(200)
+    expect(player(host, 1).score).toBe(0)
+    expect(host.snapshot().watching).toEqual([])
+    host.close()
+  })
+
+  it('warn the host about a player whose connection keeps stalling, once a minute', async () => {
+    const host = new HostSession('Hosty')
+    const warned: string[] = []
+    host.onStalling = (name) => warned.push(name)
+    const { pair } = await join(host)
+    await later(2000)
+    pair.guest.fast.dropping = true
+    // Inputs stop: every second is a stall, until the player is taken for gone after 8 s.
+    await later(5000)
+    expect(warned).toEqual(['Guesty'])
     host.close()
   })
 })
@@ -230,11 +290,25 @@ describe('a malicious host', () => {
   const sound = {
     phase: 'play',
     timeLeft: 30,
-    players: [{ id: 3, name: 'Guesty', x: 100, y: 100, score: 2, ping: 5 }],
+    players: [
+      {
+        id: 3,
+        name: 'Guesty',
+        x: 100,
+        y: 100,
+        score: 2,
+        ping: 5,
+        caught: 2,
+        gold: 0,
+        hits: 0,
+        ready: false,
+      },
+    ],
     sparks: [{ id: 1, x: 300, y: 300, gold: false }],
     mines: [{ id: 2, x: 600, y: 600, armIn: 0 }],
     blasts: [],
     away: [],
+    watching: [],
   }
 
   it('gets only sound snapshots drawn', async () => {
@@ -263,6 +337,9 @@ describe('a malicious host', () => {
       { ...sound, players: 'all' },
       { ...sound, players: [{ ...sound.players[0], x: -50 }] },
       { ...sound, players: [{ ...sound.players[0], score: 1.5 }] },
+      { ...sound, players: [{ ...sound.players[0], ready: 'yes' }] },
+      { ...sound, players: [{ ...sound.players[0], caught: -1 }] },
+      { ...sound, watching: [{ id: 'x', name: 'Cy' }] },
       { ...sound, players: [sound.players[0], sound.players[0]] },
       { ...sound, sparks: Array(1000).fill(sound.sparks[0]) },
       { ...sound, mines: [{ id: 2, x: 600, y: 600 }] },

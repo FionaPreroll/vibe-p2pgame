@@ -16,7 +16,7 @@ const field = fc.oneof(
 /** A snapshot as an honest host sends it. */
 const coordinate = fc.integer({ min: 0, max: ARENA })
 const honestSnapshot: fc.Arbitrary<Snapshot> = fc.record({
-  phase: fc.constantFrom('lobby', 'play', 'over'),
+  phase: fc.constantFrom('lobby', 'countdown', 'play', 'over'),
   timeLeft: fc.double({ min: 0, max: 120, noNaN: true }),
   players: fc.uniqueArray(
     fc.record({
@@ -26,6 +26,10 @@ const honestSnapshot: fc.Arbitrary<Snapshot> = fc.record({
       y: coordinate,
       score: fc.integer({ min: -100, max: 100 }),
       ping: fc.option(fc.nat(1000), { nil: null }),
+      caught: fc.nat(50),
+      gold: fc.nat(10),
+      hits: fc.nat(10),
+      ready: fc.boolean(),
     }),
     { maxLength: MAX_PLAYERS, selector: (p) => p.id },
   ),
@@ -52,6 +56,9 @@ const honestSnapshot: fc.Arbitrary<Snapshot> = fc.record({
     { maxLength: 8 },
   ),
   away: fc.array(fc.record({ id: fc.nat(100), name: fc.constantFrom('Ada', 'Bo') }), {
+    maxLength: 4,
+  }),
+  watching: fc.array(fc.record({ id: fc.nat(100), name: fc.constantFrom('Cy', 'Di') }), {
     maxLength: 4,
   }),
 })
@@ -95,26 +102,37 @@ describe('parsers, fuzzed', () => {
     )
   })
 
-  it('give the host only targets in the arena, or none', () => {
+  it('give the host only targets in the arena, or none, and true switches', () => {
     fc.assert(
       fc.property(
         fc.oneof(
-          fc.record({ x: field, y: field }),
-          fc.dictionary(fc.constantFrom('x', 'y'), field),
+          fc.record({
+            target: fc.oneof(fc.record({ x: field, y: field }), field),
+            ready: fc.oneof(fc.boolean(), field),
+            watch: fc.oneof(fc.boolean(), field),
+          }),
+          fc.dictionary(fc.constantFrom('target', 'ready', 'watch', 'x', 'y'), field),
           field,
         ),
         (value) => {
-          const target = parseInput(JSON.parse(JSON.stringify(value) ?? 'null'))
-          if (target) {
-            for (const v of [target.x, target.y])
+          const input = parseInput(JSON.parse(JSON.stringify(value) ?? 'null'))
+          if (input) {
+            expect(typeof input.ready === 'boolean' && typeof input.watch === 'boolean').toBe(true)
+            for (const v of input.target ? [input.target.x, input.target.y] : [])
               expect(Number.isFinite(v) && v >= 0 && v <= ARENA).toBe(true)
           }
         },
       ),
       { numRuns: 2000 },
     )
-    expect(parseInput(JSON.parse('{"x":1e999,"y":1}'))).toBeUndefined()
-    expect(parseInput(null)).toBeNull()
+    const input = (target: string) =>
+      parseInput(JSON.parse(`{"target":${target},"ready":false,"watch":false}`))
+    expect(input('{"x":1e999,"y":1}')).toBeUndefined()
+    expect(input('null')).toEqual({ target: null, ready: false, watch: false })
+    expect(input('{"x":-5,"y":2000}')?.target).toEqual({ x: 0, y: ARENA })
+    expect(parseInput(null)).toBeUndefined()
+    // The input of the version before, a bare target, is no input now.
+    expect(parseInput({ x: 1, y: 2 })).toBeUndefined()
   })
 
   it('accept every honest snapshot unchanged', () => {

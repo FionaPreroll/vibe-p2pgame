@@ -92,3 +92,31 @@ test('players read and copy the network report after a round', async ({ browser 
   await host.locator('button.net').click()
   await expect(host.locator('.modal textarea.report')).toHaveValue(/- To player \d/)
 })
+
+test('players say they are ready, or only watch, and the host sees it', async ({ browser }) => {
+  const host = await player(browser)
+  const guest = await player(browser)
+  await host.getByLabel('Your name').fill('Hosty')
+  await host.getByRole('button', { name: 'Host a game' }).click()
+  await guest.getByLabel('Your name').fill('Guesty')
+  await pair(host, guest)
+
+  await expect(host.locator('.sheet')).toContainText('0 of 1 players ready.')
+  await guest.getByRole('button', { name: 'Ready for the next round' }).click()
+  await expect(host.locator('.sheet')).toContainText('1 of 1 players ready.')
+  await expect(host.locator('.roster li', { hasText: 'Guesty' })).toContainText('✓ ready')
+  await guest.getByRole('button', { name: /Ready ✓/ }).click()
+  await expect(host.locator('.sheet')).toContainText('0 of 1 players ready.')
+
+  // Watching: the dot leaves, the name stays, marked.
+  await guest.getByRole('button', { name: 'Just watch' }).click()
+  await expect(host.locator('.roster li.away', { hasText: 'Guesty' })).toContainText('watching')
+  await expect(guest.getByRole('button', { name: 'Play along again' })).toBeVisible()
+  await guest.getByRole('button', { name: 'Play along again' }).click()
+  await expect(host.locator('.roster li:not(.away)', { hasText: 'Guesty' })).toBeVisible()
+
+  // The round begins with a countdown, on both phones.
+  await host.getByRole('button', { name: 'Start round' }).click()
+  await expect(guest.locator('.flash')).toHaveText(/^[123]$/)
+  await expect(guest.locator('.clock')).toBeVisible()
+})

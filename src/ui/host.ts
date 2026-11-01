@@ -1,5 +1,7 @@
 import type { Signal } from '@fionapreroll/p2p'
 import { qrElement } from '@fionapreroll/p2p/qr'
+import { HOST_ID } from '@fionapreroll/p2p/room'
+import type { Snapshot } from '../game/sim'
 import { t } from '../i18n'
 import { describeError, log } from '../log'
 import { HostSession, type Pairing } from '../session/host'
@@ -22,6 +24,7 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
     log('game', 'a player left')
     toast(t('playerLeft', { name: left }))
   }
+  session.onStalling = (player) => toast(t('stalling', { name: player }))
   const start = () => session.start(settings().roundSeconds)
   const screen = gameScreen(
     session,
@@ -33,6 +36,7 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
           ? result(state)
           : h('p', {}, alone ? t('alone') : t('lobby'), ' ', t('steer')),
         roster(state, session.selfId()),
+        alone ? null : readiness(state),
         h(
           'div',
           { class: 'buttons' },
@@ -166,4 +170,16 @@ function pairingDialog(session: HostSession, parent: HTMLElement): void {
     qrBox.replaceChildren(qrElement(joinLink(pairing.code)))
     codes.refresh()
   })()
+}
+
+/** How many players are ready, and after a round that the next one starts once all are. */
+function readiness(state: Snapshot): HTMLElement {
+  const others = state.players.filter((p) => p.id !== HOST_ID)
+  const ready = others.filter((p) => p.ready).length
+  return h(
+    'p',
+    { class: 'muted' },
+    t('readyCount', { ready, all: others.length }),
+    state.phase === 'over' ? ` ${t('rematchNote')}` : '',
+  )
 }

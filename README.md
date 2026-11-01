@@ -13,13 +13,16 @@ The networking is a library of its own, [`@fionapreroll/p2p`](packages/p2p/READM
 
 ## The game
 
-The game is small on purpose, as the project is about the connection. Every player steers a glowing dot toward the spot they touch, and whoever reaches a spark first scores; golden sparks count three. Red mines cost two points: a touched mine explodes and appears again elsewhere, and scores can drop below zero. A new mine is grey and harmless for its first second, and never appears right next to a player. A round lasts a minute (30 to 120 seconds in the settings), and up to eight phones play together. The game is in English and German, after the browser's language or as chosen in the settings.
+The game is small on purpose, as the project is about the connection. Every player steers a glowing dot toward the spot they touch, and whoever reaches a spark first scores; golden sparks count three. Red mines cost two points: a touched mine explodes and appears again elsewhere, and scores can drop below zero. A new mine is grey and harmless for its first second, and never appears right next to a player. A round starts with a countdown of three seconds and lasts a minute (30 to 120 seconds in the settings), and up to eight phones play together. Every player has a colour and a shape of their own, so the dots stay apart for players who tell colours apart badly. The game is in English and German, after the browser's language or as chosen in the settings.
 
 ## Playing
 
 1. **Host:** one phone taps **Host a game**. The arena appears at once in **free play**, as a banner above it says: sparks and mines work, but nothing counts yet, so everyone can warm up.
 2. **Add players:** for every further player, the host taps **Add player**, and the new player taps **Join a game**. In the Android app, both are asked how to connect (below); in a browser, it is always the QR code. While the host is alone, **Add player** is the highlighted button.
-3. **Play:** once everyone is in, the host taps **Start round**, or presses the start key or controller button. "Go!" flashes, a big clock with a bar runs above the arena and turns red for the last ten seconds, and points won rise from the dot that won them.
+3. **Play:** once everyone is in, the host taps **Start round**, or presses the start key or controller button. After a countdown, "Go!" flashes, a big clock with a bar runs above the arena and turns red for the last ten seconds, and points won rise from the dot that won them. Short sounds go with sparks, mines, the countdown and the end; 🔊 next to the scores mutes them.
+4. **Next round:** after a round, everyone sees who caught how many sparks, golden ones among them, and touched how many mines. Players tap **Ready for the next round**; once every player is ready, the next round starts by itself, and the host sees how many are ready. A player can also **Just watch**: their dot leaves the arena, their score stays, and **Play along again** brings them back from the next round on.
+
+If a player's connection keeps stalling, the host is told, at most once a minute per player.
 
 Players connect to the host only, a star: each new player pairs with the host and nobody else. One game can mix both ways of connecting.
 

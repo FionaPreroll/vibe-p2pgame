@@ -8,6 +8,8 @@
  * after a minute.
  *
  * Before the first round is free play: everything works as in a round, but nothing counts.
+ * A round begins with a countdown of three seconds, in which the dots move but nothing is on
+ * the board yet.
  */
 
 export const ARENA = 1000
@@ -24,6 +26,8 @@ export const MINE_PENALTY = 2
 export const MINE_ARM_SECONDS = 1
 /** How long the flash of an exploding mine shows. */
 export const BLAST_SECONDS = 0.8
+/** The countdown before a round. */
+export const COUNTDOWN_SECONDS = 3
 const GOLD_CHANCE = 1 / 8
 const GOLD_VALUE = 3
 /** New mines keep this far from every player. */
@@ -32,7 +36,7 @@ const MINE_SAFE_DISTANCE = 180
 const MINE_CLEARANCE = 70
 const PLACEMENT_TRIES = 12
 
-export type Phase = 'lobby' | 'play' | 'over'
+export type Phase = 'lobby' | 'countdown' | 'play' | 'over'
 
 export interface Player {
   readonly id: number
@@ -42,6 +46,12 @@ export interface Player {
   score: number
   /** Round trip time to the host in milliseconds, as the player last measured it. */
   ping: number | null
+  /** This round: sparks caught, the golden ones among them, and mines touched. */
+  caught: number
+  gold: number
+  hits: number
+  /** Between rounds: the player is ready for the next one. */
+  ready: boolean
 }
 
 export interface Spark {
@@ -82,12 +92,16 @@ export interface Snapshot {
   blasts: Blast[]
   /** Players who dropped out and may rejoin. The host fills this in; the rules ignore it. */
   away?: { id: number; name: string }[]
+  /** Players who only watch, without a dot. The host fills this in; the rules ignore it. */
+  watching?: { id: number; name: string }[]
 }
 
 export interface World extends Snapshot {
   /** The id of the next spark, mine or blast. */
   nextId: number
   seed: number
+  /** The length of the round the countdown leads to. */
+  roundSeconds: number
 }
 
 /** Points won or lost: a spark caught, or a mine touched. */
@@ -106,6 +120,7 @@ export function createWorld(seed: number): World {
     blasts: [],
     nextId: 1,
     seed,
+    roundSeconds: ROUND_SECONDS,
   }
 }
 
@@ -119,6 +134,10 @@ export function addPlayer(world: World, id: number, name: string): Player {
     y: ARENA / 2 + Math.sin(angle) * ARENA * 0.25,
     score: 0,
     ping: null,
+    caught: 0,
+    gold: 0,
+    hits: 0,
+    ready: false,
   }
   world.players.push(player)
   return player
@@ -128,13 +147,34 @@ export function removePlayer(world: World, id: number): void {
   world.players = world.players.filter((p) => p.id !== id)
 }
 
-export function startRound(world: World, seconds = ROUND_SECONDS): void {
-  world.phase = 'play'
-  world.timeLeft = seconds
+/**
+ * A new round, from nothing for everyone: after a countdown of `countdown` seconds, it lasts
+ * `seconds`.
+ */
+export function startRound(
+  world: World,
+  seconds = ROUND_SECONDS,
+  countdown = COUNTDOWN_SECONDS,
+): void {
+  world.phase = countdown > 0 ? 'countdown' : 'play'
+  world.timeLeft = countdown > 0 ? countdown : seconds
+  world.roundSeconds = seconds
   world.sparks = []
   world.mines = []
   world.blasts = []
-  for (const player of world.players) player.score = 0
+  for (const player of world.players) {
+    player.score = 0
+    player.caught = 0
+    player.gold = 0
+    player.hits = 0
+    player.ready = false
+  }
+}
+
+/** Whether every player but the host is ready, and there is at least one. */
+export function allReady(world: World, hostId = 0): boolean {
+  const others = world.players.filter((p) => p.id !== hostId)
+  return others.length > 0 && others.every((p) => p.ready)
 }
 
 /** The number of sparks on the board: more players, more sparks. */
@@ -156,6 +196,14 @@ export function step(world: World, targets: ReadonlyMap<number, Target>, dt: num
   for (const blast of world.blasts) blast.age += dt
   world.blasts = world.blasts.filter((blast) => blast.age < BLAST_SECONDS)
   if (world.phase === 'over') return []
+  if (world.phase === 'countdown') {
+    world.timeLeft = Math.max(0, world.timeLeft - dt)
+    if (world.timeLeft > 0) return []
+    // Go: the board is laid at once.
+    world.phase = 'play'
+    world.timeLeft = world.roundSeconds
+    return step(world, targets, 0)
+  }
   if (world.phase === 'play') {
     world.timeLeft = Math.max(0, world.timeLeft - dt)
     if (world.timeLeft === 0) {
@@ -172,6 +220,10 @@ export function step(world: World, targets: ReadonlyMap<number, Target>, dt: num
     if (catcher === undefined) return true
     const points = counts ? (spark.gold ? GOLD_VALUE : 1) : 0
     catcher.score += points
+    if (counts) {
+      catcher.caught++
+      if (spark.gold) catcher.gold++
+    }
     catches.push({ playerId: catcher.id, points })
     return false
   })
@@ -182,6 +234,7 @@ export function step(world: World, targets: ReadonlyMap<number, Target>, dt: num
     if (victim === undefined) return true
     const points = counts ? -MINE_PENALTY : 0
     victim.score += points
+    if (counts) victim.hits++
     catches.push({ playerId: victim.id, points })
     world.blasts.push({ id: world.nextId++, x: mine.x, y: mine.y, playerId: victim.id, age: 0 })
     return false

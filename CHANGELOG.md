@@ -6,6 +6,13 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Added
 
+- A countdown of three seconds before every round.
+- After a round, everyone sees who caught how many sparks, golden ones among them, and touched how many mines.
+- Players can say they are ready for the next round: once every player is ready, it starts by itself. The host sees how many are ready.
+- Players can just watch for a while, without their dot, and play along again from the next round on, with their score.
+- Sounds for sparks, golden sparks, mines, the countdown and the end of a round, with a mute button next to the scores and a switch in the settings.
+- Every player's dot carries a shape as well as a colour, also in the lists, for players who tell colours apart badly.
+- The host is told when a player's connection keeps stalling.
 - Free play: before the first round, a banner above the arena says that points do not count yet, and they do not; sparks and mines work as in a round. After a round, the banner says it is over.
 - A big clock above the arena during a round, with a bar that runs down and turns red, ticking, for the last ten seconds. "Go!" flashes as a round starts.
 - Points won rise from the dot that won them, as "+1" or "+3".
@@ -34,6 +41,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Changed
 
+- Phones with this version and phones with the version before cannot play together: update both.
 - While the host is alone, _Add player_ is the highlighted button, as adding players is what comes next.
 - The settings are in sections: game, controls, app, data and help.
 - Your own score is marked in the list of scores.
