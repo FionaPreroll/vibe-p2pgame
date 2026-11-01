@@ -4,7 +4,7 @@
  */
 const en = {
   title: 'Spark Hunt',
-  tagline: 'A game for phones side by side: no internet, no server, no app.',
+  tagline: 'A game for phones side by side, without internet or a server.',
   yourName: 'Your name',
   defaultName: 'Player {n}',
   host: 'Host a game',
@@ -120,7 +120,7 @@ const en = {
   playerLeft: '{name} left.',
   full: 'This game is full.',
   versionMismatch:
-    'The two phones run different versions of the game. Close the game on both and open it again to update, then pair once more.',
+    'The two phones run different versions of the game. Update it on both, then pair once more: in a browser, close the game and open it again; in the app, look for a new version in the settings.',
   steer:
     'Touch where your dot should go and catch the sparks. Golden ones count three, and mines cost two.',
   winner: '{names} wins!',
@@ -148,7 +148,7 @@ const en = {
   rejoined: '{name} is back.',
   welcomeBack: 'Welcome back! Your score is kept.',
   lostHelp:
-    'Check that you are still on the same Wi-Fi, then rejoin: you keep your place and score.',
+    'Check that you are still on the same Wi-Fi, or near the host for Bluetooth, then rejoin: you keep your place and score.',
   rejoinNow: 'Rejoin',
   home: 'Home',
   ended: '{host} ended the game.',
@@ -222,11 +222,20 @@ const en = {
     'Spark Hunt is built with these open-source libraries, under their licenses. Tap one for its license text.',
   licensesNative: 'The Android app also contains:',
   licensesMissing: 'The list is part of the built game, not of the development server.',
+  hotspotTipApp:
+    'Phones play together over the same Wi-Fi, or a hotspot one of them opens, and two Android apps also over Bluetooth. No mobile data is used.',
+  getApp: 'Also as an Android app, with Bluetooth:',
+  getAppLink: 'download it from GitHub',
+  languageAutoApp: 'Like the phone',
+  clearConfirmApp: 'Delete your name, settings and saved games in this app?',
+  savedLocallyApp: 'Everything is saved on this phone only.',
+  aboutAppBuild: 'App build {build}, web build {commit}, from {date}.',
+  about: 'About',
 }
 
 const de: Record<TextKey, string> = {
   title: 'Funkenjagd',
-  tagline: 'Ein Spiel für Handys nebeneinander: ohne Internet, ohne Server, ohne App.',
+  tagline: 'Ein Spiel für Handys nebeneinander, ohne Internet und ohne Server.',
   yourName: 'Dein Name',
   defaultName: 'Spieler {n}',
   host: 'Spiel eröffnen',
@@ -345,7 +354,7 @@ const de: Record<TextKey, string> = {
   playerLeft: '{name} ist gegangen.',
   full: 'Dieses Spiel ist voll.',
   versionMismatch:
-    'Die beiden Handys haben verschiedene Versionen des Spiels. Schließ das Spiel auf beiden und öffne es neu, um es zu aktualisieren, dann koppelt noch einmal.',
+    'Die beiden Handys haben verschiedene Versionen des Spiels. Aktualisiere es auf beiden und koppelt dann noch einmal: im Browser das Spiel schließen und neu öffnen, in der App in den Einstellungen nach einer neuen Version suchen.',
   steer:
     'Tippe dorthin, wo dein Punkt hin soll, und fang die Funken. Goldene zählen dreifach, Minen kosten zwei Punkte.',
   winner: '{names} gewinnt!',
@@ -374,7 +383,7 @@ const de: Record<TextKey, string> = {
   rejoined: '{name} ist zurück.',
   welcomeBack: 'Willkommen zurück! Deine Punkte sind erhalten.',
   lostHelp:
-    'Prüfe, ob du noch im selben WLAN bist, und steig wieder ein: Platz und Punkte bleiben erhalten.',
+    'Prüfe, ob du noch im selben WLAN bist, oder bei Bluetooth in der Nähe des Hosts, und steig wieder ein: Platz und Punkte bleiben erhalten.',
   rejoinNow: 'Wieder einsteigen',
   home: 'Startseite',
   ended: '{host} hat das Spiel beendet.',
@@ -449,6 +458,15 @@ const de: Record<TextKey, string> = {
     'Funkenjagd nutzt diese Open-Source-Bibliotheken, unter ihren Lizenzen. Tippe auf eine für ihren Lizenztext.',
   licensesNative: 'Die Android-App enthält außerdem:',
   licensesMissing: 'Die Liste gehört zum gebauten Spiel, nicht zum Entwicklungsserver.',
+  hotspotTipApp:
+    'Handys spielen im selben WLAN zusammen oder über einen Hotspot, den eines von ihnen öffnet, zwei Android-Apps auch über Bluetooth. Mobile Daten werden nicht verbraucht.',
+  getApp: 'Auch als Android-App, mit Bluetooth:',
+  getAppLink: 'auf GitHub herunterladen',
+  languageAutoApp: 'Wie das Handy',
+  clearConfirmApp: 'Name, Einstellungen und gespeicherte Spiele in dieser App löschen?',
+  savedLocallyApp: 'Alles wird nur auf diesem Handy gespeichert.',
+  aboutAppBuild: 'App-Build {build}, Web-Build {commit} vom {date}.',
+  about: 'Über',
 }
 
 export type TextKey = keyof typeof en

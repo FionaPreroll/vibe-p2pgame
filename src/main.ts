@@ -5,6 +5,7 @@ import { setLanguage } from './i18n'
 import { captureErrors, log } from './log'
 import { exitApp, isApp, nativeScannerReady, onBackButton } from './native'
 import { settings } from './settings'
+import { aboutScreen } from './ui/about'
 import { startJoin } from './ui/connect'
 import { homeScreen, playerName } from './ui/home'
 import { hostScreen } from './ui/host'
@@ -28,6 +29,7 @@ function home(): void {
     rejoin: (name, game) => startJoin(name, home, { rejoin: game.host }),
     resume: (name, game) => hostScreen(name, home, game),
     settings: () => settingsScreen(home),
+    about: () => aboutScreen(home),
   })
 }
 

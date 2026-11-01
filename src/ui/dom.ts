@@ -25,6 +25,9 @@ export function show(screen: HTMLElement, back: BackAction): void {
   const app = document.getElementById('app')
   if (!app) throw new Error('No #app element')
   app.replaceChildren(screen)
+  // A new screen starts at its top, not where the one before was scrolled to.
+  window.scrollTo?.(0, 0)
+  app.scrollTop = 0
   setBackAction(back)
 }
 

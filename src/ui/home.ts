@@ -1,7 +1,17 @@
 import { t } from '../i18n'
+import { isApp } from '../native'
 import { type HostedGame, hostedGame, type JoinedGame, joinedGame } from '../session/saved'
 import { settings, updateSettings } from '../settings'
 import { h, show } from './dom'
+
+/** The release of the Android app, with the APK and how to install it. */
+export const APP_RELEASE =
+  'https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/android-latest'
+
+/** The website offers the app on Android phones only, where it runs. */
+function offerApp(): boolean {
+  return !isApp() && typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+}
 
 export interface HomeActions {
   host(name: string): void
@@ -11,6 +21,7 @@ export interface HomeActions {
   /** Hosts the game this phone hosted before the page closed, with its players and scores. */
   resume(name: string, game: HostedGame): void
   settings(): void
+  about(): void
 }
 
 /** The start: a name, and whether this phone hosts, joins, or goes back into a game. */
@@ -39,14 +50,26 @@ export function homeScreen(actions: HomeActions): void {
         'header',
         { class: 'home-header' },
         h('h1', {}, t('title')),
-        h('button', {
-          type: 'button',
-          class: 'icon',
-          ariaLabel: t('settings'),
-          title: t('settings'),
-          textContent: '⚙',
-          onclick: actions.settings,
-        }),
+        h(
+          'div',
+          { class: 'header-buttons' },
+          h('button', {
+            type: 'button',
+            class: 'icon',
+            ariaLabel: t('aboutTitle'),
+            title: t('aboutTitle'),
+            textContent: 'ⓘ',
+            onclick: actions.about,
+          }),
+          h('button', {
+            type: 'button',
+            class: 'icon',
+            ariaLabel: t('settings'),
+            title: t('settings'),
+            textContent: '⚙',
+            onclick: actions.settings,
+          }),
+        ),
       ),
       h('p', { class: 'tagline' }, t('tagline')),
       h('label', {}, t('yourName'), input),
@@ -66,8 +89,22 @@ export function homeScreen(actions: HomeActions): void {
         button(t('host'), () => actions.host(name()), !joined && !hosted),
         button(t('join'), () => actions.join(name())),
       ),
-      h('p', { class: 'muted' }, t('hotspotTip')),
-      h('p', { class: 'muted' }, t('offline')),
+      // The app has Bluetooth and its files inside; the website has neither.
+      h('p', { class: 'muted' }, t(isApp() ? 'hotspotTipApp' : 'hotspotTip')),
+      isApp() ? null : h('p', { class: 'muted' }, t('offline')),
+      offerApp()
+        ? h(
+            'p',
+            { class: 'muted get-app' },
+            `${t('getApp')} `,
+            h('a', {
+              href: APP_RELEASE,
+              target: '_blank',
+              rel: 'noopener',
+              textContent: t('getAppLink'),
+            }),
+          )
+        : null,
     ),
     'exit',
   )

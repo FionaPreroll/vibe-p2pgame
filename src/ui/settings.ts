@@ -22,7 +22,6 @@ import {
 } from '../settings'
 import { clearAll } from '../storage'
 import { checkForUpdate } from '../updates'
-import { aboutScreen } from './about'
 import { h, show, toast } from './dom'
 import { netReportDialog } from './netReport'
 import { reportDialog } from './report'
@@ -38,7 +37,7 @@ export function settingsScreen(onBack: () => void): void {
 
   const language = select(
     [
-      ['auto', t('languageAuto')],
+      ['auto', t(isApp() ? 'languageAutoApp' : 'languageAuto')],
       ['en', 'English'],
       ['de', 'Deutsch'],
     ],
@@ -124,7 +123,7 @@ export function settingsScreen(onBack: () => void): void {
           class: 'danger',
           textContent: t('clearData'),
           onclick: () => {
-            if (!confirm(t('clearConfirm'))) return
+            if (!confirm(t(isApp() ? 'clearConfirmApp' : 'clearConfirm'))) return
             clearAll()
             forgetSettings()
             setLanguage('auto')
@@ -132,7 +131,7 @@ export function settingsScreen(onBack: () => void): void {
           },
         }),
       ),
-      h('p', { class: 'muted' }, t('savedLocally')),
+      h('p', { class: 'muted' }, t(isApp() ? 'savedLocallyApp' : 'savedLocally')),
 
       h('h3', {}, t('sectionHelp')),
       h('p', { class: 'muted' }, t('debugNote')),
@@ -148,11 +147,6 @@ export function settingsScreen(onBack: () => void): void {
           type: 'button',
           textContent: t('netTitle'),
           onclick: () => netReportDialog(),
-        }),
-        h('button', {
-          type: 'button',
-          textContent: t('aboutTitle'),
-          onclick: () => aboutScreen(() => settingsScreen(onBack)),
         }),
       ),
     ),

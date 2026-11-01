@@ -65,6 +65,17 @@ const NATIVE: readonly { name: string; license: string; url: string }[] = [
  */
 export function aboutScreen(onBack: () => void): void {
   const licenses = h('div', { class: 'licenses' }, h('p', { class: 'muted' }, '…'))
+  const web = { commit: __BUILD__.commit, date: __BUILD__.time.slice(0, 10) }
+  const build = h('p', { class: 'muted' }, t('aboutBuild', web))
+  // In the app, its own build number too, as the updates count by it.
+  if (isApp()) {
+    void import('../updates')
+      .then(({ AppUpdater }) => AppUpdater.info())
+      .then(({ build: number }) => {
+        build.textContent = t('aboutAppBuild', { ...web, build: number })
+      })
+      .catch(() => {})
+  }
   show(
     h(
       'div',
@@ -82,11 +93,7 @@ export function aboutScreen(onBack: () => void): void {
         h('h2', {}, t('aboutTitle')),
       ),
       h('p', {}, t('tagline')),
-      h(
-        'p',
-        { class: 'muted' },
-        t('aboutBuild', { commit: __BUILD__.commit, date: __BUILD__.time.slice(0, 10) }),
-      ),
+      build,
       h('p', {}, link(REPOSITORY, t('aboutSource'))),
       h('h3', {}, t('changelogTitle')),
       t('changelogNote') ? h('p', { class: 'muted' }, t('changelogNote')) : null,

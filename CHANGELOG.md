@@ -22,7 +22,8 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
 - An Android app, which plays together with the website and works without internet from its first start. Its newest build is always on the repository's releases page. In the app, a button opens Google's own QR scanner, which focuses and zooms by itself.
-- _About Spark Hunt_ in the settings: which build this is, what changed from version to version, and the licenses of the open-source code inside the game and the app.
+- On Android phones, the website offers the Android app.
+- _About Spark Hunt_, ⓘ on the start screen: which build this is, what changed from version to version, and the licenses of the open-source code inside the game and the app.
 - _Look for a new version now_ in the app's settings.
 - The app's update dialog says how large the download is, warns on mobile data or another metered connection, shows the download's progress, and can pause it. A paused or broken download goes on where it stopped, also after closing the app.
 - A debug report in the settings: if something does not work, create it, read it, and copy it or open an issue on GitHub with it. It says what phone and versions this is and what happened recently, not who you are.
@@ -30,7 +31,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - The Android app can look for a new version when it starts and install it, if you agree at its first start or switch it on in the settings. Android asks before installing.
 - Mines: touching a red mine costs two points, and a score can drop below zero. A mine goes off with a flash that shows whose points it took, then appears again elsewhere. A new mine is grey and harmless for its first second, and never appears right next to a player. More players, more mines.
 - Phones that run different versions of the game say so when pairing, instead of playing a game one of them cannot fully show.
-- Phones connect directly over Wi-Fi, for example a hotspot opened by one of them, without internet, a server or an app. To join, the new player scans the host's QR code, then the host scans the code on the player's phone.
+- Phones connect directly over Wi-Fi, for example a hotspot opened by one of them, without internet or a server. To join, the new player scans the host's QR code, then the host scans the code on the player's phone.
 - The host's QR code also works with the phone's own camera app, which opens the game and joins at once. Without a camera, the codes can be copied and pasted as text.
 - Once opened online, the game also starts without internet, and browsers can install it as an app.
 - English and German, chosen by the browser's language or in the settings.
@@ -49,6 +50,8 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- The app's texts fit the app: no more "no app", the phone instead of the browser, Bluetooth on the start screen, and no tip to open a page once online. Phones of different versions say how to update both the website and the app.
+- A new screen opens at its top, instead of scrolled down as far as the screen before.
 - The back button no longer closes the Android app from every screen: it goes back from the settings and other screens and closes dialogs, does nothing during a game, and leaves the app only from the start screen.
 - Joining a game over Bluetooth works on newer Android versions: the app now also asks for Location, which finding games nearby needs. Approximate is enough.
 - After allowing the app to install apps, an update installs right away, without downloading again.

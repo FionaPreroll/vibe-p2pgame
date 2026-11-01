@@ -671,6 +671,15 @@ button.link {
   justify-content: space-between;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.get-app a {
+  color: var(--accent);
+}
+
 select {
   font: inherit;
   width: 100%;

@@ -78,7 +78,11 @@ Every phone samples its connections once a second: the ping, messages and data p
 - **Controls:** the joystick on the screen, and the keys and controller buttons;
 - **App,** in the Android app: whether to look for updates;
 - **Data:** the camera you last scanned with is remembered, with its zoom and brightness; _Delete all saved data_ removes everything, which is stored on the phone only;
-- **Help:** the debug report, the network report, and **About Spark Hunt**: the build, the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
+- **Help:** the debug report and the network report.
+
+ⓘ on the start screen, beside ⚙, opens **About Spark Hunt**: the build (in the app also its build number), the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
+
+The website and the app say what is true where they run: the app speaks of the phone instead of the browser, mentions Bluetooth on the start screen, and leaves out the website's tip to open the page once online. On Android phones, the website offers the app.
 
 **Something does not work?** _Create debug report_ under _Help_ in the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, a summary of the last game's connection, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
 

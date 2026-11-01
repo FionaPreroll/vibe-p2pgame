@@ -5,9 +5,16 @@ test('the About view shows the changelog and the licenses of other people’s co
   browser,
 }) => {
   const page = await player(browser)
+  // A screen scrolled down before does not leave About scrolled down.
+  await page.setViewportSize({ width: 390, height: 600 })
   await page.getByRole('button', { name: 'Settings' }).click()
+  await page.mouse.wheel(0, 5000)
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+  await page.getByRole('button', { name: 'Back' }).click()
   await page.getByRole('button', { name: 'About Spark Hunt' }).click()
   await expect(page.getByRole('heading', { name: 'About Spark Hunt' })).toBeVisible()
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+  await expect(page.locator('.about')).toContainText(/Web build \w+, from \d{4}-\d\d-\d\d\./)
   await expect(page.getByRole('link', { name: /Source code/ })).toHaveAttribute(
     'href',
     'https://github.com/FionaPreroll/vibe-p2pgame',
@@ -29,5 +36,26 @@ test('the About view shows the changelog and the licenses of other people’s co
   )
 
   await page.getByRole('button', { name: 'Back' }).click()
-  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Host a game' })).toBeVisible()
+})
+
+test('the start screen speaks of the website on the website', async ({ browser }) => {
+  const page = await player(browser)
+  const home = page.locator('.home')
+  await expect(home).toContainText('without internet or a server')
+  await expect(home).not.toContainText('no app')
+  await expect(home).toContainText('All phones must be on the same Wi-Fi')
+  await expect(home).toContainText('Open this page once while online')
+  // The app is offered on Android phones only, where it runs.
+  await expect(home.getByRole('link', { name: 'download it from GitHub' })).toHaveCount(0)
+  const context = await browser.newContext({
+    locale: 'en-US',
+    userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 Chrome/140 Mobile',
+  })
+  const android = await context.newPage()
+  await android.goto('./')
+  await expect(android.getByRole('link', { name: 'download it from GitHub' })).toHaveAttribute(
+    'href',
+    'https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/android-latest',
+  )
 })
