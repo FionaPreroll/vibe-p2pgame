@@ -69,6 +69,7 @@ export function homeScreen(actions: HomeActions): void {
       h('p', { class: 'muted' }, t('hotspotTip')),
       h('p', { class: 'muted' }, t('offline')),
     ),
+    'exit',
   )
 }
 

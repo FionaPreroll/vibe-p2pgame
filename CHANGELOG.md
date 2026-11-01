@@ -39,6 +39,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- The back button no longer closes the Android app from every screen: it goes back from the settings and other screens and closes dialogs, does nothing during a game, and leaves the app only from the start screen.
 - Joining a game over Bluetooth works on newer Android versions: the app now also asks for Location, which finding games nearby needs. Approximate is enough.
 - After allowing the app to install apps, an update installs right away, without downloading again.
 

@@ -10,12 +10,14 @@ const scanner = vi.hoisted(() => ({
 vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => native.app },
 }))
+const app = vi.hoisted(() => ({ addListener: vi.fn(), exitApp: vi.fn() }))
+vi.mock('@capacitor/app', () => ({ App: app }))
 vi.mock('@capacitor-mlkit/barcode-scanning', () => ({
   BarcodeScanner: scanner,
   BarcodeFormat: { QrCode: 'QR_CODE' },
 }))
 
-const { isApp, nativeScan, nativeScannerReady } = await import('./native')
+const { exitApp, isApp, nativeScan, nativeScannerReady, onBackButton } = await import('./native')
 
 beforeEach(() => {
   native.app = true
@@ -58,5 +60,24 @@ describe('the native scanner', () => {
   it('gives null when the player goes back or the scanner fails', async () => {
     scanner.scan.mockRejectedValue(new Error('scan canceled'))
     expect(await nativeScan()).toBeNull()
+  })
+})
+
+describe('the back button', () => {
+  it('is left to the browser in a browser', async () => {
+    native.app = false
+    onBackButton(() => {})
+    exitApp()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(app.addListener).not.toHaveBeenCalled()
+    expect(app.exitApp).not.toHaveBeenCalled()
+  })
+
+  it('is taken over in the app, so it no longer closes it on every screen', async () => {
+    const callback = vi.fn()
+    onBackButton(callback)
+    await vi.waitFor(() => expect(app.addListener).toHaveBeenCalledWith('backButton', callback))
+    exitApp()
+    await vi.waitFor(() => expect(app.exitApp).toHaveBeenCalledOnce())
   })
 })

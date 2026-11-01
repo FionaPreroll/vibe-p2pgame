@@ -64,7 +64,7 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
     },
     start,
   )
-  show(screen.element)
+  show(screen.element, 'ignore')
 }
 
 /**

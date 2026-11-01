@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import { latestNetLog, type NetLog, netReport, samplesCsv } from '../net/netlog'
-import { h } from './dom'
+import { cancelOnBack, h } from './dom'
 import { drawNetGraph } from './netGraph'
 
 /**
@@ -15,6 +15,7 @@ export function netReportDialog(log: NetLog | null = latestNetLog()): void {
   if (log === null || log.samples.length === 0) {
     card.append(h('p', { class: 'muted' }, t('netEmpty')), h('div', { class: 'buttons' }, close))
     document.body.append(modal)
+    cancelOnBack(modal, () => modal.remove())
     return
   }
   const report = netReport(log, `${__BUILD__.commit}, built ${__BUILD__.time}`)
@@ -51,6 +52,7 @@ export function netReportDialog(log: NetLog | null = latestNetLog()): void {
     h('div', { class: 'buttons' }, close, download, copy),
   )
   document.body.append(modal)
+  cancelOnBack(modal, () => close.click())
   // The canvas has its size only once it is on the page.
   const now = performance.now()
   const last = log.samples.at(-1)

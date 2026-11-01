@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import { debugReport, issueLink, reportSources } from '../report'
-import { h } from './dom'
+import { cancelOnBack, h } from './dom'
 
 /** Shows the debug report, to read, copy and send: nothing leaves the phone by itself. */
 export async function reportDialog(): Promise<void> {
@@ -29,6 +29,7 @@ export async function reportDialog(): Promise<void> {
   )
   close.onclick = () => modal.remove()
   document.body.append(modal)
+  cancelOnBack(modal, () => modal.remove())
   text.value = '…'
   const report = await debugReport(await reportSources())
   text.value = report

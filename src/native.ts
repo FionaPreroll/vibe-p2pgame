@@ -10,6 +10,23 @@ export function isApp(): boolean {
   return Capacitor.isNativePlatform()
 }
 
+/**
+ * Calls back when Android's back button is pressed, in the app; without a listener, the button
+ * would close the app on every screen. In a browser, nothing happens.
+ */
+export function onBackButton(callback: () => void): void {
+  if (!isApp()) return
+  void import('@capacitor/app')
+    .then(({ App }) => App.addListener('backButton', callback))
+    .catch(() => {})
+}
+
+/** Leaves the app, as the back button does on the start screen. */
+export function exitApp(): void {
+  if (!isApp()) return
+  void import('@capacitor/app').then(({ App }) => App.exitApp()).catch(() => {})
+}
+
 type ScannerPlugin = typeof import('@capacitor-mlkit/barcode-scanning')
 let plugin: Promise<ScannerPlugin> | undefined
 

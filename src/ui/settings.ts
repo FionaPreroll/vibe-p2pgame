@@ -149,6 +149,7 @@ export function settingsScreen(onBack: () => void): void {
         }),
       ),
     ),
+    onBack,
   )
 }
 

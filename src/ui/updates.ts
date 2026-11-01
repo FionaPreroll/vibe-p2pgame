@@ -6,7 +6,7 @@ import {
   type Release,
   updateOnStart,
 } from '../updates'
-import { h } from './dom'
+import { cancelOnBack, h } from './dom'
 
 /** At the app's start, with this module's dialogs: see `updateOnStart`. */
 export function offerUpdates(): Promise<void> {
@@ -35,6 +35,7 @@ function askOnce(): Promise<boolean> {
         }),
       ),
     )
+    cancelOnBack(modal, answer(false))
   })
 }
 
@@ -98,6 +99,7 @@ export function offer(release: Release): void {
     status,
     h('div', { class: 'buttons' }, later, install),
   )
+  cancelOnBack(modal, () => later.click())
 }
 
 function dialog(...children: Node[]): HTMLElement {

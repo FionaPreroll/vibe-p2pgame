@@ -120,6 +120,7 @@ export function joinScreen(name: string, onLeave: () => void, options: JoinOptio
       status,
       codes.element,
     ),
+    leave,
   )
 
   if (offer) {
@@ -160,7 +161,7 @@ export function play(session: GuestSession, name: string, onLeave: () => void): 
       lostScreen(name, session.host, onLeave)
     }
   }
-  show(screen.element)
+  show(screen.element, 'ignore')
   if (session.rejoined) toast(t('welcomeBack'))
 }
 
@@ -190,5 +191,6 @@ function lostScreen(name: string, host: string, onLeave: () => void): void {
         }),
       ),
     ),
+    onLeave,
   )
 }

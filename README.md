@@ -92,6 +92,7 @@ The same game, packed into an Android app with [Capacitor](https://capacitorjs.c
 - **Offline from the first start:** its files are inside the app.
 - **Bluetooth** between app phones, besides the QR code.
 - **Google's scanner**, which focuses and zooms by itself. It is a module of Google Play services, downloaded once: start the app once with internet before going out. Until then, and on phones without Google Play services, the in-page scanner works as on the website.
+- **The back button** goes back as the screen's own ← does and closes dialogs; during a game it does nothing, so a slip of the thumb cannot end it; on the start screen it leaves the app.
 - **Updates in the app**, if you agree at its first start or switch them on in the settings: at every start, the app looks for a newer build and offers to install it; _Look for a new version now_ in the settings looks at once. Android asks before installing; the first time, it wants you to allow the app to install apps: the app opens that setting, and goes on installing by itself when you come back, without downloading again.
 
 **Installing:** download [`spark-hunt.apk`](https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk) from the release [Spark Hunt for Android](https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/android-latest) and open it on the phone; Android asks once to allow installing apps from that source. A newer APK installs over the older one and keeps the game's settings.

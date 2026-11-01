@@ -1,8 +1,9 @@
 import './style.css'
 import { unpack } from '@fionapreroll/p2p'
+import { handleBack } from './back'
 import { setLanguage } from './i18n'
 import { captureErrors, log } from './log'
-import { isApp, nativeScannerReady } from './native'
+import { exitApp, isApp, nativeScannerReady, onBackButton } from './native'
 import { settings } from './settings'
 import { startJoin } from './ui/connect'
 import { homeScreen, playerName } from './ui/home'
@@ -14,6 +15,9 @@ import { offerUpdates } from './ui/updates'
 captureErrors()
 log('app', `start: ${isApp() ? 'Android app' : 'browser'}, build ${__BUILD__.commit}`)
 setLanguage(settings().language)
+// Android's back button goes back as the screen says, is ignored in a game, and leaves the app
+// on the start screen (see src/back.ts).
+onBackButton(() => handleBack(exitApp))
 // In the app, fetch Google's scanner now, while there may be internet, for later on a hotspot.
 void nativeScannerReady()
 

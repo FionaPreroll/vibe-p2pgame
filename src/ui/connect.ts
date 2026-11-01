@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import { isApp } from '../native'
 import { bluetoothJoinScreen } from './bluetoothUi'
-import { h } from './dom'
+import { cancelOnBack, h } from './dom'
 import { type JoinOptions, joinScreen } from './join'
 
 export type ConnectionChoice = 'qr' | 'bluetooth'
@@ -42,6 +42,7 @@ export function chooseConnection(): Promise<ConnectionChoice | null> {
       ),
     )
     document.body.append(modal)
+    cancelOnBack(modal, choose(null))
   })
 }
 

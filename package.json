@@ -28,6 +28,7 @@
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "8.2.1",
     "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
     "@fionapreroll/p2p": "workspace:*"
   },

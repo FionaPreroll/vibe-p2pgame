@@ -228,6 +228,7 @@ export function bluetoothJoinScreen(name: string, onLeave: () => void, rejoin?: 
         },
       }),
     ),
+    leave,
   )
   bt.look(name).catch((error: unknown) => {
     if (!left) status.textContent = startErrorText(error)
