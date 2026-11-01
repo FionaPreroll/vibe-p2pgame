@@ -4,6 +4,14 @@ All notable changes to `@fionapreroll/p2p-nearby` are listed here. The format fo
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-01
+
+### Changed
+
+- The native plugin's decisions (permissions per Android version, how messages travel, the limits on what other phones send, the codes of failures, the native log) are in `NearbyRules`, plain Java with JUnit tests beside it. Nothing changes in how the plugin works.
+- The 32 KB limit on a message is the library's own, well above what a game sends; a test checks that Nearby carries at least as much.
+- The README links the package's page on GitHub Packages.
+
 ## [0.1.0] - 2026-11-01
 
 ### Added
@@ -14,5 +22,6 @@ All notable changes to `@fionapreroll/p2p-nearby` are listed here. The format fo
 - The native plugin, with its permissions, which `npx cap sync` adds to the app.
 - `@fionapreroll/p2p-nearby/testing`: `NearbyAir` and `FakeNearby`, Nearby between fake phones, for tests.
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-nearby-v0.1.0...HEAD
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-nearby-v0.1.1...HEAD
+[0.1.1]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-nearby-v0.1.0...p2p-nearby-v0.1.1
 [0.1.0]: https://github.com/FionaPreroll/vibe-p2pgame/tree/p2p-nearby-v0.1.0/packages/p2p-nearby
