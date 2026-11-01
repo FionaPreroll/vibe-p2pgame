@@ -90,11 +90,22 @@ const en = {
   updatesChecking: 'Looking…',
   updatesCurrent: 'This is the newest version (build {build}).',
   updatesCheckFailed: 'Could not look for a new version. Is there internet?',
-  updateDownloading: 'Downloading… {percent} %',
+  updateDownload: 'Download',
+  updateDownloadAnyway: 'Download anyway',
+  updateSize: 'The download is {size}.',
+  updateContinues: 'An earlier download stopped at {percent} % of {size}: it goes on from there.',
+  updateMobileData:
+    'You are on mobile data, which the download would use. On Wi-Fi it costs nothing.',
+  updateMetered:
+    'This connection is metered, as a phone’s hotspot often is: the download may cost. On another Wi-Fi it may not.',
+  updateProgress: '{done} of {total} · {percent} %',
+  updatePause: 'Pause',
+  updateResume: 'Resume',
+  updatePaused: 'Paused at {percent} %. It goes on from there, also after closing the app.',
   updateInstalling: 'Android’s installer takes over now.',
   updatePermission:
     'Allow Spark Hunt to install apps in the settings that have just opened, then come back: installing goes on by itself.',
-  updateFailed: 'The download failed. Try again later.',
+  updateFailed: 'The download stopped. Try again: it goes on where it stopped.',
   liveCamera: 'Back to the live camera',
   readingPhoto: 'Reading the photo…',
   photoNoCode:
@@ -274,11 +285,24 @@ const de: Record<TextKey, string> = {
   updatesChecking: 'Suche…',
   updatesCurrent: 'Das ist die neueste Version (Build {build}).',
   updatesCheckFailed: 'Konnte nicht nach einer neuen Version suchen. Gibt es Internet?',
-  updateDownloading: 'Lade herunter… {percent} %',
+  updateDownload: 'Herunterladen',
+  updateDownloadAnyway: 'Trotzdem herunterladen',
+  updateSize: 'Der Download ist {size} groß.',
+  updateContinues:
+    'Ein früherer Download hielt bei {percent} % von {size} an: Er geht dort weiter.',
+  updateMobileData:
+    'Du bist im Mobilfunknetz, das der Download nutzen würde. Im WLAN kostet er nichts.',
+  updateMetered:
+    'Diese Verbindung wird nach Menge abgerechnet, wie oft beim Hotspot eines Handys: Der Download kann kosten. In einem anderen WLAN vielleicht nicht.',
+  updateProgress: '{done} von {total} · {percent} %',
+  updatePause: 'Pausieren',
+  updateResume: 'Fortsetzen',
+  updatePaused: 'Angehalten bei {percent} %. Es geht dort weiter, auch nach dem Schließen der App.',
   updateInstalling: 'Jetzt übernimmt der Installer von Android.',
   updatePermission:
     'Erlaube Funkenjagd in den eben geöffneten Einstellungen, Apps zu installieren, und komm dann zurück: Die Installation geht von selbst weiter.',
-  updateFailed: 'Der Download ist fehlgeschlagen. Versuch es später noch einmal.',
+  updateFailed:
+    'Der Download hat aufgehört. Versuch es noch einmal: Er geht dort weiter, wo er aufhörte.',
   liveCamera: 'Zurück zur Live-Kamera',
   readingPhoto: 'Lese das Foto…',
   photoNoCode:

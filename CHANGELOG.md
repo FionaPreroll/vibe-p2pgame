@@ -16,6 +16,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
 - An Android app, which plays together with the website and works without internet from its first start. Its newest build is always on the repository's releases page. In the app, a button opens Google's own QR scanner, which focuses and zooms by itself.
 - _Look for a new version now_ in the app's settings.
+- The app's update dialog says how large the download is, warns on mobile data or another metered connection, shows the download's progress, and can pause it. A paused or broken download goes on where it stopped, also after closing the app.
 - A debug report in the settings: if something does not work, create it, read it, and copy it or open an issue on GitHub with it. It says what phone and versions this is and what happened recently, not who you are.
 - Bluetooth in the Android app: when joining or adding a player, choose QR code or Bluetooth. Over Bluetooth, no Wi-Fi is needed; the host picks players from those nearby and compares a code with them. One game can mix both.
 - The Android app can look for a new version when it starts and install it, if you agree at its first start or switch it on in the settings. Android asks before installing.

@@ -823,3 +823,18 @@ a.button.primary {
     transition: none;
   }
 }
+
+/* The update dialog: the download's progress, and a warning on mobile data. */
+.update progress {
+  width: 100%;
+  height: 0.6rem;
+  accent-color: var(--accent);
+}
+
+.warning {
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(255, 138, 60, 0.12);
+  border: 1px solid rgba(255, 138, 60, 0.5);
+  color: #ffc9a3;
+}

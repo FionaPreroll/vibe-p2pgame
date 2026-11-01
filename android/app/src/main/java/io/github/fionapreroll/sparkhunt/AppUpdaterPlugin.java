@@ -1,7 +1,11 @@
 package io.github.fionapreroll.sparkhunt;
 
 import android.content.Intent;
+import android.content.Context;
 import android.content.pm.PackageInfo;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -17,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -26,6 +31,9 @@ import java.nio.charset.StandardCharsets;
  * reads the release's version.json, downloads the new APK and hands it to Android's package
  * installer. The installer asks the player, and takes the APK only if it is signed with the same
  * key as the app installed.
+ *
+ * A download can be paused and goes on where it stopped, also after the app was closed: the part
+ * downloaded so far is kept per build, and the rest asked for with an HTTP range.
  */
 @CapacitorPlugin(name = "AppUpdater")
 public class AppUpdaterPlugin extends Plugin {
@@ -34,6 +42,12 @@ public class AppUpdaterPlugin extends Plugin {
     private static final String RELEASES = "https://github.com/FionaPreroll/vibe-p2pgame/releases/";
     private static final long MAX_APK_BYTES = 200L * 1024 * 1024;
     private static final int MAX_TEXT_BYTES = 64 * 1024;
+    /** Progress is told at most this often, in milliseconds, and at every whole percent. */
+    private static final long PROGRESS_MS = 250;
+
+    /** Set to stop the running download, keeping what it has. */
+    private final AtomicBoolean pausing = new AtomicBoolean(false);
+    private final AtomicBoolean downloading = new AtomicBoolean(false);
 
     /** The build number and name of the app installed. */
     @PluginMethod
@@ -81,48 +95,122 @@ public class AppUpdaterPlugin extends Plugin {
         });
     }
 
-    /** Downloads an APK from the releases into the app's cache, telling its progress. */
+    /**
+     * Downloads the APK of a build from the releases into the app's cache, telling its progress
+     * as bytes done and in all. What an earlier, paused or broken download of the same build left
+     * is kept, and only the rest is downloaded. Rejects with the code "paused" when paused.
+     */
     @PluginMethod
     public void download(PluginCall call) {
         String url = call.getString("url", "");
+        Integer build = call.getInt("build");
         if (!url.startsWith(RELEASES)) {
             call.reject("Not a release of this game");
             return;
         }
+        if (build == null || build < 1) {
+            call.reject("No build");
+            return;
+        }
+        if (!downloading.compareAndSet(false, true)) {
+            call.reject("A download is running", "busy");
+            return;
+        }
+        pausing.set(false);
         execute(() -> {
             HttpURLConnection connection = null;
-            File apk = apkFile();
+            File part = partFile(build);
             try {
-                apk.getParentFile().mkdirs();
-                connection = open(url);
-                long total = connection.getContentLengthLong();
+                part.getParentFile().mkdirs();
+                forgetOtherParts(build);
+                long have = part.exists() ? part.length() : 0;
+                connection = open(url, have);
+                boolean resumed = have > 0 && connection.getResponseCode() == HttpURLConnection.HTTP_PARTIAL;
+                if (!resumed) have = 0;
+                long rest = connection.getContentLengthLong();
+                long total = rest >= 0 ? have + rest : -1;
                 if (total > MAX_APK_BYTES) throw new IOException("Too large");
-                try (InputStream in = connection.getInputStream(); OutputStream out = new FileOutputStream(apk)) {
+                try (InputStream in = connection.getInputStream(); OutputStream out = new FileOutputStream(part, resumed)) {
                     byte[] buffer = new byte[64 * 1024];
-                    long done = 0;
-                    int read;
+                    long done = have;
+                    long told = 0;
                     int shown = -1;
+                    int read;
+                    progress(done, total);
                     while ((read = in.read(buffer)) != -1) {
+                        if (pausing.get()) {
+                            out.flush();
+                            call.reject("Paused", "paused");
+                            return;
+                        }
                         done += read;
                         if (done > MAX_APK_BYTES) throw new IOException("Too large");
                         out.write(buffer, 0, read);
                         int percent = total > 0 ? (int) (done * 100 / total) : -1;
-                        if (percent != shown) {
+                        long now = System.currentTimeMillis();
+                        if (percent != shown || now - told >= PROGRESS_MS) {
                             shown = percent;
-                            JSObject progress = new JSObject();
-                            progress.put("percent", percent);
-                            notifyListeners("progress", progress);
+                            told = now;
+                            progress(done, total);
                         }
                     }
+                    if (total > 0 && done != total) throw new IOException("Cut short");
                 }
+                File apk = apkFile();
+                apk.delete();
+                if (!part.renameTo(apk)) throw new IOException("Could not keep the download");
                 call.resolve();
             } catch (Exception e) {
-                apk.delete();
+                // What arrived stays, for the next try to go on from; a file too large does not,
+                // nor a part the server will not go on from.
+                String message = e.getMessage() == null ? "" : e.getMessage();
+                if (message.equals("Too large") || message.equals("HTTP 416")) part.delete();
                 call.reject("Download failed", e);
             } finally {
                 if (connection != null) connection.disconnect();
+                downloading.set(false);
             }
         });
+    }
+
+    /** Stops the running download where it is; `download` goes on from there. */
+    @PluginMethod
+    public void pauseDownload(PluginCall call) {
+        pausing.set(true);
+        call.resolve();
+    }
+
+    /** How many bytes of a build an earlier download left, or 0. */
+    @PluginMethod
+    public void partial(PluginCall call) {
+        Integer build = call.getInt("build");
+        File part = build == null ? null : partFile(build);
+        JSObject result = new JSObject();
+        result.put("bytes", part != null && part.exists() ? part.length() : 0);
+        call.resolve(result);
+    }
+
+    /**
+     * Whether the phone is online now, and whether that costs: metered, as mobile data and some
+     * hotspots are, or mobile data itself.
+     */
+    @PluginMethod
+    public void network(PluginCall call) {
+        JSObject result = new JSObject();
+        ConnectivityManager manager = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network network = manager == null ? null : manager.getActiveNetwork();
+        NetworkCapabilities capabilities = network == null ? null : manager.getNetworkCapabilities(network);
+        result.put("online", capabilities != null);
+        result.put("metered", manager != null && manager.isActiveNetworkMetered());
+        result.put("cellular", capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR));
+        call.resolve(result);
+    }
+
+    private void progress(long done, long total) {
+        JSObject progress = new JSObject();
+        progress.put("done", done);
+        progress.put("total", total);
+        notifyListeners("progress", progress);
     }
 
     /**
@@ -183,17 +271,44 @@ public class AppUpdaterPlugin extends Plugin {
     }
 
     private File apkFile() {
-        return new File(new File(getContext().getCacheDir(), "updates"), "spark-hunt.apk");
+        return new File(updatesDir(), "spark-hunt.apk");
+    }
+
+    private File partFile(int build) {
+        return new File(updatesDir(), "spark-hunt-" + build + ".part");
+    }
+
+    /** Parts of other builds are of no use any more. */
+    private void forgetOtherParts(int build) {
+        File[] files = updatesDir().listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            if (file.getName().endsWith(".part") && !file.equals(partFile(build))) file.delete();
+        }
+    }
+
+    private File updatesDir() {
+        return new File(getContext().getCacheDir(), "updates");
     }
 
     /** A connection that follows GitHub's redirects to its download host, over HTTPS only. */
     private static HttpURLConnection open(String url) throws IOException {
+        return open(url, 0);
+    }
+
+    /**
+     * The same, asking only for the bytes from `from` on: the answer is then either those bytes
+     * (206) or, where the server will not, the whole file (200).
+     */
+    private static HttpURLConnection open(String url, long from) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setInstanceFollowRedirects(true);
         connection.setConnectTimeout(15_000);
         connection.setReadTimeout(30_000);
+        if (from > 0) connection.setRequestProperty("Range", "bytes=" + from + "-");
         int status = connection.getResponseCode();
-        if (status != HttpURLConnection.HTTP_OK) throw new IOException("HTTP " + status);
+        boolean partial = from > 0 && status == HttpURLConnection.HTTP_PARTIAL;
+        if (status != HttpURLConnection.HTTP_OK && !partial) throw new IOException("HTTP " + status);
         if (!"https".equals(connection.getURL().getProtocol())) throw new IOException("Not HTTPS");
         return connection;
     }

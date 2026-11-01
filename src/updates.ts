@@ -14,11 +14,31 @@ import { settings, updateSettings } from './settings'
 /** The newest release's files: `version.json` and `spark-hunt.apk`. */
 export const RELEASE = 'https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/'
 
+/** A download's progress, in bytes; `total` is -1 while unknown. */
+export interface Progress {
+  readonly done: number
+  readonly total: number
+}
+
+/** What the phone's connection costs, as far as Android knows. */
+export interface Network {
+  readonly online: boolean
+  /** Paid by the amount, as mobile data and some hotspots are. */
+  readonly metered: boolean
+  readonly cellular: boolean
+}
+
 /** The native side, as AppUpdaterPlugin.java offers it. */
 export interface Updater {
   info(): Promise<{ build: number; name: string }>
   fetchText(options: { url: string }): Promise<{ text: string }>
-  download(options: { url: string }): Promise<void>
+  /** Downloads a build, going on from what an earlier download left; rejects "paused". */
+  download(options: { url: string; build: number }): Promise<void>
+  /** Stops the running download where it is. */
+  pauseDownload(): Promise<void>
+  /** The bytes of a build an earlier download left. */
+  partial(options: { build: number }): Promise<{ bytes: number }>
+  network(): Promise<Network>
   /** The build of the APK downloaded last, or -1. */
   downloaded(): Promise<{ build: number }>
   /** Whether the app may hand APKs to the installer, without opening any setting. */
@@ -26,7 +46,7 @@ export interface Updater {
   install(): Promise<void>
   addListener(
     event: 'progress',
-    listener: (progress: { percent: number }) => void,
+    listener: (progress: unknown) => void,
   ): Promise<PluginListenerHandle>
 }
 
@@ -36,15 +56,34 @@ export const AppUpdater = registerPlugin<Updater>('AppUpdater')
 export interface Release {
   readonly build: number
   readonly commit: string
+  /** The APK's size in bytes, or null where the release does not say (builds before 11). */
+  readonly size: number | null
 }
 
-/** The release's version.json, checked: a whole build number above 0 and a commit hash. */
+/** The largest APK the app downloads, as AppUpdaterPlugin.java allows. */
+const MAX_APK_BYTES = 200 * 1024 * 1024
+
+/**
+ * The release's version.json, checked: a whole build number above 0 and a commit hash, and the
+ * APK's size, if it is a sound one.
+ */
 export function parseRelease(value: unknown): Release | undefined {
   if (typeof value !== 'object' || value === null) return undefined
-  const { build, commit } = value as Record<string, unknown>
+  const { build, commit, size } = value as Record<string, unknown>
   if (!Number.isSafeInteger(build) || (build as number) < 1) return undefined
   if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit)) return undefined
-  return { build: build as number, commit }
+  const sound =
+    Number.isSafeInteger(size) && (size as number) > 0 && (size as number) <= MAX_APK_BYTES
+  return { build: build as number, commit, size: sound ? (size as number) : null }
+}
+
+/** A progress event from the native side, checked. */
+export function parseProgress(value: unknown): Progress | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const { done, total } = value as Record<string, unknown>
+  if (!Number.isSafeInteger(done) || (done as number) < 0) return undefined
+  if (!Number.isSafeInteger(total) || (total as number) < -1) return undefined
+  return { done: done as number, total: total as number }
 }
 
 /** What looking for an update found. */
@@ -81,26 +120,34 @@ export async function availableUpdate(updater: Updater = AppUpdater): Promise<Re
   return check.kind === 'newer' ? check.release : null
 }
 
-export type InstallResult = 'installing' | 'permission' | 'failed'
+export type InstallResult = 'installing' | 'permission' | 'paused' | 'failed'
 
 /**
  * Downloads the release's APK, unless it is already here, and hands it to Android's installer,
- * which asks the player. `permission`: Android first wants the player to allow the app to
- * install apps, in the settings that have just opened; `continueInstall` goes on from there,
- * without downloading again.
+ * which asks the player. A download goes on from what an earlier one left. `paused`: the player
+ * paused it (`pauseUpdate`), and calling this again goes on. `permission`: Android first wants
+ * the player to allow the app to install apps, in the settings that have just opened;
+ * `continueInstall` goes on from there, without downloading again.
  */
 export async function installUpdate(
   release: Release,
-  onProgress: (percent: number) => void,
+  onProgress: (progress: Progress) => void,
   updater: Updater = AppUpdater,
 ): Promise<InstallResult> {
-  if ((await downloadedBuild(updater)) !== release.build) {
+  if (!(await isDownloaded(release, updater))) {
     const listener = await updater
-      .addListener('progress', ({ percent }) => onProgress(percent))
+      .addListener('progress', (value) => {
+        const progress = parseProgress(value)
+        if (progress) onProgress(progress)
+      })
       .catch(() => null)
     try {
-      await updater.download({ url: `${RELEASE}spark-hunt.apk` })
+      await updater.download({ url: `${RELEASE}spark-hunt.apk`, build: release.build })
     } catch (error) {
+      if ((error as { code?: unknown })?.code === 'paused') {
+        log('updates', 'download paused')
+        return 'paused'
+      }
       log('updates', `download failed: ${describeError(error)}`)
       return 'failed'
     } finally {
@@ -116,6 +163,38 @@ export async function installUpdate(
     log('updates', `build ${release.build} is downloaded already`)
   }
   return handOver(updater)
+}
+
+/** Pauses the running download; `installUpdate` goes on from there. */
+export async function pauseUpdate(updater: Updater = AppUpdater): Promise<void> {
+  await updater.pauseDownload().catch(() => {})
+}
+
+/** Whether the release's APK is downloaded already, ready to install. */
+export async function isDownloaded(
+  release: Release,
+  updater: Updater = AppUpdater,
+): Promise<boolean> {
+  return (await downloadedBuild(updater)) === release.build
+}
+
+/** The bytes of the release an earlier download left, to go on from; 0 for none. */
+export async function partialBytes(
+  release: Release,
+  updater: Updater = AppUpdater,
+): Promise<number> {
+  const { bytes } = await updater.partial({ build: release.build }).catch(() => ({ bytes: 0 }))
+  return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0
+}
+
+/** What the connection costs now; free if Android cannot say, so as not to scare for nothing. */
+export async function network(updater: Updater = AppUpdater): Promise<Network> {
+  const found = await updater.network().catch(() => null)
+  return {
+    online: found?.online !== false,
+    metered: found?.metered === true,
+    cellular: found?.cellular === true,
+  }
 }
 
 /**

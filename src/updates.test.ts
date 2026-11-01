@@ -10,7 +10,11 @@ const {
   checkForUpdate,
   continueInstall,
   installUpdate,
+  network,
+  parseProgress,
   parseRelease,
+  partialBytes,
+  pauseUpdate,
   RELEASE,
   updateOnStart,
 } = await import('./updates')
@@ -25,21 +29,27 @@ function updater(
   state = { cached: -1, allowed: true },
 ) {
   const remove = vi.fn(async () => {})
-  let progress: ((p: { percent: number }) => void) | undefined
+  let progress: ((p: unknown) => void) | undefined
   const fake = {
     info: vi.fn(async () => ({ build: 5, name: '5-abc' })),
     fetchText: vi.fn(async () => ({ text: '{"build":7,"commit":"0123abc"}' })),
     download: vi.fn(async () => {
-      progress?.({ percent: 50 })
-      progress?.({ percent: 100 })
+      progress?.({ done: 500, total: 1000 })
+      // Events that are not sound are dropped.
+      progress?.({ done: -1, total: 1000 })
+      progress?.({ done: 'all', total: 1000 })
+      progress?.({ done: 1000, total: 1000 })
       state.cached = 7
     }),
+    pauseDownload: vi.fn(async () => {}),
+    partial: vi.fn(async () => ({ bytes: 0 })),
+    network: vi.fn(async () => ({ online: true, metered: false, cellular: false })),
     downloaded: vi.fn(async () => ({ build: state.cached })),
     canInstall: vi.fn(async () => ({ allowed: state.allowed })),
     install: vi.fn(async () => {
       if (!state.allowed) throw Object.assign(new Error('not allowed'), { code: 'permission' })
     }),
-    addListener: vi.fn(async (_: string, listener: (p: { percent: number }) => void) => {
+    addListener: vi.fn(async (_: string, listener: (p: unknown) => void) => {
       progress = listener
       return { remove }
     }),
@@ -60,7 +70,11 @@ afterEach(() => {
 
 describe('parseRelease', () => {
   it('takes a whole build number and a commit hash, and nothing else', () => {
-    expect(parseRelease({ build: 7, commit: '0123abc' })).toEqual({ build: 7, commit: '0123abc' })
+    expect(parseRelease({ build: 7, commit: '0123abc' })).toEqual({
+      build: 7,
+      commit: '0123abc',
+      size: null,
+    })
     for (const value of [
       null,
       'x',
@@ -73,12 +87,23 @@ describe('parseRelease', () => {
       expect(parseRelease(value)).toBeUndefined()
     }
   })
+
+  it('takes the size if it is sound, and goes without it if not', () => {
+    expect(parseRelease({ build: 7, commit: '0123abc', size: 12_345_678 })?.size).toBe(12_345_678)
+    for (const size of [0, -5, 1.5, '12', 1e12, null]) {
+      expect(parseRelease({ build: 7, commit: '0123abc', size })).toEqual({
+        build: 7,
+        commit: '0123abc',
+        size: null,
+      })
+    }
+  })
 })
 
 describe('availableUpdate', () => {
   it('finds a newer build in the release', async () => {
     const { fake, calls } = updater()
-    expect(await availableUpdate(fake)).toEqual({ build: 7, commit: '0123abc' })
+    expect(await availableUpdate(fake)).toEqual({ build: 7, commit: '0123abc', size: null })
     expect(calls.fetchText).toHaveBeenCalledWith({ url: `${RELEASE}version.json` })
   })
 
@@ -104,7 +129,7 @@ describe('availableUpdate', () => {
   })
 })
 
-const release = { build: 7, commit: '0123abc' }
+const release = { build: 7, commit: '0123abc', size: null }
 
 describe('checkForUpdate', () => {
   it('says whether there is a newer build, the app is up to date, or it could not look', async () => {
@@ -125,11 +150,14 @@ describe('checkForUpdate', () => {
 describe('installUpdate', () => {
   it('downloads the APK, tells the progress and hands it to the installer', async () => {
     const { fake, calls, remove } = updater()
-    const progress: number[] = []
+    const progress: unknown[] = []
     expect(await installUpdate(release, (p) => progress.push(p), fake)).toBe('installing')
-    expect(calls.download).toHaveBeenCalledWith({ url: `${RELEASE}spark-hunt.apk` })
+    expect(calls.download).toHaveBeenCalledWith({ url: `${RELEASE}spark-hunt.apk`, build: 7 })
     expect(calls.install).toHaveBeenCalledOnce()
-    expect(progress).toEqual([50, 100])
+    expect(progress).toEqual([
+      { done: 500, total: 1000 },
+      { done: 1000, total: 1000 },
+    ])
     expect(remove).toHaveBeenCalledOnce()
   })
 
@@ -169,6 +197,57 @@ describe('installUpdate', () => {
     expect(calls.download).toHaveBeenCalledOnce()
   })
 
+  it('stops when paused, and goes on with the same build when asked again', async () => {
+    const state = { cached: -1, allowed: true }
+    let paused = true
+    const { fake, calls } = updater(
+      {
+        download: vi.fn(async () => {
+          if (paused) throw Object.assign(new Error('Paused'), { code: 'paused' })
+          state.cached = 7
+        }),
+      },
+      state,
+    )
+    expect(await installUpdate(release, () => {}, fake)).toBe('paused')
+    expect(calls.install).not.toHaveBeenCalled()
+    paused = false
+    expect(await installUpdate(release, () => {}, fake)).toBe('installing')
+    expect(calls.download).toHaveBeenCalledTimes(2)
+    await pauseUpdate(fake)
+    expect(calls.pauseDownload).toHaveBeenCalledOnce()
+  })
+
+  it('says how much an earlier download left, and what the connection costs', async () => {
+    const { fake } = updater({ partial: async () => ({ bytes: 4096 }) })
+    expect(await partialBytes(release, fake)).toBe(4096)
+    expect(
+      await partialBytes(release, updater({ partial: async () => ({ bytes: -3 }) }).fake),
+    ).toBe(0)
+    const failing = updater({
+      partial: async () => {
+        throw new Error('no')
+      },
+      network: async () => {
+        throw new Error('no')
+      },
+    }).fake
+    expect(await partialBytes(release, failing)).toBe(0)
+    // Where Android cannot say, the dialog does not warn.
+    expect(await network(failing)).toEqual({ online: true, metered: false, cellular: false })
+    const mobile = updater({
+      network: async () => ({ online: true, metered: true, cellular: true }),
+    }).fake
+    expect(await network(mobile)).toEqual({ online: true, metered: true, cellular: true })
+  })
+
+  it('reads only sound progress events', () => {
+    expect(parseProgress({ done: 5, total: -1 })).toEqual({ done: 5, total: -1 })
+    for (const value of [null, {}, { done: 1.5, total: 2 }, { done: 1, total: -2 }, 'x']) {
+      expect(parseProgress(value)).toBeUndefined()
+    }
+  })
+
   it('says when the download fails, and installs nothing', async () => {
     const { fake, calls, remove } = updater({
       download: vi.fn(async () => {
@@ -188,7 +267,7 @@ describe('updateOnStart', () => {
     const first = dialogs(true)
     await updateOnStart(first, updater().fake)
     expect(first.ask).toHaveBeenCalledOnce()
-    expect(first.offer).toHaveBeenCalledWith({ build: 7, commit: '0123abc' })
+    expect(first.offer).toHaveBeenCalledWith({ build: 7, commit: '0123abc', size: null })
     expect(settings()).toMatchObject({ checkUpdates: true, updatesAsked: true })
 
     const next = dialogs(true)
@@ -233,5 +312,14 @@ describe('updateOnStart', () => {
     expect(web.ask).not.toHaveBeenCalled()
     expect(calls.info).not.toHaveBeenCalled()
     expect(settings().updatesAsked).toBe(false)
+  })
+})
+
+describe('formatBytes', () => {
+  it('gives megabytes with one decimal, none from 100 on', async () => {
+    const { formatBytes } = await import('./ui/updates')
+    expect(formatBytes(12_600_000)).toBe('12.6 MB')
+    expect(formatBytes(400_000)).toBe('0.4 MB')
+    expect(formatBytes(128_400_000)).toBe('128 MB')
   })
 })

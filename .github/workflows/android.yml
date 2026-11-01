@@ -87,7 +87,7 @@ jobs:
           This is a debug build, signed with the project's debug key: for testing and playing with friends, not for the Play Store.
           NOTES
           # What the app compares with its own build number to find updates (src/updates.ts).
-          printf '{"build":%s,"commit":"%s"}\n' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" > version.json
+          printf '{"build":%s,"commit":"%s","size":%s}\n' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" "$(stat -c %s spark-hunt.apk)" > version.json
           # The tag follows main: it always names the commit of the APK in the release.
           git tag -f "$TAG" "$GITHUB_SHA"
           git push -f origin "refs/tags/$TAG"

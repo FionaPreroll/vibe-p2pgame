@@ -42,6 +42,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Whether an update would download over mobile data, to warn before (AppUpdaterPlugin). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- The in-page scanner, and with it real local addresses in the codes (see the README). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- A buzz for sparks and mines; without it, the WebView ignores navigator.vibrate. -->
