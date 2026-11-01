@@ -23,6 +23,9 @@ export const COLORS = [
   '#ff8fc8',
 ]
 
+/** How long the points won rise above a dot. */
+const POPUP_SECONDS = 0.9
+
 export function playerColor(id: number): string {
   return COLORS[id % COLORS.length] ?? '#ffffff'
 }
@@ -34,6 +37,9 @@ export function playerColor(id: number): string {
 export class Painter {
   private readonly context: CanvasRenderingContext2D
   private readonly shown = new Map<number, { x: number; y: number }>()
+  /** Every player's score in the last snapshot, to show points won where they were won. */
+  private readonly scores = new Map<number, number>()
+  private popups: { x: number; y: number; text: string; color: string; age: number }[] = []
   private scale = 1
   private left = 0
   private top = 0
@@ -123,7 +129,46 @@ export class Painter {
       c.fillText(player.name, shown.x, shown.y + PLAYER_RADIUS + 30)
     }
     for (const id of this.shown.keys()) if (!present.has(id)) this.shown.delete(id)
-    for (const blast of snapshot.blasts ?? []) this.drawBlast(blast)
+    for (const blast of snapshot.blasts ?? []) this.drawBlast(blast, snapshot.phase !== 'lobby')
+    this.drawPopups(snapshot, dt)
+  }
+
+  /**
+   * Points won rise from the dot that won them: "+1", or "+3" for gold. Points lost show at
+   * the mine (see `drawBlast`). Only in a round: a new round's reset or a player who rejoins
+   * with their score is no win.
+   */
+  private drawPopups(snapshot: Snapshot, dt: number): void {
+    for (const player of snapshot.players) {
+      const before = this.scores.get(player.id)
+      this.scores.set(player.id, player.score)
+      if (snapshot.phase !== 'play' || before === undefined || player.score <= before) continue
+      const shown = this.shown.get(player.id) ?? player
+      this.popups.push({
+        x: shown.x,
+        y: shown.y - PLAYER_RADIUS - 10,
+        text: `+${player.score - before}`,
+        color: playerColor(player.id),
+        age: 0,
+      })
+    }
+    const present = new Set(snapshot.players.map((p) => p.id))
+    for (const id of this.scores.keys()) if (!present.has(id)) this.scores.delete(id)
+    const c = this.context
+    c.textAlign = 'center'
+    for (const popup of this.popups) {
+      popup.age += dt
+      const progress = Math.min(1, popup.age / POPUP_SECONDS)
+      c.globalAlpha = 1 - progress
+      c.font = `800 ${44 + 12 * (1 - progress)}px system-ui, sans-serif`
+      c.lineWidth = 6
+      c.strokeStyle = 'rgba(11,13,26,0.8)'
+      c.strokeText(popup.text, popup.x, popup.y - 70 * progress)
+      c.fillStyle = popup.color
+      c.fillText(popup.text, popup.x, popup.y - 70 * progress)
+    }
+    c.globalAlpha = 1
+    this.popups = this.popups.filter((popup) => popup.age < POPUP_SECONDS)
   }
 
   /**
@@ -167,8 +212,11 @@ export class Painter {
     c.globalAlpha = 1
   }
 
-  /** A mine going off: a ring that spreads and fades, and the points lost rising above it. */
-  private drawBlast(blast: Blast): void {
+  /**
+   * A mine going off: a ring that spreads and fades, and the points lost rising above it,
+   * if they `count`: in free play they do not.
+   */
+  private drawBlast(blast: Blast, count: boolean): void {
     const c = this.context
     const progress = Math.min(1, blast.age / BLAST_SECONDS)
     c.globalAlpha = 1 - progress
@@ -177,10 +225,12 @@ export class Painter {
     c.beginPath()
     c.arc(blast.x, blast.y, MINE_RADIUS + 80 * progress, 0, Math.PI * 2)
     c.stroke()
-    c.fillStyle = playerColor(blast.playerId)
-    c.font = '700 40px system-ui, sans-serif'
-    c.textAlign = 'center'
-    c.fillText(`−${MINE_PENALTY}`, blast.x, blast.y - MINE_RADIUS - 20 - 50 * progress)
+    if (count) {
+      c.fillStyle = playerColor(blast.playerId)
+      c.font = '700 40px system-ui, sans-serif'
+      c.textAlign = 'center'
+      c.fillText(`−${MINE_PENALTY}`, blast.x, blast.y - MINE_RADIUS - 20 - 50 * progress)
+    }
     c.globalAlpha = 1
   }
 

@@ -1,0 +1,94 @@
+import { expect, test } from '@playwright/test'
+import { pair, player } from './helpers'
+
+test('a host alone sees free play, is shown to add players, and starts with a key', async ({
+  browser,
+}) => {
+  const page = await player(browser)
+  await page.getByRole('button', { name: 'Host a game' }).click()
+
+  await expect(page.locator('.banner')).toContainText('Free play')
+  await expect(page.locator('.banner')).toContainText('Points count once you start the round.')
+  await expect(page.locator('.sheet')).toContainText('Nobody else is here yet')
+  const add = page.getByRole('button', { name: 'Add player' })
+  await expect(add).toHaveClass(/primary/)
+  await expect(add).toHaveClass(/attention/)
+  await expect(page.getByRole('button', { name: 'Start round' })).not.toHaveClass(/primary/)
+  // Nothing to report on alone.
+  await expect(page.getByRole('button', { name: 'Network report' })).toHaveCount(0)
+
+  // Enter starts the round, as the start key: the clock replaces the banner.
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.clock-time')).toHaveText(/^1:00|0:59$/)
+  await expect(page.locator('.clock')).toBeVisible()
+  await expect(page.locator('.banner')).toBeHidden()
+  await expect(page.locator('.sheet')).toBeHidden()
+})
+
+test('keys are remapped in the settings and kept, and the joystick shows', async ({ browser }) => {
+  const page = await player(browser)
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByLabel('Joystick on the screen').selectOption('left')
+  await page.getByText('Keys and controller buttons').click()
+  const start = page.locator('.bindings tr', { hasText: 'Start a round' })
+  await start.getByRole('button').first().click()
+  await expect(start.getByRole('button').first()).toHaveText('Press a key…')
+  await page.keyboard.press('KeyG')
+  await expect(start.getByRole('button').first()).toHaveText('G')
+  // Escape cancels, and the key stays.
+  await start.getByRole('button').first().click()
+  await page.keyboard.press('Escape')
+  await expect(start.getByRole('button').first()).toHaveText('G')
+  // G moves from no other action; W moves from Up to Start.
+  const up = page.locator('.bindings tr', { hasText: 'Up' })
+  await start.getByRole('button').nth(1).click()
+  await page.keyboard.press('KeyW')
+  await expect(start.getByRole('button').nth(1)).toHaveText('W')
+  await expect(up.getByRole('button').nth(1)).toHaveText('—')
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByLabel('Joystick on the screen')).toHaveValue('left')
+  await page.getByText('Keys and controller buttons').click()
+  await expect(
+    page.locator('.bindings tr', { hasText: 'Start a round' }).getByRole('button').first(),
+  ).toHaveText('G')
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Host a game' }).click()
+  await expect(page.locator('.joystick')).toBeVisible()
+  await expect(page.locator('.game')).toHaveClass(/joystick-left/)
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.clock')).toBeHidden()
+  await page.keyboard.press('KeyG')
+  await expect(page.locator('.clock')).toBeVisible()
+})
+
+test('players read and copy the network report after a round', async ({ browser }) => {
+  const host = await player(browser)
+  const guest = await player(browser)
+  await host.getByRole('button', { name: 'Host a game' }).click()
+  await pair(host, guest)
+  await expect(guest.locator('button.net')).toContainText(/\d+ ms/, { timeout: 10_000 })
+
+  await guest.getByRole('button', { name: 'Network report' }).first().click()
+  const report = guest.locator('.modal textarea.report')
+  await expect(report).toHaveValue(/## Spark Hunt network report/)
+  const text = await report.inputValue()
+  expect(text).toMatch(/- Phone: player \d/)
+  expect(text).toContain('- To the host')
+  expect(text).toMatch(/States received: [\d.]+ per second/)
+  expect(text).toContain('t_s,peer,ping_ms')
+  await expect(guest.getByRole('link', { name: 'Download CSV' })).toHaveAttribute(
+    'download',
+    /^spark-hunt-network-.*\.csv$/,
+  )
+  await guest.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await guest.getByRole('button', { name: 'Copy' }).click()
+  expect(await guest.evaluate(() => navigator.clipboard.readText())).toBe(text)
+  await guest.getByRole('button', { name: 'Cancel' }).click()
+
+  // The host's report has a line for the player.
+  await host.locator('button.net').click()
+  await expect(host.locator('.modal textarea.report')).toHaveValue(/- To player \d/)
+})

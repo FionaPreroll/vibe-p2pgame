@@ -1,3 +1,4 @@
+import { type Bindings, DEFAULT_BINDINGS, parseBindings } from './input'
 import { readJson, readText, writeJson } from './storage'
 
 /** What a player sets once and finds again next time, in this browser. */
@@ -16,7 +17,16 @@ export interface Settings {
   readonly checkUpdates: boolean
   /** Whether the app has asked about `checkUpdates` yet, which it does once, at the first start. */
   readonly updatesAsked: boolean
+  /** A joystick on the screen beside the arena, on this side, or none. */
+  readonly joystick: JoystickSide
+  /** Keys and controller buttons (see src/input.ts). */
+  readonly bindings: Bindings
+  /** The small graph of the connection while playing. */
+  readonly netGraph: boolean
 }
+
+export type JoystickSide = 'off' | 'left' | 'right'
+export const JOYSTICK_CHOICES: readonly JoystickSide[] = ['off', 'left', 'right']
 
 export interface CameraSettings {
   readonly deviceId: string | null
@@ -38,6 +48,9 @@ export const DEFAULTS: Settings = {
   camera: { deviceId: null, zoom: null, exposure: null },
   checkUpdates: false,
   updatesAsked: false,
+  joystick: 'off',
+  bindings: DEFAULT_BINDINGS,
+  netGraph: true,
 }
 
 /**
@@ -63,6 +76,11 @@ export function parseSettings(stored: unknown, oldName?: unknown): Settings {
     },
     checkUpdates: s.checkUpdates === true,
     updatesAsked: s.updatesAsked === true,
+    joystick: (JOYSTICK_CHOICES as readonly unknown[]).includes(s.joystick)
+      ? (s.joystick as JoystickSide)
+      : DEFAULTS.joystick,
+    bindings: s.bindings === undefined ? DEFAULT_BINDINGS : parseBindings(s.bindings),
+    netGraph: typeof s.netGraph === 'boolean' ? s.netGraph : DEFAULTS.netGraph,
   }
 }
 

@@ -12,6 +12,7 @@ import {
   type Target,
   type World,
 } from '../game/sim'
+import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
 import { PROTOCOL, parseInput } from '../net/protocol'
 import { forgetHostedGame, type HostedGame, saveHostedGame } from './saved'
 import type { Session } from './session'
@@ -39,7 +40,9 @@ export class HostSession implements Session {
   private readonly targets = new Map<number, Target>()
   /** The scores of players who are away, for when they rejoin. */
   private readonly awayScores = new Map<number, number>()
+  readonly net: NetLog = startNetLog(HOST_ID, performance.now())
   private lastSave = 0
+  private lastSample = performance.now()
   private readonly onPageHide = () => this.save()
 
   constructor(name: string, saved?: HostedGame | null) {
@@ -66,10 +69,14 @@ export class HostSession implements Session {
       this.awayScores.set(player.id, this.scoreOf(player.id))
       this.targets.delete(player.id)
       removePlayer(this.world, player.id)
+      this.net.forget(player.id)
       this.save()
       if (reason === 'lost') this.onLeave(player.name)
     }
-    this.room.onInput = (player, target) => this.targets.set(player.id, target)
+    this.room.onInput = (player, target) => {
+      this.targets.set(player.id, target)
+      this.net.arrived(player.id, performance.now())
+    }
     this.room.onTick = (dt) => this.tick(dt)
     globalThis.addEventListener?.('pagehide', this.onPageHide)
     this.save()
@@ -138,7 +145,15 @@ export class HostSession implements Session {
       const player = this.world.players.find((p) => p.id === id)
       if (player) player.ping = ping
     }
-    if (performance.now() - this.lastSave > SAVE_MS) this.save()
+    const now = performance.now()
+    if (now - this.lastSave > SAVE_MS) this.save()
+    if (now - this.lastSample >= SAMPLE_MS) {
+      this.lastSample = now
+      for (const { id, ping } of this.room.players()) {
+        const traffic = this.room.traffic(id)
+        if (traffic) this.net.sample(id, now, { ping, traffic })
+      }
+    }
     return compact(this.snapshot())
   }
 }

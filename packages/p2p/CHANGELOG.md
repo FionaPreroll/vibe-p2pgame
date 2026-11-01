@@ -4,6 +4,15 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+### Added
+
+- `GuestRoom.traffic()` and `HostRoom.traffic(id)`: messages and characters sent and received on a connection, and on a player's side the pings sent, answered and lost. A ping unanswered for `PING_LOST_MS`, 3 seconds, counts as lost.
+- `send` returns the length of the message it sent, or 0 on a closed channel.
+
+### Changed
+
+- A player's room only takes answers to pings it sent and still waits for, each once: a host can no longer make up a round trip.
+
 ## [0.2.0] - 2026-10-31
 
 ### Added

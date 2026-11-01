@@ -18,6 +18,18 @@ describe('parseSettings', () => {
       camera: { deviceId: 'cam-2', zoom: 2.5, exposure: -1 },
       checkUpdates: true,
       updatesAsked: true,
+      joystick: 'left',
+      bindings: {
+        keys: {
+          up: ['KeyI'],
+          down: ['KeyK', 'Numpad2'],
+          left: ['KeyJ'],
+          right: ['KeyL'],
+          start: [],
+        },
+        buttons: { up: null, down: 13, left: 14, right: 15, start: 0 },
+      },
+      netGraph: false,
     }
     expect(parseSettings(stored)).toEqual(stored)
   })
@@ -32,6 +44,9 @@ describe('parseSettings', () => {
       keepScreenOn: false,
       checkUpdates: 'yes',
       updatesAsked: 1,
+      joystick: 'middle',
+      bindings: 'wasd',
+      netGraph: 'on',
     })
     expect(settings).toEqual({ ...DEFAULTS, keepScreenOn: false })
   })

@@ -252,6 +252,40 @@ describe('joining', () => {
   })
 })
 
+describe('traffic', () => {
+  it('counts what both sides send and receive, alike on both ends', async () => {
+    const h = host()
+    const { guest, joined } = await join(h.room)
+    guest.setInput(3)
+    await later(1000)
+    const mine = guest.traffic()
+    const theirs = h.room.traffic(joined.player.id)
+    expect(mine.sent).toBeGreaterThan(25)
+    expect(mine.received).toBeGreaterThan(25)
+    expect(mine.receivedChars).toBeGreaterThan(mine.received * 10)
+    expect(theirs).not.toBeNull()
+    // In memory nothing is lost: what one side sent, the other received. The hello comes
+    // before the host counts; the welcome is counted by the host, before the player counts.
+    expect(theirs?.received).toBe(mine.sent)
+    expect(theirs?.sent).toBe(mine.received + 1)
+    expect(mine).toMatchObject({ pings: 1, pongs: 1, lostPings: 0 })
+    expect(h.room.traffic(99)).toBeNull()
+    h.room.close()
+  })
+
+  it('takes pings unanswered for three seconds for lost', async () => {
+    const h = host()
+    const { guest, pair } = await join(h.room)
+    guest.setInput(3)
+    await later(2100)
+    pair.guest.fast.dropping = true
+    await later(5000)
+    // Pings at 1 to 7 seconds: two answered, those at 3 and 4 lost, the rest on their way.
+    expect(guest.traffic()).toMatchObject({ pings: 7, pongs: 2, lostPings: 2 })
+    h.room.close()
+  })
+})
+
 describe('leaving and rejoining', () => {
   it('drops a player whose connection closes, and keeps their place', async () => {
     const h = host()
@@ -557,6 +591,20 @@ describe('a malicious host', () => {
     raw('{"type":"pong","sent":1e999}')
     await later(100)
     expect(guest.ping()).toBeNull()
+    guest.close()
+  })
+
+  it('cannot fake answers to pings, nor answer one twice', async () => {
+    const { guest, raw, pair } = await joinedTo()
+    raw({ type: 'pong', sent: 12345 })
+    await later(1050)
+    expect(guest.traffic().pongs).toBe(0)
+    expect(guest.ping()).toBeNull()
+    const ping = pair.guest.fast.sent.map((m) => JSON.parse(m)).find((m) => m.type === 'ping')
+    raw({ type: 'pong', sent: ping.sent })
+    raw({ type: 'pong', sent: ping.sent })
+    await later(10)
+    expect(guest.traffic()).toMatchObject({ pings: 1, pongs: 1 })
     guest.close()
   })
 

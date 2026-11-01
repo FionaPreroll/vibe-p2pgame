@@ -1,6 +1,7 @@
 import type { Connection } from '@fionapreroll/p2p'
-import { GuestRoom } from '@fionapreroll/p2p/room'
+import { GuestRoom, HOST_ID } from '@fionapreroll/p2p/room'
 import type { Snapshot, Target } from '../game/sim'
+import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
 import { PROTOCOL, parseSnapshot } from '../net/protocol'
 import type { Session } from './session'
 
@@ -12,11 +13,22 @@ export class GuestSession implements Session {
   readonly isHost = false
   /** Called once if the host is gone: `ended` if the host ended the game on purpose. */
   onLost: (ended: boolean) => void = () => {}
+  readonly net: NetLog
   private steer: Target = null
+  private readonly sampler: ReturnType<typeof setInterval>
 
   private constructor(private readonly room: GuestRoom<Target, Snapshot>) {
-    room.onLost = (ended) => this.onLost(ended)
+    this.net = startNetLog(room.id, performance.now())
+    room.onLost = (ended) => {
+      clearInterval(this.sampler)
+      this.onLost(ended)
+    }
+    room.onState = () => this.net.arrived(HOST_ID, performance.now())
     room.setInput(null)
+    const sample = () =>
+      this.net.sample(HOST_ID, performance.now(), { ping: room.ping(), traffic: room.traffic() })
+    sample()
+    this.sampler = setInterval(sample, SAMPLE_MS)
   }
 
   /**
@@ -61,6 +73,7 @@ export class GuestSession implements Session {
   }
 
   close(): void {
+    clearInterval(this.sampler)
     this.room.close()
   }
 }

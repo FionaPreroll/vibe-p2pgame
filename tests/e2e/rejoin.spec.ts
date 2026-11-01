@@ -80,7 +80,7 @@ test('settings are kept in the browser', async ({ browser }) => {
   await page.getByRole('button', { name: 'Zurück' }).click()
   await page.getByRole('button', { name: 'Spiel eröffnen' }).click()
   await page.getByRole('button', { name: 'Runde starten' }).click()
-  await expect(page.locator('.timer')).toHaveText(/^(30|29) s$/)
+  await expect(page.locator('.clock-time')).toHaveText(/^0:(30|29)$/)
 
   // Deleting all data starts over, in the browser's language.
   page.on('dialog', (dialog) => dialog.accept())

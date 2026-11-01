@@ -40,16 +40,23 @@ test('two players pair with codes and play a round', async ({ browser }) => {
     timeout: 5000,
   })
 
+  // Before the round: free play, on both phones, and the connection graph shows the ping.
+  await expect(host.locator('.banner')).toContainText('Free play')
+  await expect(guest.locator('.banner')).toContainText('the host starts the round')
+  await expect(guest.locator('button.net')).toContainText(/\d+ ms/)
+  await expect(host.locator('button.net')).toContainText(/\d+ ms/)
+
   await host.getByRole('button', { name: 'Start round' }).click()
-  await expect(guest.locator('.timer')).toHaveText(/^\d+ s$/)
+  await expect(guest.locator('.clock-time')).toHaveText(/^\d:\d\d$/)
+  await expect(guest.locator('.banner')).toBeHidden()
   await expect(guest.locator('.sheet')).toBeHidden()
 
   // The player steers to the middle: there, the host's screen shows the player's blue dot.
-  const box = await guest.locator('canvas').boundingBox()
+  const box = await guest.locator('canvas.arena').boundingBox()
   if (!box) throw new Error('No canvas')
   await guest.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
   await expect
-    .poll(() => host.locator('canvas').evaluate(centerColor), { timeout: 10_000 })
+    .poll(() => host.locator('canvas.arena').evaluate(centerColor), { timeout: 10_000 })
     .toEqual('blue')
 
   // The host leaves: the player's phone notices and goes back to the start.
@@ -144,7 +151,7 @@ test('a touch the moment a round starts goes where it was aimed', async ({ brows
   // middle in that very moment, before the next frame is drawn.
   await guest.evaluate(() => {
     const sheet = document.querySelector('.sheet') as HTMLElement
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement
+    const canvas = document.querySelector('canvas.arena') as HTMLCanvasElement
     new MutationObserver((_, observer) => {
       if (!sheet.hidden) return
       observer.disconnect()
@@ -161,7 +168,7 @@ test('a touch the moment a round starts goes where it was aimed', async ({ brows
   })
   await host.getByRole('button', { name: 'Start round' }).click()
   await expect
-    .poll(() => host.locator('canvas').evaluate(centerColor), { timeout: 10_000 })
+    .poll(() => host.locator('canvas.arena').evaluate(centerColor), { timeout: 10_000 })
     .toEqual('blue')
 })
 

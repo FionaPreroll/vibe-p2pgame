@@ -6,6 +6,8 @@
  * whoever reaches one first scores, a golden spark counts three. Mines cost two points: touched,
  * one explodes and lays itself again elsewhere. A score can drop below zero. The round ends
  * after a minute.
+ *
+ * Before the first round is free play: everything works as in a round, but nothing counts.
  */
 
 export const ARENA = 1000
@@ -145,7 +147,10 @@ export function mineCount(players: number): number {
   return 1 + Math.floor(players / 2)
 }
 
-/** Moves the world on by `dt` seconds and returns the points won and lost on the way. */
+/**
+ * Moves the world on by `dt` seconds and returns the points won and lost on the way. In free
+ * play, before the first round, sparks are caught and mines go off as in a round, for 0 points.
+ */
 export function step(world: World, targets: ReadonlyMap<number, Target>, dt: number): Catch[] {
   for (const player of world.players) move(player, targets.get(player.id) ?? null, dt)
   for (const blast of world.blasts) blast.age += dt
@@ -160,11 +165,12 @@ export function step(world: World, targets: ReadonlyMap<number, Target>, dt: num
       return []
     }
   }
+  const counts = world.phase === 'play'
   const catches: Catch[] = []
   world.sparks = world.sparks.filter((spark) => {
     const catcher = nearestInReach(world.players, spark, SPARK_RADIUS)
     if (catcher === undefined) return true
-    const points = spark.gold ? GOLD_VALUE : 1
+    const points = counts ? (spark.gold ? GOLD_VALUE : 1) : 0
     catcher.score += points
     catches.push({ playerId: catcher.id, points })
     return false
@@ -174,8 +180,9 @@ export function step(world: World, targets: ReadonlyMap<number, Target>, dt: num
     if (mine.armIn > 0) return true
     const victim = nearestInReach(world.players, mine, MINE_RADIUS)
     if (victim === undefined) return true
-    victim.score -= MINE_PENALTY
-    catches.push({ playerId: victim.id, points: -MINE_PENALTY })
+    const points = counts ? -MINE_PENALTY : 0
+    victim.score += points
+    catches.push({ playerId: victim.id, points })
     world.blasts.push({ id: world.nextId++, x: mine.x, y: mine.y, playerId: victim.id, age: 0 })
     return false
   })

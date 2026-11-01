@@ -1,6 +1,10 @@
 import { listen, type Parse, send } from '../channel.ts'
 import { type Connection, onLost, opened } from '../connection.ts'
 import { guestParser, ROOM_PROTOCOL, type ToGuest, type ToHost } from './messages.ts'
+import { type GuestTraffic, TrafficCounter } from './traffic.ts'
+
+/** A ping unanswered this long, in milliseconds, is taken for lost. */
+export const PING_LOST_MS = 3000
 
 export interface GuestRoomOptions<State> {
   /** The player's name, as everyone sees it (the host shortens and cleans it). */
@@ -37,6 +41,12 @@ export class GuestRoom<Input, State> {
   private lastSeen = performance.now()
   private readonly timers: ReturnType<typeof setInterval>[] = []
   private lost = false
+  private readonly counter = new TrafficCounter()
+  private pings = 0
+  private pongs = 0
+  private lostPings = 0
+  /** When the pings still unanswered went out, oldest first. */
+  private readonly waiting: number[] = []
 
   private constructor(
     private readonly link: Connection,
@@ -49,6 +59,7 @@ export class GuestRoom<Input, State> {
     parse: Parse<ToGuest<State>>,
     options: GuestRoomOptions<State>,
   ) {
+    this.counter.watch(link.control, link.fast)
     listen(link.control, parse, (message) => {
       if (message.type === 'bye') this.lose(true)
     })
@@ -58,7 +69,12 @@ export class GuestRoom<Input, State> {
         this.latest = message.data
         this.onState(message.data)
       } else if (message.type === 'pong') {
+        // Only the answer to a ping still waiting counts: not one given up on, nor one made up.
+        const index = this.waiting.indexOf(message.sent)
+        if (index < 0) return
+        this.waiting.splice(index, 1)
         this.measured = Math.max(0, performance.now() - message.sent)
+        this.pongs++
       }
     })
     onLost(link, () => this.lose(false))
@@ -67,20 +83,30 @@ export class GuestRoom<Input, State> {
       setInterval(
         () => {
           if (this.input !== null) {
-            send(link.fast, {
-              type: 'input',
-              data: this.input.value,
-              ping: this.measured,
-            } satisfies ToHost<Input>)
+            this.counter.out(
+              send(link.fast, {
+                type: 'input',
+                data: this.input.value,
+                ping: this.measured,
+              } satisfies ToHost<Input>),
+            )
           }
           if (performance.now() - this.lastSeen > silenceMs) this.lose(false)
         },
         options.tickMs ?? 1000 / 30,
       ),
-      setInterval(
-        () => send(link.fast, { type: 'ping', sent: performance.now() } satisfies ToHost<Input>),
-        options.pingMs ?? 1000,
-      ),
+      setInterval(() => {
+        const now = performance.now()
+        while (this.waiting.length > 0 && now - (this.waiting[0] ?? now) >= PING_LOST_MS) {
+          this.waiting.shift()
+          this.lostPings++
+        }
+        const ping = { type: 'ping', sent: now } satisfies ToHost<Input>
+        if (this.counter.out(send(link.fast, ping)) > 0) {
+          this.pings++
+          this.waiting.push(now)
+        }
+      }, options.pingMs ?? 1000),
     )
   }
 
@@ -144,6 +170,19 @@ export class GuestRoom<Input, State> {
   /** The last measured round trip to the host, in milliseconds. */
   ping(): number | null {
     return this.measured
+  }
+
+  /**
+   * What went to and from the host since the player got in, and the pings: sent, answered, and
+   * lost on the way there or back, as they stayed unanswered for `PING_LOST_MS`.
+   */
+  traffic(): GuestTraffic {
+    return {
+      ...this.counter.read(),
+      pings: this.pings,
+      pongs: this.pongs,
+      lostPings: this.lostPings,
+    }
   }
 
   close(): void {

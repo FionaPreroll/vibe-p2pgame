@@ -21,9 +21,15 @@ export interface Channel {
 /** A parser: the checked message, or undefined for anything that is not one. */
 export type Parse<T> = (value: unknown) => T | undefined
 
-/** Sends a message as JSON, if the channel is open; on a closed channel, nothing happens. */
-export function send(channel: Channel, message: unknown): void {
-  if (channel.readyState === 'open') channel.send(JSON.stringify(message))
+/**
+ * Sends a message as JSON, if the channel is open, and returns its length in characters; on a
+ * closed channel, nothing happens and it returns 0.
+ */
+export function send(channel: Channel, message: unknown): number {
+  if (channel.readyState !== 'open') return 0
+  const text = JSON.stringify(message)
+  channel.send(text)
+  return text.length
 }
 
 /** Calls back with every message that arrives on a channel and that `parse` accepts. */

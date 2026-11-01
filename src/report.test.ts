@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearLog, log } from './log'
+import { startNetLog } from './net/netlog'
 import { debugReport, issueLink, type ReportSources } from './report'
 import { forgetSettings, updateSettings } from './settings'
 
@@ -61,6 +62,24 @@ describe('the debug report', () => {
     expect(report).not.toContain('### Bluetooth')
     // The player's name is no business of a report.
     expect(report).not.toContain('Secretname')
+  })
+
+  it('sums up the network of the last game, without the samples', async () => {
+    const net = startNetLog(2, 0)
+    const traffic = (n: number) => ({
+      sent: n,
+      sentChars: n * 40,
+      received: n,
+      receivedChars: n * 400,
+      pings: n / 30,
+      pongs: n / 30,
+    })
+    net.sample(0, 0, { ping: null, traffic: traffic(0) })
+    net.sample(0, 1000, { ping: 23, traffic: traffic(30) })
+    const report = await debugReport({ now: new Date(), app: false, browser })
+    expect(report).toContain('### Network, last game')
+    expect(report).toContain('median 23 ms')
+    expect(report).not.toContain('t_s,peer')
   })
 
   it('adds the app build and Bluetooth in the app, with the native log', async () => {

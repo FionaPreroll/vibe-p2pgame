@@ -6,6 +6,13 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Added
 
+- Free play: before the first round, a banner above the arena says that points do not count yet, and they do not; sparks and mines work as in a round. After a round, the banner says it is over.
+- A big clock above the arena during a round, with a bar that runs down and turns red, ticking, for the last ten seconds. "Go!" flashes as a round starts.
+- Points won rise from the dot that won them, as "+1" or "+3".
+- Steering with keys (arrow keys or WASD) and game controllers (left stick or D-pad), and an optional joystick on the screen, on the left or the right. Enter, Space or a controller's Start button starts a round on the host's phone.
+- Every key and controller button can be changed in the settings.
+- A small graph of the connection next to the scores, and a network report after a round: ping, messages and data per second, lost pings and stalls, to copy or download as CSV. The debug report sums up the last game's connection too.
+
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
 - An Android app, which plays together with the website and works without internet from its first start. Its newest build is always on the repository's releases page. In the app, a button opens Google's own QR scanner, which focuses and zooms by itself.
 - _Look for a new version now_ in the app's settings.
@@ -25,6 +32,9 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Changed
 
+- While the host is alone, _Add player_ is the highlighted button, as adding players is what comes next.
+- The settings are in sections: game, controls, app, data and help.
+- Your own score is marked in the list of scores.
 - When Bluetooth cannot start, the app says whether Bluetooth or Location is off, and adds a code that a debug report explains.
 
 ### Fixed

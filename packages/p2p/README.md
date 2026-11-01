@@ -96,6 +96,19 @@ Open the camera **before** making the offer: Chrome puts a page's real local add
 
 `unpack` also reads a link with the code in its fragment, such as `https://example.com/game/#o=<code>`: put the offer in such a link, and a player can scan it with the phone's own camera app to open your game and join.
 
+### Watching the connection
+
+Both rooms count what goes over each connection, so a game can show how well it keeps up:
+
+```ts
+guest.ping() // the last round trip to the host, in milliseconds
+guest.traffic() // { sent, sentChars, received, receivedChars, pings, pongs, lostPings }
+room.players() // every player's id, name and ping, as they last measured it
+room.traffic(id) // { sent, sentChars, received, receivedChars } for one player
+```
+
+The counts run from when the player got in, over both channels; `receivedChars` also counts messages dropped as malformed. Read them now and then, say once a second, and take the differences for rates. A ping counts as lost once it has gone unanswered for `PING_LOST_MS` (3 seconds); answers to pings the player never sent, or sent and gave up on, are ignored, and do not change `ping()` either.
+
 ### Other transports, such as Bluetooth
 
 Rooms work on any `Connection`: WebRTC is one, and `packetConnection` makes one from any transport that carries text messages. The transport sends each message with its channel, and hands what arrives to `receive`; the connection checks it.
@@ -123,7 +136,7 @@ A transport may drop `fast` messages when it is busy, as WebRTC's unreliable cha
 | Import                      | What it has                                                                                                                                                                                                                                                      |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@fionapreroll/p2p`         | `pack`, `unpack`, `fromSdp`, `toSdp`: codes. `createOffer`, `answerOffer`, `acceptAnswer`, `opened`, `onLost`: connections. `send`, `listen`, `decode`, `cleanName` and checks (`isObject`, `isNumber`, `isId`, `inRange`, `list`, `clamp`) for writing parsers. |
-| `@fionapreroll/p2p/room`    | `HostRoom`, `GuestRoom`, `Seats`, `randomToken`, `ROOM_PROTOCOL`, and the room's messages and their parsers.                                                                                                                                                     |
+| `@fionapreroll/p2p/room`    | `HostRoom`, `GuestRoom`, `Seats`, `randomToken`, `ROOM_PROTOCOL`, `PING_LOST_MS`, the room's messages and their parsers.                                                                                                                                         |
 | `@fionapreroll/p2p/qr`      | `qrSvg`, `qrElement`, `startScanner`, `cameraIds`, `decodePhoto`. Needs a DOM.                                                                                                                                                                                   |
 | `@fionapreroll/p2p/testing` | `linkPair()`: two connections in memory, with `dropping` to lose messages and `close()` and `fail()` to end them.                                                                                                                                                |
 
@@ -136,6 +149,7 @@ Anyone can make a QR code, and any phone that pairs can send whatever it likes:
 - Names lose control and formatting characters and are cut to 16 characters.
 - A connection that opens but says no hello is closed after 15 seconds, so a phone cannot hold one without joining.
 - A player only ever sends input for themselves. Player tokens never leave the host's room, so nobody can take another player's place by guessing.
+- A host can only answer pings the player sent, each once: a made-up round trip is ignored.
 - The connection is encrypted by WebRTC (DTLS), but a paired phone can still lie about its own input: the game decides what is possible.
 
 ## Testing a game

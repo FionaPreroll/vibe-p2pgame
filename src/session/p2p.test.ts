@@ -110,6 +110,39 @@ describe('Spark Hunt between phones', () => {
   })
 })
 
+describe('the network log', () => {
+  it('samples every connection once a second, on both phones', async () => {
+    const host = new HostSession('Hosty')
+    const { guest } = await join(host)
+    guest.setTarget({ x: 500, y: 200 })
+    await later(5000)
+    const mine = guest.net.series(0)
+    const theirs = host.net.series(1)
+    expect(mine.length).toBeGreaterThanOrEqual(4)
+    expect(theirs.length).toBeGreaterThanOrEqual(3)
+    // The host sends 30 snapshots a second, and the player as many inputs.
+    expect(mine.at(-1)).toMatchObject({ peer: 0, ping: 0, loss: 0 })
+    expect(mine.at(-1)?.inRate).toBeGreaterThan(25)
+    expect(theirs.at(-1)?.inRate).toBeGreaterThan(25)
+    expect(theirs.at(-1)?.gap).toBeLessThan(100)
+    expect(guest.net.summary()[0]).toMatchObject({ peer: 0, loss: 0, stalls: 0 })
+    host.close()
+  })
+
+  it('shows a stall when the host goes quiet', async () => {
+    const host = new HostSession('Hosty')
+    const { guest, pair } = await join(host)
+    await later(2000)
+    pair.host.fast.dropping = true
+    await later(3000)
+    const last = guest.net.series(0).at(-1)
+    expect(last?.gap).toBeGreaterThanOrEqual(1000)
+    expect(last?.inRate).toBe(0)
+    expect(guest.net.summary()[0]?.stalls).toBeGreaterThan(0)
+    host.close()
+  })
+})
+
 describe('scores of players away', () => {
   it('stay while the player is away, without their token', async () => {
     const host = new HostSession('Hosty')

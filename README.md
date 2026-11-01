@@ -17,9 +17,9 @@ The game is small on purpose, as the project is about the connection. Every play
 
 ## Playing
 
-1. **Host:** one phone taps **Host a game**. The arena appears at once, so you can warm up.
-2. **Add players:** for every further player, the host taps **Add player**, and the new player taps **Join a game**. In the Android app, both are asked how to connect (below); in a browser, it is always the QR code.
-3. **Play:** once everyone is in, the host taps **Start round**.
+1. **Host:** one phone taps **Host a game**. The arena appears at once in **free play**, as a banner above it says: sparks and mines work, but nothing counts yet, so everyone can warm up.
+2. **Add players:** for every further player, the host taps **Add player**, and the new player taps **Join a game**. In the Android app, both are asked how to connect (below); in a browser, it is always the QR code. While the host is alone, **Add player** is the highlighted button.
+3. **Play:** once everyone is in, the host taps **Start round**, or presses the start key or controller button. "Go!" flashes, a big clock with a bar runs above the arena and turns red for the last ten seconds, and points won rise from the dot that won them.
 
 Players connect to the host only, a star: each new player pairs with the host and nobody else. One game can mix both ways of connecting.
 
@@ -44,6 +44,22 @@ All phones join the same Wi-Fi; out and about, one phone opens a hotspot and the
 
 Both phones need the Android app, but no Wi-Fi at all. The host's phone advertises its game; the new player picks it from the games nearby. Both phones then show the same four-digit code, and the host accepts the player only after comparing it, so nobody else nearby slips in. The first time, the app asks for the permission for nearby devices, and on the joining phone also for Location, which Google's Nearby Connections needs to find games nearby; approximate is enough, and the host's phone is not asked.
 
+### Steering
+
+Touch the arena where your dot should go, or hold your finger down and drag. Besides that:
+
+- **Keys:** the arrow keys or WASD steer, Enter or Space starts a round on the host's phone.
+- **Game controllers:** the left stick or the D-pad steers, Start starts a round.
+- **Joystick on the screen,** switched on in the settings, on the left or the right: below the arena on a phone held upright, beside it on a wide screen.
+
+Keys, the stick and the joystick steer a little ahead of the dot, and letting go stops it. Every key and button can be changed in the settings, under _Keys and controller buttons_.
+
+### The connection
+
+Next to the scores, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
+
+Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message. Tapping the graph, **Network report** between rounds, after losing the host, or in the settings shows a larger graph and a report to copy or download as CSV, to send to the developer. It names players by their numbers only.
+
 ### Dropping out and coming back
 
 - **A player drops out:** their phone offers **Rejoin** at once, or **Rejoin …’s game** on the start screen if the app or page was closed. The host recognises the player and gives back their place, color and score, even in the middle of a round. By QR code, both phones scan codes again; by Bluetooth, the player just picks the game again. Until then, everyone sees the player as _away_ between rounds.
@@ -52,9 +68,16 @@ Both phones need the Android app, but no Wi-Fi at all. The host's phone advertis
 
 ### Settings
 
-⚙ on the start screen: your name, the language, vibration, keeping the screen on, and the round length when hosting. The camera you last scanned with is remembered, with its zoom and brightness, and in the app, whether to look for updates. Everything is stored on the phone only, and _Delete all saved data_ removes it.
+⚙ on the start screen, in sections:
 
-**Something does not work?** _Create debug report_ at the end of the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
+- your name and the language;
+- **Game:** the round length when hosting, vibration, keeping the screen on, and the connection graph;
+- **Controls:** the joystick on the screen, and the keys and controller buttons;
+- **App,** in the Android app: whether to look for updates;
+- **Data:** the camera you last scanned with is remembered, with its zoom and brightness; _Delete all saved data_ removes everything, which is stored on the phone only;
+- **Help:** the debug report and the network report.
+
+**Something does not work?** _Create debug report_ under _Help_ in the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, a summary of the last game's connection, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
 
 ## Getting the game
 
@@ -81,7 +104,7 @@ These are debug builds, for playing with friends, not for the Play Store: a Play
 
 Everything that is not Spark Hunt's own lives in the library [`@fionapreroll/p2p`](packages/p2p/README.md) (`packages/p2p`): the short codes, WebRTC connections, connections over any other transport, the rooms for host and players, QR codes and the camera, and the means to check and test it all. The game builds on it, in `src/`.
 
-The host decides everything. Its room (`HostRoom`) lets players in and carries the messages; on every tick, 30 times a second, the game steps its rules (`src/game/sim.ts`, pure TypeScript) and sends every player a complete snapshot, so a lost packet is simply replaced by the next one. Players send only where they steer, and smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds.
+The host decides everything. Its room (`HostRoom`) lets players in and carries the messages; on every tick, 30 times a second, the game steps its rules (`src/game/sim.ts`, pure TypeScript) and sends every player a complete snapshot, so a lost packet is simply replaced by the next one. Players send only where they steer, and smooth the dots between snapshots. Each player measures the round trip once a second, and everyone sees all pings between rounds. Before the first round, the rules run in free play: everything moves, nothing scores.
 
 Rooms work on any `Connection`, whatever carries it: WebRTC, Bluetooth, or memory in tests. Each connection has two channels: `control`, reliable and ordered, for hello and welcome; and `fast`, where only the newest message counts, for input, snapshots and pings.
 
@@ -138,9 +161,11 @@ packages/p2p/   the library @fionapreroll/p2p, with its own README and CHANGELOG
                 testing.ts: connections in memory, for tests
 src/
   game/         sim.ts: the rules, pure and tested; draw.ts: the canvas
-  net/          protocol.ts: Spark Hunt's input and snapshots, checked
+  net/          protocol.ts: Spark Hunt's input and snapshots, checked; netlog.ts: the network log
   session/      host.ts and guest.ts: Spark Hunt on the library's rooms; saved.ts: what a host keeps
-  ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view
+  ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view;
+                joystick.ts; netGraph.ts and netReport.ts: the connection's graph and report
+  input.ts      keys and game controllers, and their bindings
   native.ts     what the Android app adds: Google's scanner
   bluetooth.ts  Bluetooth between app phones
   log.ts, report.ts   the log and the debug report

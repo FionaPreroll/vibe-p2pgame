@@ -1,6 +1,7 @@
 import { ROOM_PROTOCOL } from '@fionapreroll/p2p/room'
 import { currentLanguage } from './i18n'
 import { describeError, logLines, redact } from './log'
+import { latestNetLog, summaryLines } from './net/netlog'
 import { PROTOCOL } from './net/protocol'
 import { hostedGame, joinedGame } from './session/saved'
 import { settings } from './settings'
@@ -55,7 +56,7 @@ export async function debugReport(sources: ReportSources): Promise<string> {
     `- Can do: ${Object.entries(sources.browser.features)
       .map(([feature, ok]) => `${feature} ${yes(ok)}`)
       .join(', ')}`,
-    `- Settings: language ${s.language}, vibration ${on(s.vibration)}, keep screen on ${on(s.keepScreenOn)}, round ${s.roundSeconds} s, camera remembered ${yes(s.camera.deviceId !== null)}, updates ${on(s.checkUpdates)} (asked ${yes(s.updatesAsked)})`,
+    `- Settings: language ${s.language}, vibration ${on(s.vibration)}, keep screen on ${on(s.keepScreenOn)}, round ${s.roundSeconds} s, camera remembered ${yes(s.camera.deviceId !== null)}, updates ${on(s.checkUpdates)} (asked ${yes(s.updatesAsked)}), joystick ${s.joystick}, connection graph ${on(s.netGraph)}`,
     `- Saved: hosted game ${hosted ? `with ${hosted.players.length} other player(s)` : 'none'}, joined game ${yes(joined !== null)}`,
   )
   if (sources.bluetooth) {
@@ -65,6 +66,16 @@ export async function debugReport(sources: ReportSources): Promise<string> {
     } catch (error) {
       lines.push(`- Could not read: ${describeError(error)}`)
     }
+  }
+  const net = latestNetLog()
+  if (net && net.samples.length > 0) {
+    // The summary only: the samples are in the network report, for whoever needs them.
+    lines.push(
+      '',
+      '### Network, last game',
+      '',
+      ...net.summary().flatMap((p) => summaryLines(net, p)),
+    )
   }
   lines.push(
     '',

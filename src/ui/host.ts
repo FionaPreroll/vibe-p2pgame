@@ -9,7 +9,7 @@ import { bluetoothHostDialog } from './bluetoothUi'
 import { joinLink, pastedSignal, textCodes } from './codes'
 import { chooseConnection } from './connect'
 import { failureText, h, show, toast } from './dom'
-import { gameScreen, result, roster } from './game'
+import { gameScreen, networkButton, result, roster } from './game'
 import { scanPanel } from './scanPanel'
 
 /**
@@ -22,36 +22,47 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
     log('game', 'a player left')
     toast(t('playerLeft', { name: left }))
   }
+  const start = () => session.start(settings().roundSeconds)
   const screen = gameScreen(
     session,
-    (state) => [
-      state.phase === 'over' ? result(state) : h('p', {}, t('lobby'), ' ', t('steer')),
-      roster(state, session.selfId()),
-      h(
-        'div',
-        { class: 'buttons' },
-        h('button', {
-          type: 'button',
-          textContent: t('addPlayer'),
-          onclick: async () => {
-            const choice = await chooseConnection()
-            if (choice === 'bluetooth') bluetoothHostDialog(session, name, screen.element)
-            else if (choice === 'qr') pairingDialog(session, screen.element)
-          },
-        }),
-        h('button', {
-          type: 'button',
-          class: 'primary',
-          textContent: state.phase === 'over' ? t('again') : t('start'),
-          onclick: () => session.start(settings().roundSeconds),
-        }),
-      ),
-    ],
+    (state) => {
+      // Alone, adding a player is what comes next: that button leads, and starting follows.
+      const alone = state.players.length === 1
+      return [
+        state.phase === 'over'
+          ? result(state)
+          : h('p', {}, alone ? t('alone') : t('lobby'), ' ', t('steer')),
+        roster(state, session.selfId()),
+        h(
+          'div',
+          { class: 'buttons' },
+          h('button', {
+            type: 'button',
+            class: alone ? 'primary attention' : '',
+            textContent: t('addPlayer'),
+            onclick: async () => {
+              const choice = await chooseConnection()
+              if (choice === 'bluetooth') bluetoothHostDialog(session, name, screen.element)
+              else if (choice === 'qr') pairingDialog(session, screen.element)
+            },
+          }),
+          h('button', {
+            type: 'button',
+            class: alone ? '' : 'primary',
+            textContent: state.phase === 'over' ? t('again') : t('start'),
+            onclick: start,
+          }),
+        ),
+        // Alone, there is no connection to report on, unless there was one before.
+        alone && session.net.samples.length === 0 ? null : networkButton(session),
+      ]
+    },
     () => {
       screen.destroy()
       session.close()
       onLeave()
     },
+    start,
   )
   show(screen.element)
 }

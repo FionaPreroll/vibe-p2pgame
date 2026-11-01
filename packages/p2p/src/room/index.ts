@@ -1,4 +1,4 @@
-export { GuestRoom, type GuestRoomOptions } from './guest.ts'
+export { GuestRoom, type GuestRoomOptions, PING_LOST_MS } from './guest.ts'
 export {
   HOST_ID,
   HostRoom,
@@ -18,3 +18,4 @@ export {
   type ToHost,
 } from './messages.ts'
 export { type Seat, Seats } from './seats.ts'
+export type { GuestTraffic, Traffic } from './traffic.ts'

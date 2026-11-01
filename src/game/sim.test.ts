@@ -54,6 +54,7 @@ describe('step', () => {
     const world = createWorld(3)
     const near = addPlayer(world, 0, 'Ada')
     const far = addPlayer(world, 1, 'Bo')
+    startRound(world)
     world.sparks = [{ id: 99, x: 500, y: 500, gold: false }]
     Object.assign(near, { x: 500 + 10, y: 500 })
     Object.assign(far, { x: 500 - 20, y: 500 })
@@ -68,9 +69,27 @@ describe('step', () => {
   it('counts a golden spark three times', () => {
     const world = createWorld(3)
     const player = addPlayer(world, 0, 'Ada')
+    startRound(world)
     world.sparks = [{ id: 99, x: player.x, y: player.y, gold: true }]
     expect(step(world, still, 0.01)).toEqual([{ playerId: 0, points: 3 }])
     expect(player.score).toBe(3)
+  })
+
+  it('counts nothing in free play, before the first round', () => {
+    const world = createWorld(3)
+    const player = addPlayer(world, 0, 'Ada')
+    player.score = 5
+    world.sparks = [{ id: 98, x: player.x, y: player.y, gold: true }]
+    world.mines = [{ id: 99, x: player.x + MINE_RADIUS, y: player.y, armIn: 0 }]
+    const catches = step(world, still, 0.01)
+    expect(world.phase).toBe('lobby')
+    expect(catches).toEqual([
+      { playerId: 0, points: 0 },
+      { playerId: 0, points: 0 },
+    ])
+    expect(player.score).toBe(5)
+    expect(world.sparks.map((s) => s.id)).not.toContain(98)
+    expect(world.blasts).toHaveLength(1)
   })
 
   it('ends a round after its time, and then nobody scores', () => {
@@ -139,6 +158,7 @@ describe('mines', () => {
     const world = createWorld(3)
     const victim = addPlayer(world, 0, 'Ada')
     const other = addPlayer(world, 1, 'Bo')
+    startRound(world)
     world.mines = [{ id: 99, x: victim.x + MINE_RADIUS, y: victim.y, armIn: 0 }]
     Object.assign(other, { x: victim.x + MINE_RADIUS * 2 + 20, y: victim.y })
     const catches = step(world, still, 0.01)

@@ -4,6 +4,7 @@ import { acceptAnswer, createOffer } from '../link.ts'
 import type { Signal } from '../signal.ts'
 import { hostParser, ROOM_PROTOCOL, type ToGuest, type ToHost } from './messages.ts'
 import { type Seat, Seats } from './seats.ts'
+import { type Traffic, TrafficCounter } from './traffic.ts'
 
 /** The host's own player id: players who join get 1, 2 and so on. */
 export const HOST_ID = 0
@@ -60,6 +61,7 @@ interface Guest {
   readonly token: string
   name: string
   ping: number | null
+  readonly traffic: TrafficCounter
   lastSeen: number
 }
 
@@ -184,6 +186,11 @@ export class HostRoom<Input, State> {
     return [...this.guests].map(([id, guest]) => ({ id, name: guest.name, ping: guest.ping }))
   }
 
+  /** What went to and from a player connected now, since they got in; null for anyone else. */
+  traffic(id: number): Traffic | null {
+    return this.guests.get(id)?.traffic.read() ?? null
+  }
+
   /** The players who left and may rejoin. */
   awaySeats(): Seat[] {
     return this.seats.awaySeats()
@@ -234,24 +241,30 @@ export class HostRoom<Input, State> {
       name,
       token: seatToken,
       ping: null,
+      traffic: new TrafficCounter(),
       lastSeen: performance.now(),
       lastState: Number.NEGATIVE_INFINITY,
     }
     this.guests.set(id, guest)
-    send(link.control, {
-      type: 'welcome',
-      id,
-      host: this.options.name,
-      rejoined,
-      room: ROOM_PROTOCOL,
-      version: this.options.version,
-    } satisfies ToGuest<State>)
+    guest.traffic.watch(link.control, link.fast)
+    guest.traffic.out(
+      send(link.control, {
+        type: 'welcome',
+        id,
+        host: this.options.name,
+        rejoined,
+        room: ROOM_PROTOCOL,
+        version: this.options.version,
+      } satisfies ToGuest<State>),
+    )
     // Only `fast` carries messages after the hello; whatever else arrives is dropped.
     listen(link.fast, this.parse, (message) => {
       if (this.guests.get(id) !== guest) return
       guest.lastSeen = performance.now()
       if (message.type === 'ping') {
-        send(link.fast, { type: 'pong', sent: message.sent } satisfies ToGuest<State>)
+        guest.traffic.out(
+          send(link.fast, { type: 'pong', sent: message.sent } satisfies ToGuest<State>),
+        )
       } else if (message.type === 'input') {
         guest.ping = message.ping === null ? null : Math.round(message.ping)
         this.onInput({ id, name, ping: guest.ping }, message.data)
@@ -293,6 +306,7 @@ export class HostRoom<Input, State> {
       }
       guest.lastState = now
       fast.send(message)
+      guest.traffic.out(message.length)
     }
   }
 }
