@@ -32,7 +32,8 @@ export default defineConfig(({ mode }) => ({
       provider: 'v8',
       // Every source file, so files without tests count as uncovered instead of missing.
       include: ['src/**/*.ts', 'packages/*/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/testing.ts', 'packages/*/src/**/index.ts'],
+      // The core library's index files only re-export; @fionapreroll/p2p-nearby's holds its code.
+      exclude: ['**/*.test.ts', '**/testing.ts', 'packages/p2p/src/**/index.ts'],
       // lcov for Codecov, a table for the terminal.
       reporter: ['text', 'lcov'],
     },

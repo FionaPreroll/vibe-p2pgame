@@ -11,7 +11,7 @@ It needs Google Play services on the phone. In a browser, and on phones without 
 
 ## Installing
 
-Like `@fionapreroll/p2p`, from GitHub's npm registry (see its README for the `.npmrc`), in a Capacitor 8 app that has the library:
+Like `@fionapreroll/p2p`, from [GitHub's npm registry](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby) (see its README for the `.npmrc`), in a Capacitor 8 app that has the library:
 
 ```bash
 pnpm add @fionapreroll/p2p-nearby

@@ -12,7 +12,7 @@ It grew out of [Spark Hunt](https://github.com/FionaPreroll/vibe-p2pgame), which
 
 ## Installing
 
-The package is on GitHub's npm registry, which needs a login even to install. Add an `.npmrc` next to your `package.json`:
+The package is on [GitHub's npm registry](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p), which needs a login even to install. Add an `.npmrc` next to your `package.json`:
 
 ```
 @fionapreroll:registry=https://npm.pkg.github.com

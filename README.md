@@ -9,7 +9,12 @@ A game for phones lying side by side, with **no internet and no server**. The ph
 - **Play in the browser:** <https://fionapreroll.github.io/vibe-p2pgame/>
 - **Android app:** [`spark-hunt.apk`](https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk), always the newest build (see [Android app](#android-app))
 
-The networking is a library of its own, [`@fionapreroll/p2p`](packages/p2p/README.md), for other games to use too, and Bluetooth for Android apps a second one, [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md).
+The networking is a library of its own, for other games to use too, and Bluetooth for Android apps a second one, both published on GitHub's npm registry:
+
+| Library                                                     | What                                                                               | Published                                                                           |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [`@fionapreroll/p2p`](packages/p2p/README.md)               | Codes, WebRTC, connections over any transport, rooms, QR codes                     | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p)        |
+| [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md) | Bluetooth in Android apps made with Capacitor, through Google's Nearby Connections | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby) |
 
 <table>
   <tr>
@@ -287,7 +292,7 @@ To bring them up to date, run **Update screenshots** in the Actions tab (`.githu
 1. Move the entries under `## [Unreleased]` in the library's `CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in its `package.json` to the same, and bring that to `main`.
 2. In the Actions tab, run **Publish p2p** on `main`, choosing the library. It checks that the version is new and in the changelog, runs every check, publishes the package, and then tags the commit `p2p-vx.y.z` or `p2p-nearby-vx.y.z`. Pushing such a tag yourself publishes too, once it matches the version in the library's `package.json`.
 
-Games that use the library install it as its [README](packages/p2p/README.md) describes, with a token that may read packages.
+Games that use the libraries install them as their READMEs describe ([`@fionapreroll/p2p`](packages/p2p/README.md), [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md)), with a token that may read packages. Their published versions are listed on the packages' pages: [`@fionapreroll/p2p`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p) and [`@fionapreroll/p2p-nearby`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby).
 
 ## Known limits
 
