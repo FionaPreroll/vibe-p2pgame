@@ -29,6 +29,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
           flags: unit
+          # Only the files named: a search would add the other reports to this flag.
+          disable_search: true
       - run: pnpm build:p2p
       # With source maps and coverage: see tests/e2e/coverage.ts.
       - run: pnpm build
@@ -43,6 +45,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/e2e/lcov.info
           flags: e2e
+          # Only the files named: a search would add the other reports to this flag.
+          disable_search: true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

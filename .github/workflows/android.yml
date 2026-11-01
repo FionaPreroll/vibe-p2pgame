@@ -49,6 +49,8 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: android
+          # Only the files named: a search would add the other reports to this flag.
+          disable_search: true
           files: android/app/build/reports/coverage/test/debug/report.xml,packages/p2p-nearby/android/build/reports/coverage/test/debug/report.xml
           fail_ci_if_error: true
       - run: mv android/app/build/outputs/apk/debug/app-debug.apk spark-hunt.apk
