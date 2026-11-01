@@ -241,7 +241,17 @@ pnpm check
 
 **Logs and the debug report:** `log()` from `src/log.ts` keeps the last 300 lines in memory, and NearbyPlugin keeps its own; `src/report.ts` puts both into the debug report. A log line says what happened, never what was said: `log()` masks anything that looks like a code, an address or a token, and a test checks that the report holds none.
 
-`pnpm test:coverage` also measures coverage, which CI uploads to Codecov; it counts unit tests only, not the browser. `pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
+`pnpm test:e2e` builds the game and pairs two Chromium profiles over real WebRTC; in containers with a preinstalled Chromium, set `CHROMIUM_PATH` to it.
+
+**Coverage** comes from three kinds of tests, which CI uploads to Codecov separately, each with its flag, and Codecov puts together:
+
+| Flag      | Tests                                             | Measures                                                                                                                | Locally                                             |
+| --------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `unit`    | Vitest, in Node                                   | `src/`, both libraries' `src/` and `tools/`                                                                             | `pnpm test:coverage` → `coverage/lcov.info`         |
+| `e2e`     | Playwright, in Chromium (`tests/e2e/coverage.ts`) | the same TypeScript as the browser runs it, through the build's source maps: the screens, WebRTC and the camera too     | `pnpm test:e2e:coverage` → `coverage/e2e/lcov.info` |
+| `android` | JUnit, with JaCoCo                                | all the Java: the app's (`AppUpdaterPlugin`, `UpdateRules`) and the Bluetooth library's (`NearbyPlugin`, `NearbyRules`) | `./gradlew testDebugUnitTest` in `android/`         |
+
+Left out on purpose: the tests themselves, the libraries' `testing.ts` fakes, and the core library's `index.ts` files, which only re-export. The plugins' decisions live in plain Java without Android (`UpdateRules`, `NearbyRules`), which JUnit tests on any computer; what is left in the plugins is Android and Google Play services, measured but only tried on phones.
 
 **On phones:** `pnpm dev:phone` serves the game to the local network over HTTPS with a self-signed certificate, as phones open the camera only on HTTPS pages. Open the address it prints on each phone and accept the certificate warning once.
 
@@ -266,13 +276,13 @@ cd android && ./gradlew assembleDebug
 
 ### What CI does
 
-| Workflow          | When                                                    | What                                                                                                                         |
-| ----------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`          | Pull requests and pushes to `main`                      | Type check, Biome, unit tests with coverage to Codecov, library build, end-to-end tests                                      |
-| `deploy.yml`      | Pushes to `main`, or by hand                            | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_         |
-| `android.yml`     | Pull requests and pushes to `main`                      | Builds the APK; from `main`, replaces it in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json` |
-| `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` or `p2p-nearby-v…` | Publishes a library, chosen when run by hand, to GitHub's npm registry and tags the version                                  |
-| `screenshots.yml` | By hand                                                 | Takes the README's screenshots anew and opens a pull request with them, if any changed                                       |
+| Workflow          | When                                                    | What                                                                                                                                                                                |
+| ----------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`          | Pull requests and pushes to `main`                      | Type check, Biome, unit tests, library builds, end-to-end tests; coverage of the unit and end-to-end tests to Codecov                                                               |
+| `deploy.yml`      | Pushes to `main`, or by hand                            | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_                                                                |
+| `android.yml`     | Pull requests and pushes to `main`                      | Builds the APK and runs the Java tests, with coverage to Codecov; from `main`, replaces the APK in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json` |
+| `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` or `p2p-nearby-v…` | Publishes a library, chosen when run by hand, to GitHub's npm registry and tags the version                                                                                         |
+| `screenshots.yml` | By hand                                                 | Takes the README's screenshots anew and opens a pull request with them, if any changed                                                                                              |
 
 ### Changelog and game versions
 

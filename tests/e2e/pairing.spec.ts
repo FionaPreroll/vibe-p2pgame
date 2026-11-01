@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './coverage'
 import { ownCode, pair, pasteCode, player } from './helpers'
 
 /**

@@ -22,14 +22,27 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm exec biome ci
       - run: pnpm test:coverage
+      # Three reports go to Codecov, each with its flag: the unit tests (here), the browser
+      # tests (below) and the Java tests (android.yml).
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
+          flags: unit
       - run: pnpm build:p2p
+      # With source maps and coverage: see tests/e2e/coverage.ts.
       - run: pnpm build
+        env:
+          COVERAGE: "1"
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test
+        env:
+          COVERAGE: "1"
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/e2e/lcov.info
+          flags: e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

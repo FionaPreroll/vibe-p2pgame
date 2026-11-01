@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './coverage'
 import { pair, player } from './helpers'
 
 test('a host alone sees free play, is shown to add players, and starts with a key', async ({

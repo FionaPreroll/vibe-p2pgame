@@ -37,15 +37,8 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * The native side of @fionapreroll/p2p-nearby (src/index.ts), through Google's Nearby Connections:
@@ -76,22 +69,9 @@ import java.util.regex.Pattern;
 )
 public class NearbyPlugin extends Plugin {
 
-    /**
-     * Both sides look for the game's own service only, which the game names when it starts: other
-     * apps' Nearby traffic never reaches it.
-     */
-    private static final Pattern SERVICE = Pattern.compile("[A-Za-z0-9._-]{3,64}");
+    /** Both sides look for the game's own service only, which the game names when it starts. */
     private String serviceId = null;
-    private static final int MAX_NAME_LENGTH = 64;
-    /** Connection requests waiting for the host's answer at once; more are turned down. */
-    private static final int MAX_PENDING = 4;
-    /** Messages a second taken from one connection; more are dropped before they reach the game. */
-    private static final int MAX_MESSAGES_PER_SECOND = 120;
-    /** Fast messages on their way to one connection; while there are this many, new ones are dropped. */
-    private static final int MAX_FAST_IN_FLIGHT = 2;
 
-    /** Lines kept for the debug report: what happened, never what was said. */
-    private static final int MAX_LOG_LINES = 200;
     /** Every permission Nearby may need on some Android version, for the debug report. */
     private static final String[] PERMISSIONS = {
         "android.permission.BLUETOOTH",
@@ -109,13 +89,11 @@ public class NearbyPlugin extends Plugin {
     private ConnectionsClient client;
     private boolean advertising = false;
     private boolean discovering = false;
-    private final ArrayDeque<String> log = new ArrayDeque<>();
-    private final long loadedAt = System.currentTimeMillis();
+    private final NearbyRules.DebugLog log = new NearbyRules.DebugLog(System.currentTimeMillis(), NearbyRules.MAX_LOG_LINES);
     private final Set<String> pending = new HashSet<>();
     private final Set<String> connected = new HashSet<>();
-    private final Map<String, Integer> fastInFlight = new HashMap<>();
-    private final Map<Long, String> fastPayloads = new HashMap<>();
-    private final Map<String, long[]> rates = new HashMap<>();
+    private final NearbyRules.FastLanes lanes = new NearbyRules.FastLanes(NearbyRules.MAX_FAST_IN_FLIGHT);
+    private final NearbyRules.RateLimit rates = new NearbyRules.RateLimit(NearbyRules.MAX_MESSAGES_PER_SECOND);
 
     @Override
     public void load() {
@@ -134,7 +112,7 @@ public class NearbyPlugin extends Plugin {
         log("start " + role + " (Android " + Build.VERSION.SDK_INT + ")");
         String service = call.getString("service", "");
         if ((!"host".equals(role) && !"player".equals(role)) || shorten(call.getString("name", "")).isEmpty()
-                || !SERVICE.matcher(service).matches()) {
+                || !NearbyRules.isService(service)) {
             call.reject("Bad arguments");
             return;
         }
@@ -277,22 +255,18 @@ public class NearbyPlugin extends Plugin {
             call.reject("No such channel");
             return;
         }
-        byte[] bytes = ((fast ? "f" : "c") + data).getBytes(StandardCharsets.UTF_8);
-        if (bytes.length > ConnectionsClient.MAX_BYTES_DATA_SIZE) {
+        byte[] bytes = NearbyRules.encode(channel, data);
+        if (bytes == null) {
             call.reject("Too long");
             return;
         }
-        int inFlight = fastInFlight.containsKey(endpointId) ? fastInFlight.get(endpointId) : 0;
-        if (fast && inFlight >= MAX_FAST_IN_FLIGHT) {
+        if (fast && !lanes.free(endpointId)) {
             call.resolve();
             return;
         }
         Payload payload = Payload.fromBytes(bytes);
-        if (fast) {
-            fastPayloads.put(payload.getId(), endpointId);
-            fastInFlight.put(endpointId, inFlight + 1);
-        }
-        client.sendPayload(endpointId, payload).addOnFailureListener(e -> released(payload.getId()));
+        if (fast) lanes.sent(endpointId, payload.getId());
+        client.sendPayload(endpointId, payload).addOnFailureListener(e -> lanes.released(payload.getId()));
         call.resolve();
     }
 
@@ -324,8 +298,7 @@ public class NearbyPlugin extends Plugin {
         discovering = false;
         pending.clear();
         connected.clear();
-        fastInFlight.clear();
-        fastPayloads.clear();
+        lanes.clear();
         rates.clear();
     }
 
@@ -333,7 +306,7 @@ public class NearbyPlugin extends Plugin {
         @Override
         public void onConnectionInitiated(String endpointId, ConnectionInfo info) {
             // A host takes requests only while it advertises, and only a few at once.
-            if (info.isIncomingConnection() && (!advertising || pending.size() >= MAX_PENDING)) {
+            if (NearbyRules.turnDown(info.isIncomingConnection(), advertising, pending.size())) {
                 log("turned down request from " + endpointId + (advertising ? ": too many waiting" : ": not hosting"));
                 client.rejectConnection(endpointId);
                 return;
@@ -400,49 +373,26 @@ public class NearbyPlugin extends Plugin {
                 client.cancelPayload(payload.getId());
                 return;
             }
-            byte[] bytes = payload.asBytes();
-            if (bytes == null || bytes.length < 1 || bytes.length > ConnectionsClient.MAX_BYTES_DATA_SIZE) return;
-            if (!withinRate(endpointId)) return;
-            String channel = bytes[0] == 'c' ? "control" : bytes[0] == 'f' ? "fast" : null;
-            if (channel == null) return;
+            String[] decoded = NearbyRules.decode(payload.asBytes());
+            if (decoded == null || !rates.allow(endpointId, System.currentTimeMillis())) return;
             JSObject message = new JSObject();
             message.put("endpointId", endpointId);
-            message.put("channel", channel);
-            message.put("data", new String(bytes, 1, bytes.length - 1, StandardCharsets.UTF_8));
+            message.put("channel", decoded[0]);
+            message.put("data", decoded[1]);
             notifyListeners("message", message);
         }
 
         @Override
         public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
             int status = update.getStatus();
-            if (status != PayloadTransferUpdate.Status.IN_PROGRESS) released(update.getPayloadId());
+            if (status != PayloadTransferUpdate.Status.IN_PROGRESS) lanes.released(update.getPayloadId());
         }
     };
 
-    /** A fast message has arrived or failed: the link may take the next one. */
-    private void released(long payloadId) {
-        String endpointId = fastPayloads.remove(payloadId);
-        if (endpointId == null) return;
-        Integer inFlight = fastInFlight.get(endpointId);
-        if (inFlight != null && inFlight > 0) fastInFlight.put(endpointId, inFlight - 1);
-    }
-
-    private boolean withinRate(String endpointId) {
-        long now = System.currentTimeMillis();
-        long[] window = rates.get(endpointId);
-        if (window == null || now - window[0] >= 1000) {
-            rates.put(endpointId, new long[] { now, 1 });
-            return true;
-        }
-        window[1]++;
-        return window[1] <= MAX_MESSAGES_PER_SECOND;
-    }
-
     private void gone(String endpointId) {
         connected.remove(endpointId);
-        fastInFlight.remove(endpointId);
-        rates.remove(endpointId);
-        fastPayloads.values().removeIf(endpointId::equals);
+        lanes.forget(endpointId);
+        rates.forget(endpointId);
         JSObject event = new JSObject();
         event.put("endpointId", endpointId);
         notifyListeners("disconnected", event);
@@ -489,7 +439,7 @@ public class NearbyPlugin extends Plugin {
         result.put("waiting", pending.size());
         result.put("connected", connected.size());
         JSArray lines = new JSArray();
-        for (String line : log) lines.put(line);
+        for (String line : log.lines()) lines.put(line);
         result.put("log", lines);
         call.resolve(result);
     }
@@ -501,14 +451,9 @@ public class NearbyPlugin extends Plugin {
         log("could not " + step + ": " + what + (Boolean.FALSE.equals(location) ? " (Location is off)" : ""));
         // A permission Nearby misses is the player's to give; Location off is the likely cause of
         // a failed discovery otherwise.
-        String code = code(e);
-        if (e instanceof ApiException && missingPermission(((ApiException) e).getStatusCode())) code = "permission";
-        else if (Boolean.FALSE.equals(location) && step.equals("discover")) code = "location-off";
-        call.reject("Could not " + step + ": " + what, code, e);
-    }
-
-    private static boolean missingPermission(int status) {
-        return ConnectionsStatusCodes.getStatusCodeString(status).startsWith("MISSING_PERMISSION");
+        Integer status = e instanceof ApiException ? ((ApiException) e).getStatusCode() : null;
+        String name = status == null ? null : ConnectionsStatusCodes.getStatusCodeString(status);
+        call.reject("Could not " + step + ": " + what, NearbyRules.failureCode(status, name, location, step), e);
     }
 
     private static String describe(int status) {
@@ -516,9 +461,7 @@ public class NearbyPlugin extends Plugin {
     }
 
     private void log(String line) {
-        long seconds = (System.currentTimeMillis() - loadedAt) / 1000;
-        log.addLast("+" + seconds + "s " + line);
-        while (log.size() > MAX_LOG_LINES) log.removeFirst();
+        log.add(line, System.currentTimeMillis());
     }
 
     /** Whether Bluetooth is switched on; null where the phone does not say. */
@@ -544,45 +487,15 @@ public class NearbyPlugin extends Plugin {
         }
     }
 
-    /**
-     * The permissions asked for, to host or to play, on this phone's Android version. Nearby wants
-     * location to discover games nearby on every version, even where Google's list says it does
-     * not: on Android 17 discovering fails with 8034 MISSING_PERMISSION_ACCESS_COARSE_LOCATION
-     * without it. Fine and coarse are asked for together, so the player can choose approximate.
-     */
     private static String[] askedAliases(String role) {
-        List<String> aliases = new ArrayList<>();
-        if (Build.VERSION.SDK_INT >= 31) aliases.add("bluetooth");
-        if (Build.VERSION.SDK_INT >= 33) aliases.add("wifi");
-        if (Build.VERSION.SDK_INT < 29) {
-            aliases.add("coarse");
-        } else if (Build.VERSION.SDK_INT < 33 || "player".equals(role)) {
-            aliases.add("location");
-            aliases.add("coarse");
-        }
-        return aliases.toArray(new String[0]);
+        return NearbyRules.askedAliases(role, Build.VERSION.SDK_INT).toArray(new String[0]);
     }
 
-    /**
-     * The permissions that must be granted: as asked, but from Android 13 on, approximate location
-     * is enough to discover; up to Android 12, Nearby wants precise location.
-     */
     private static String[] requiredAliases(String role) {
-        List<String> aliases = new ArrayList<>();
-        for (String alias : askedAliases(role)) {
-            if (Build.VERSION.SDK_INT >= 33 && "location".equals(alias)) continue;
-            if (Build.VERSION.SDK_INT >= 29 && Build.VERSION.SDK_INT < 33 && "coarse".equals(alias)) continue;
-            aliases.add(alias);
-        }
-        return aliases.toArray(new String[0]);
+        return NearbyRules.requiredAliases(role, Build.VERSION.SDK_INT).toArray(new String[0]);
     }
 
     private static String shorten(String text) {
-        if (text == null) return "";
-        return text.length() > MAX_NAME_LENGTH ? text.substring(0, MAX_NAME_LENGTH) : text;
-    }
-
-    private static String code(Exception e) {
-        return e instanceof ApiException ? "nearby-" + ((ApiException) e).getStatusCode() : "failed";
+        return NearbyRules.shorten(text);
     }
 }

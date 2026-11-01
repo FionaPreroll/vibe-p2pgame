@@ -38,6 +38,19 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: ${{ github.run_number }}-${{ github.sha }}
         run: ./gradlew assembleDebug --no-daemon
+      # The Java unit tests (UpdateRules, NearbyRules), with JaCoCo's coverage of all the app's and
+      # the Bluetooth library's Java, plugins included, for Codecov.
+      - name: Test the Java, with coverage
+        working-directory: android
+        run: ./gradlew :app:createDebugUnitTestCoverageReport :fionapreroll-p2p-nearby:createDebugUnitTestCoverageReport --no-daemon
+      - name: List the coverage reports
+        run: find android/app/build/reports/coverage packages/p2p-nearby/android/build/reports/coverage -name '*.xml'
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: android
+          files: android/app/build/reports/coverage/test/debug/report.xml,packages/p2p-nearby/android/build/reports/coverage/test/debug/report.xml
+          fail_ci_if_error: true
       - run: mv android/app/build/outputs/apk/debug/app-debug.apk spark-hunt.apk
       - uses: actions/upload-artifact@v4
         with:

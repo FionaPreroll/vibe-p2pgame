@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './coverage'
 import { player } from './helpers'
 
 test('the settings make a debug report to read, copy and send', async ({ browser }) => {

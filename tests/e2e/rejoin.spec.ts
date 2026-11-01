@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './coverage'
 import { pair, player } from './helpers'
 
 test('a player who drops out rejoins with their place', async ({ browser }) => {

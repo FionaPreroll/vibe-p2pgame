@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => ({
   define: { __BUILD__: JSON.stringify(buildInfo()) },
   // Relative asset URLs, so the build runs under any path, such as GitHub Pages' /vibe-p2pgame/.
   base: './',
+  // Source maps only for measuring coverage in the browser tests (COVERAGE, see tests/e2e/coverage.ts).
+  build: { sourcemap: Boolean(process.env.COVERAGE) },
   // Phones only open the camera on HTTPS pages, so `pnpm dev:phone` serves with a self-signed
   // certificate that the phone has to accept once.
   plugins: [licenses(), serviceWorker(), ...(mode === 'phone' ? [basicSsl()] : [])],
@@ -31,7 +33,7 @@ export default defineConfig(({ mode }) => ({
     coverage: {
       provider: 'v8',
       // Every source file, so files without tests count as uncovered instead of missing.
-      include: ['src/**/*.ts', 'packages/*/src/**/*.ts'],
+      include: ['src/**/*.ts', 'packages/*/src/**/*.ts', 'tools/**/*.ts'],
       // The core library's index files only re-export; @fionapreroll/p2p-nearby's holds its code.
       exclude: ['**/*.test.ts', '**/testing.ts', 'packages/p2p/src/**/index.ts'],
       // lcov for Codecov, a table for the terminal.

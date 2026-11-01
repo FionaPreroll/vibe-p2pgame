@@ -38,6 +38,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - Native features go through `src/native.ts` and must also work in a browser, where they do nothing: the website and the app are one codebase.
 - A new permission goes into `android/app/src/main/AndroidManifest.xml`, with a comment why; one that Bluetooth needs goes into the manifest of `@fionapreroll/p2p-nearby` (`packages/p2p-nearby/android/src/main/AndroidManifest.xml`), likewise.
 - This container cannot reach Google's Android downloads: the APK is built and checked by `.github/workflows/android.yml` only.
+- The plugins' decisions go into plain Java without Android (`UpdateRules`, `NearbyRules`), with JUnit tests beside them (`src/test/java`); the plugins keep only what needs Android. Those tests compile and run here with plain `javac` and the JUnit of `/opt/gradle-*/lib`, before CI runs them all with JaCoCo.
 - The release "Spark Hunt for Android" (tag `android-latest`) is replaced by CI with every push to `main`; that tag moves on purpose, and is the only one that does. Numbered game versions stay for when they are asked for.
 - In-app updates (`src/updates.ts`, `AppUpdaterPlugin.java`) compare the release's `version.json` with the APK's `versionCode`; both are the Android workflow's run number, so the release job keeps publishing `version.json` beside the APK. The plugin reads and downloads only from this repository's releases.
 

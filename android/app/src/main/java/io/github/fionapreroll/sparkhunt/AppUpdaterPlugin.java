@@ -46,12 +46,7 @@ import java.nio.charset.StandardCharsets;
 @CapacitorPlugin(name = "AppUpdater")
 public class AppUpdaterPlugin extends Plugin {
 
-    /** Only the game's own releases are read, and followed where GitHub redirects them. */
-    private static final String RELEASES = "https://github.com/FionaPreroll/vibe-p2pgame/releases/";
-    private static final long MAX_APK_BYTES = 200L * 1024 * 1024;
-    private static final int MAX_TEXT_BYTES = 64 * 1024;
-    /** Progress is told at most this often, in milliseconds, and at every whole percent. */
-    private static final long PROGRESS_MS = 250;
+    // The limits and decisions are in UpdateRules, tested apart from Android.
 
     /** Set to stop the running download, keeping what it has. */
     private final AtomicBoolean pausing = new AtomicBoolean(false);
@@ -76,7 +71,7 @@ public class AppUpdaterPlugin extends Plugin {
     @PluginMethod
     public void fetchText(PluginCall call) {
         String url = call.getString("url", "");
-        if (!url.startsWith(RELEASES)) {
+        if (!UpdateRules.fromReleases(url)) {
             call.reject("Not a release of this game");
             return;
         }
@@ -88,7 +83,7 @@ public class AppUpdaterPlugin extends Plugin {
                     byte[] buffer = new byte[8192];
                     int read;
                     while ((read = in.read(buffer)) != -1) {
-                        if (out.size() + read > MAX_TEXT_BYTES) throw new IOException("Too long");
+                        if (out.size() + read > UpdateRules.MAX_TEXT_BYTES) throw new IOException("Too long");
                         out.write(buffer, 0, read);
                     }
                     JSObject result = new JSObject();
@@ -112,7 +107,7 @@ public class AppUpdaterPlugin extends Plugin {
     public void download(PluginCall call) {
         String url = call.getString("url", "");
         Integer build = call.getInt("build");
-        if (!url.startsWith(RELEASES)) {
+        if (!UpdateRules.fromReleases(url)) {
             call.reject("Not a release of this game");
             return;
         }
@@ -133,16 +128,14 @@ public class AppUpdaterPlugin extends Plugin {
                 forgetOtherParts(build);
                 long have = part.exists() ? part.length() : 0;
                 connection = open(url, have);
-                boolean resumed = have > 0 && connection.getResponseCode() == HttpURLConnection.HTTP_PARTIAL;
-                if (!resumed) have = 0;
-                long rest = connection.getContentLengthLong();
-                long total = rest >= 0 ? have + rest : -1;
-                if (total > MAX_APK_BYTES) throw new IOException("Too large");
+                have = UpdateRules.resumeFrom(have, connection.getResponseCode());
+                boolean resumed = have > 0;
+                long total = UpdateRules.total(have, connection.getContentLengthLong());
+                if (total > UpdateRules.MAX_APK_BYTES) throw new IOException("Too large");
                 try (InputStream in = connection.getInputStream(); OutputStream out = new FileOutputStream(part, resumed)) {
                     byte[] buffer = new byte[64 * 1024];
                     long done = have;
-                    long told = 0;
-                    int shown = -1;
+                    UpdateRules.ProgressGate gate = new UpdateRules.ProgressGate();
                     int read;
                     progress(done, total);
                     while ((read = in.read(buffer)) != -1) {
@@ -152,15 +145,9 @@ public class AppUpdaterPlugin extends Plugin {
                             return;
                         }
                         done += read;
-                        if (done > MAX_APK_BYTES) throw new IOException("Too large");
+                        if (done > UpdateRules.MAX_APK_BYTES) throw new IOException("Too large");
                         out.write(buffer, 0, read);
-                        int percent = total > 0 ? (int) (done * 100 / total) : -1;
-                        long now = System.currentTimeMillis();
-                        if (percent != shown || now - told >= PROGRESS_MS) {
-                            shown = percent;
-                            told = now;
-                            progress(done, total);
-                        }
+                        if (gate.due(UpdateRules.percent(done, total), System.currentTimeMillis())) progress(done, total);
                     }
                     if (total > 0 && done != total) throw new IOException("Cut short");
                 }
@@ -171,8 +158,7 @@ public class AppUpdaterPlugin extends Plugin {
             } catch (Exception e) {
                 // What arrived stays, for the next try to go on from; a file too large does not,
                 // nor a part the server will not go on from.
-                String message = e.getMessage() == null ? "" : e.getMessage();
-                if (message.equals("Too large") || message.equals("HTTP 416")) part.delete();
+                if (UpdateRules.dropPart(e.getMessage())) part.delete();
                 call.reject("Download failed", e);
             } finally {
                 if (connection != null) connection.disconnect();
@@ -324,7 +310,8 @@ public class AppUpdaterPlugin extends Plugin {
                 int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
                 String message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
                 JSObject event = new JSObject();
-                if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                String answer = UpdateRules.installStatus(status);
+                if ("confirm".equals(answer)) {
                     Intent confirm = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent.class);
                     if (confirm == null) {
                         event.put("status", "failure");
@@ -342,15 +329,10 @@ public class AppUpdaterPlugin extends Plugin {
                             message = "The confirmation dialog did not open: " + e.getMessage();
                         }
                     }
-                } else if (status == PackageInstaller.STATUS_SUCCESS) {
-                    event.put("status", "success");
-                } else if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
-                    event.put("status", "aborted");
                 } else {
-                    event.put("status", "failure");
+                    event.put("status", answer);
                 }
-                String text = message == null ? "" : message;
-                event.put("message", text.length() > 200 ? text.substring(0, 200) : text);
+                event.put("message", UpdateRules.shortMessage(message));
                 notifyListeners("install", event);
             }
         };
@@ -391,7 +373,7 @@ public class AppUpdaterPlugin extends Plugin {
     }
 
     private File partFile(int build) {
-        return new File(updatesDir(), "spark-hunt-" + build + ".part");
+        return new File(updatesDir(), UpdateRules.partName(build));
     }
 
     /** Parts of other builds are of no use any more. */
@@ -399,7 +381,7 @@ public class AppUpdaterPlugin extends Plugin {
         File[] files = updatesDir().listFiles();
         if (files == null) return;
         for (File file : files) {
-            if (file.getName().endsWith(".part") && !file.equals(partFile(build))) file.delete();
+            if (UpdateRules.otherPart(file.getName(), build)) file.delete();
         }
     }
 
@@ -423,8 +405,7 @@ public class AppUpdaterPlugin extends Plugin {
         connection.setReadTimeout(30_000);
         if (from > 0) connection.setRequestProperty("Range", "bytes=" + from + "-");
         int status = connection.getResponseCode();
-        boolean partial = from > 0 && status == HttpURLConnection.HTTP_PARTIAL;
-        if (status != HttpURLConnection.HTTP_OK && !partial) throw new IOException("HTTP " + status);
+        if (!UpdateRules.acceptable(status, from)) throw new IOException("HTTP " + status);
         if (!"https".equals(connection.getURL().getProtocol())) throw new IOException("Not HTTPS");
         return connection;
     }

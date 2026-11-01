@@ -1,5 +1,7 @@
-# Coverage is reported on every pull request but never fails it: the screens, the camera and
-# WebRTC are tested in the browser by Playwright, which these unit test numbers do not see.
+# Coverage is reported on every pull request but never fails it. Three reports come together,
+# each with its flag: `unit` (Vitest, ci.yml), `e2e` (the Playwright browser tests in Chromium,
+# ci.yml) and `android` (JUnit with JaCoCo, android.yml). A flag that a commit lacks keeps the
+# numbers of the last commit that had it.
 coverage:
   status:
     project:
@@ -8,3 +10,7 @@ coverage:
     patch:
       default:
         informational: true
+
+flag_management:
+  default_rules:
+    carryforward: true

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './coverage'
 import { player } from './helpers'
 
 test('the About view shows the changelog and the licenses of other people’s code', async ({

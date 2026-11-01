@@ -31,6 +31,8 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // JaCoCo for the unit tests: createDebugUnitTestCoverageReport, uploaded to Codecov by CI.
+            enableUnitTestCoverage true
         }
         release {
             minifyEnabled false

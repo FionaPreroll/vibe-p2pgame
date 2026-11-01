@@ -6,6 +6,9 @@ const executablePath = process.env.CHROMIUM_PATH
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  // Coverage of the browser tests, when COVERAGE is set: see tests/e2e/coverage.ts.
+  globalSetup: './tests/e2e/coverage-setup.ts',
+  globalTeardown: './tests/e2e/coverage-teardown.ts',
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
