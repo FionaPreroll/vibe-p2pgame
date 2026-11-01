@@ -5,8 +5,9 @@ import type { Traffic } from '@fionapreroll/p2p/room'
  * messages and data per second each way, pings lost, and the longest wait for a message. A
  * player's phone has one connection, to the host; the host has one to every player.
  *
- * Players see it as a small graph while they play, and after a game as a report to copy and
- * send (see `netReport`). Players appear by their ids only, never by name.
+ * Players see it as a small graph while they play. The debug report (src/report.ts) carries
+ * its summary and samples, beside the log, which notes when a connection stalls and recovers.
+ * Players appear by their ids only, never by name.
  */
 
 /**
@@ -72,6 +73,8 @@ interface Peer {
   longestGap: number
   pongs: number
   lost: number
+  /** Whether the last sample was a stall, to note only when that changes. */
+  stalled: boolean
 }
 
 export class NetLog {
@@ -84,6 +87,8 @@ export class NetLog {
     /** When it began, as `performance.now()` and as a date. */
     readonly startedAt: number,
     readonly startedOn: Date = new Date(),
+    /** Takes a line for the log when a connection stalls, and when it recovers. */
+    private readonly note: (line: string) => void = () => {},
   ) {}
 
   /** A message from another phone arrived. */
@@ -123,6 +128,15 @@ export class NetLog {
       loss: pongs + lost === 0 ? null : lost / (pongs + lost),
       gap: Math.round(gap),
     }
+    const stalled = sample.gap >= STALL_MS
+    if (stalled !== p.stalled) {
+      p.stalled = stalled
+      this.note(
+        stalled
+          ? `${peerLabel(peer)}: no message for ${sample.gap} ms`
+          : `${peerLabel(peer)}: messages again`,
+      )
+    }
     this.samples.push(sample)
     if (this.samples.length > MAX_SAMPLES) this.samples.splice(0, this.samples.length - MAX_SAMPLES)
     return sample
@@ -135,6 +149,7 @@ export class NetLog {
       p.last = null
       p.lastArrival = null
       p.longestGap = 0
+      p.stalled = false
     }
   }
 
@@ -195,7 +210,7 @@ export class NetLog {
   private peer(id: number): Peer {
     let peer = this.peers.get(id)
     if (!peer) {
-      peer = { last: null, lastArrival: null, longestGap: 0, pongs: 0, lost: 0 }
+      peer = { last: null, lastArrival: null, longestGap: 0, pongs: 0, lost: 0, stalled: false }
       this.peers.set(id, peer)
     }
     return peer
@@ -204,9 +219,13 @@ export class NetLog {
 
 let latest: NetLog | null = null
 
-/** Begins the log of a new game; the one before is dropped. */
-export function startNetLog(self: number, now: number): NetLog {
-  latest = new NetLog(self, now)
+/** Begins the log of a new game; the one before is dropped. `note` takes lines for the log. */
+export function startNetLog(
+  self: number,
+  now: number,
+  note: (line: string) => void = () => {},
+): NetLog {
+  latest = new NetLog(self, now, new Date(), note)
   return latest
 }
 
@@ -238,8 +257,8 @@ export function summaryLines(log: NetLog, s: PeerSummary): string[] {
 }
 
 /** The samples as CSV, oldest first. */
-export function samplesCsv(log: NetLog): string {
-  const rows = log.samples.map((s) =>
+export function samplesCsv(log: NetLog, samples: readonly NetSample[] = log.samples): string {
+  const rows = samples.map((s) =>
     [
       s.t,
       s.peer,
@@ -258,30 +277,27 @@ export function samplesCsv(log: NetLog): string {
   ].join('\n')
 }
 
+/** Samples kept in the debug report: the last ten minutes with one player. */
+export const REPORT_SAMPLES = 600
+
 /**
- * The network report players copy after a game, in English for the developer: how long, a
- * summary for every connection, and every sample as CSV.
+ * The network of a game as lines of Markdown for the debug report: whose phone, a summary of
+ * every connection, and the newest samples as CSV.
  */
-export function netReport(log: NetLog, build: string): string {
-  const lines = [
-    '## Spark Hunt network report',
-    '',
-    `- Phone: ${log.self === 0 ? 'host' : peerLabel(log.self)}`,
-    `- Started: ${log.startedOn.toISOString()}`,
-    `- Web build: ${build}`,
-    '',
+export function networkLines(log: NetLog): string[] {
+  const shown = log.samples.slice(-REPORT_SAMPLES)
+  return [
+    `- Phone: ${log.self === 0 ? 'host' : peerLabel(log.self)}, game started ${log.startedOn.toISOString()}`,
     ...(log.peerIds().length === 0
-      ? ['No samples yet.']
+      ? ['- No samples: nobody else was connected for a second.']
       : log.summary().flatMap((s) => summaryLines(log, s))),
     '',
-    '### Samples, one a second',
+    `Samples, one a second${shown.length < log.samples.length ? `, the last ${shown.length}` : ''}:`,
     '',
     '```csv',
-    samplesCsv(log),
+    samplesCsv(log, shown),
     '```',
-    '',
   ]
-  return lines.join('\n')
 }
 
 function quantile(sorted: readonly number[], q: number): number {

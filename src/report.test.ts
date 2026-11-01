@@ -64,7 +64,7 @@ describe('the debug report', () => {
     expect(report).not.toContain('Secretname')
   })
 
-  it('sums up the network of the last game, without the samples', async () => {
+  it('carries the network of the last game, summed up and second by second, before the log', async () => {
     const net = startNetLog(2, 0)
     const traffic = (n: number) => ({
       sent: n,
@@ -79,7 +79,9 @@ describe('the debug report', () => {
     const report = await debugReport({ now: new Date(), app: false, browser })
     expect(report).toContain('### Network, last game')
     expect(report).toContain('median 23 ms')
-    expect(report).not.toContain('t_s,peer')
+    expect(report).toContain('t_s,peer,ping_ms')
+    expect(report).toContain('\n1,0,23,')
+    expect(report.indexOf('### Network')).toBeLessThan(report.indexOf('### Log'))
   })
 
   it('adds the app build and Bluetooth in the app, with the native log', async () => {

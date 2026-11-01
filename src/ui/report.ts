@@ -1,11 +1,18 @@
 import { t } from '../i18n'
+import { latestNetLog } from '../net/netlog'
 import { debugReport, issueLink, reportSources } from '../report'
 import { cancelOnBack, h } from './dom'
+import { drawNetGraph } from './netGraph'
 
-/** Shows the debug report, to read, copy and send: nothing leaves the phone by itself. */
+/**
+ * Shows the debug report, to read, copy, download or send: nothing leaves the phone by itself.
+ * After a game, a graph of its pings comes first; the report holds the connection's numbers,
+ * second by second, beside the log.
+ */
 export async function reportDialog(): Promise<void> {
   const text = h('textarea', { readOnly: true, rows: 14, class: 'report' })
   const copy = h('button', { type: 'button', textContent: t('copy') })
+  const download = h('a', { className: 'button', textContent: t('debugDownload') })
   const github = h('a', {
     className: 'button primary',
     textContent: t('debugGithub'),
@@ -14,25 +21,43 @@ export async function reportDialog(): Promise<void> {
   })
   const note = h('p', { class: 'muted' })
   const close = h('button', { type: 'button', textContent: t('cancel') })
-  const modal = h(
+  const net = latestNetLog()
+  const graph = h('canvas', { class: 'net-graph large' })
+  const card = h(
     'div',
-    { class: 'modal' },
-    h(
-      'div',
-      { class: 'card' },
-      h('h2', {}, t('debugTitle')),
-      h('p', { class: 'muted' }, t('debugRead')),
-      text,
-      note,
-      h('div', { class: 'buttons' }, close, copy, github),
-    ),
+    { class: 'card' },
+    h('h2', {}, t('debugTitle')),
+    h('p', { class: 'muted' }, t('debugRead')),
+    net && net.samples.length > 0 ? h('p', { class: 'graph-label' }, t('netGraph')) : null,
+    net && net.samples.length > 0 ? graph : null,
+    text,
+    note,
+    h('div', { class: 'buttons' }, close, download, copy, github),
   )
-  close.onclick = () => modal.remove()
+  const modal = h('div', { class: 'modal' }, card)
+  close.onclick = () => {
+    if (download.href) URL.revokeObjectURL(download.href)
+    modal.remove()
+  }
   document.body.append(modal)
-  cancelOnBack(modal, () => modal.remove())
+  cancelOnBack(modal, () => close.click())
+  if (net && net.samples.length > 0) {
+    // The canvas has its size only once it is on the page; the minute up to the last sample.
+    const last = net.samples.at(-1)
+    const now = performance.now()
+    drawNetGraph(
+      graph,
+      net,
+      last ? Math.min(now, net.startedAt + last.t * 1000 + 1000) : now,
+      60,
+      true,
+    )
+  }
   text.value = '…'
   const report = await debugReport(await reportSources())
   text.value = report
+  download.href = URL.createObjectURL(new Blob([report], { type: 'text/markdown' }))
+  download.download = `spark-hunt-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.md`
   const toClipboard = async () => {
     text.select()
     const copied = await navigator.clipboard

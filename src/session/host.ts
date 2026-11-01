@@ -57,7 +57,7 @@ export class HostSession implements Session {
   /** Players who only watch, with their names and scores, for when they play again. */
   private readonly watchers = new Map<number, { name: string; score: number }>()
   private readonly stallWarnings = new Map<number, number>()
-  readonly net: NetLog = startNetLog(HOST_ID, performance.now())
+  readonly net: NetLog = startNetLog(HOST_ID, performance.now(), (line) => log('net', line))
   private lastSave = 0
   private lastSample = performance.now()
   private readonly onPageHide = () => this.save()

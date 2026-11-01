@@ -15,7 +15,7 @@ test('a host alone sees free play, is shown to add players, and starts with a ke
   await expect(add).toHaveClass(/attention/)
   await expect(page.getByRole('button', { name: 'Start round' })).not.toHaveClass(/primary/)
   // Nothing to report on alone.
-  await expect(page.getByRole('button', { name: 'Network report' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Debug report' })).toHaveCount(0)
 
   // Enter starts the round, as the start key: the clock replaces the banner.
   await page.keyboard.press('Enter')
@@ -64,24 +64,29 @@ test('keys are remapped in the settings and kept, and the joystick shows', async
   await expect(page.locator('.clock')).toBeVisible()
 })
 
-test('players read and copy the network report after a round', async ({ browser }) => {
+test('one report holds the connection, second by second, and the log', async ({ browser }) => {
   const host = await player(browser)
   const guest = await player(browser)
   await host.getByRole('button', { name: 'Host a game' }).click()
   await pair(host, guest)
   await expect(guest.locator('button.net')).toContainText(/\d+ ms/, { timeout: 10_000 })
 
-  await guest.getByRole('button', { name: 'Network report' }).first().click()
+  // The graph next to the scores and the button below the roster open the same report.
+  await guest.locator('.sheet').getByRole('button', { name: 'Debug report' }).click()
   const report = guest.locator('.modal textarea.report')
-  await expect(report).toHaveValue(/## Spark Hunt network report/)
+  await expect(report).toHaveValue(/## Spark Hunt debug report/)
+  await expect(guest.locator('.modal canvas.net-graph')).toBeVisible()
   const text = await report.inputValue()
+  expect(text).toContain('### Network, last game')
   expect(text).toMatch(/- Phone: player \d/)
   expect(text).toContain('- To the host')
   expect(text).toMatch(/States received: [\d.]+ per second/)
   expect(text).toContain('t_s,peer,ping_ms')
-  await expect(guest.getByRole('link', { name: 'Download CSV' })).toHaveAttribute(
+  expect(text).toContain('### Log')
+  expect(text).toMatch(/\[qr\] joined as player \d/)
+  await expect(guest.getByRole('link', { name: 'Download' })).toHaveAttribute(
     'download',
-    /^spark-hunt-network-.*\.csv$/,
+    /^spark-hunt-report-.*\.md$/,
   )
   await guest.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await guest.getByRole('button', { name: 'Copy' }).click()

@@ -11,7 +11,7 @@ import { bluetoothHostDialog } from './bluetoothUi'
 import { joinLink, pastedSignal, textCodes } from './codes'
 import { chooseConnection } from './connect'
 import { failureText, h, show, toast } from './dom'
-import { gameScreen, networkButton, result, roster } from './game'
+import { gameScreen, reportButton, result, roster } from './game'
 import { scanPanel } from './scanPanel'
 
 /**
@@ -58,7 +58,7 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
           }),
         ),
         // Alone, there is no connection to report on, unless there was one before.
-        alone && session.net.samples.length === 0 ? null : networkButton(session),
+        alone && session.net.samples.length === 0 ? null : reportButton(),
       ]
     },
     () => {

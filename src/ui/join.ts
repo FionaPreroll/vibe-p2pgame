@@ -8,8 +8,8 @@ import { forgetJoinedGame, playerToken, rememberJoinedGame } from '../session/sa
 import { pastedSignal, textCodes } from './codes'
 import { startJoin } from './connect'
 import { failureText, h, show, toast } from './dom'
-import { gameScreen, networkButton, result, roster } from './game'
-import { netReportDialog } from './netReport'
+import { gameScreen, reportButton, result, roster } from './game'
+import { reportDialog } from './report'
 import { scanPanel } from './scanPanel'
 
 export interface JoinOptions {
@@ -143,7 +143,7 @@ export function play(session: GuestSession, name: string, onLeave: () => void): 
       state.phase === 'over' ? result(state) : h('p', {}, t('steer')),
       roster(state, session.selfId()),
       ...nextRound(session, state),
-      networkButton(session),
+      reportButton(),
     ],
     () => {
       screen.destroy()
@@ -187,8 +187,8 @@ function lostScreen(name: string, host: string, onLeave: () => void): void {
         h('button', {
           type: 'button',
           class: 'link',
-          textContent: t('netTitle'),
-          onclick: () => netReportDialog(),
+          textContent: t('debugTitle'),
+          onclick: () => void reportDialog(),
         }),
       ),
     ),

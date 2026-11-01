@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { NetLog, type NetReading, netReport, STALL_MS, samplesCsv } from './netlog'
+import {
+  NetLog,
+  type NetReading,
+  networkLines,
+  REPORT_SAMPLES,
+  STALL_MS,
+  samplesCsv,
+} from './netlog'
 
 const reading = (
   ping: number | null,
@@ -99,19 +106,48 @@ describe('NetLog', () => {
     expect(log.samples[0]?.t).toBe(401)
   })
 
-  it('makes a report with ids, never names', () => {
+  it('gives the debug report its lines, with ids, never names', () => {
     const log = new NetLog(3, 0, new Date('2026-11-01T10:00:00Z'))
     log.sample(0, 0, reading(null, 0, 0, 0, 0))
     log.sample(0, 1000, reading(20, 30, 30, 1, 0))
-    const report = netReport(log, 'abc1234')
-    expect(report).toContain('- Phone: player 3')
-    expect(report).toContain('2026-11-01T10:00:00.000Z')
+    const report = networkLines(log).join('\n')
+    expect(report).toContain('- Phone: player 3, game started 2026-11-01T10:00:00.000Z')
     expect(report).toContain('median 20 ms')
     expect(report).toContain('Pings lost: 0%')
+    expect(report).toContain('```csv')
     expect(samplesCsv(log).split('\n')).toEqual([
       't_s,peer,ping_ms,in_per_s,out_per_s,kb_in_per_s,kb_out_per_s,loss_pct,gap_ms',
       '1,0,20,30,30,12,1.5,0,0',
     ])
-    expect(netReport(new NetLog(0, 0), 'x')).toContain('No samples yet.')
+    expect(networkLines(new NetLog(0, 0)).join('\n')).toContain('No samples')
+  })
+
+  it('keeps the newest samples only in the report', () => {
+    const log = new NetLog(0, 0)
+    log.sample(1, 0, reading(null, 0, 0))
+    for (let second = 1; second <= REPORT_SAMPLES + 50; second++)
+      log.sample(1, second * 1000, reading(5, 0, 0))
+    const lines = networkLines(log)
+    expect(lines.join('\n')).toContain(`the last ${REPORT_SAMPLES}`)
+    const rows = lines
+      .join('\n')
+      .split('\n')
+      .filter((line) => /^\d/.test(line))
+    expect(rows).toHaveLength(REPORT_SAMPLES)
+  })
+
+  it('notes for the log when a connection stalls and when it recovers, once each', () => {
+    const notes: string[] = []
+    const log = new NetLog(0, 0, new Date(), (line) => notes.push(line))
+    log.sample(2, 0, reading(null, 0, 0))
+    log.arrived(2, 100)
+    log.sample(2, 1000, reading(5, 30, 30))
+    log.sample(2, 2000, reading(5, 30, 30))
+    // Messages again from 3.1 s on: the second they came back in still had the long wait.
+    for (const at of [3100, 3400, 3700]) log.arrived(2, at)
+    log.sample(2, 4000, reading(5, 60, 60))
+    for (const at of [4000, 4300, 4600, 4900]) log.arrived(2, at)
+    log.sample(2, 5000, reading(5, 90, 90))
+    expect(notes).toEqual(['player 2: no message for 900 ms', 'player 2: messages again'])
   })
 })

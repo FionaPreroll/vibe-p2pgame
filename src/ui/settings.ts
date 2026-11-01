@@ -23,7 +23,6 @@ import {
 import { clearAll } from '../storage'
 import { checkForUpdate } from '../updates'
 import { h, show, toast } from './dom'
-import { netReportDialog } from './netReport'
 import { reportDialog } from './report'
 import { offer } from './updates'
 
@@ -142,11 +141,6 @@ export function settingsScreen(onBack: () => void): void {
           type: 'button',
           textContent: t('debugCreate'),
           onclick: () => void reportDialog(),
-        }),
-        h('button', {
-          type: 'button',
-          textContent: t('netTitle'),
-          onclick: () => netReportDialog(),
         }),
       ),
     ),

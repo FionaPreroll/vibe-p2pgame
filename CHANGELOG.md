@@ -18,7 +18,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - Points won rise from the dot that won them, as "+1" or "+3".
 - Steering with keys (arrow keys or WASD) and game controllers (left stick or D-pad), and an optional joystick on the screen, on the left or the right. Enter, Space or a controller's Start button starts a round on the host's phone.
 - Every key and controller button can be changed in the settings.
-- A small graph of the connection next to the scores, and a network report after a round: ping, messages and data per second, lost pings and stalls, to copy or download as CSV. The debug report sums up the last game's connection too.
+- A small graph of the connection next to the scores. The debug report, also reachable from the graph and after a round, shows a larger graph and holds how well the connection kept up, second by second: ping, messages and data per second, lost pings and stalls, beside the log, which notes when a connection stalls and recovers. It can be copied, downloaded or sent.
 
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
 - An Android app, which plays together with the website and works without internet from its first start. Its newest build is always on the repository's releases page. In the app, a button opens Google's own QR scanner, which focuses and zooms by itself.

@@ -1,6 +1,7 @@
 import type { Connection } from '@fionapreroll/p2p'
 import { GuestRoom, HOST_ID } from '@fionapreroll/p2p/room'
 import type { Phase, Snapshot, Target } from '../game/sim'
+import { log } from '../log'
 import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
 import { IDLE_INPUT, type PlayerInput, PROTOCOL, parseSnapshot } from '../net/protocol'
 import type { Session } from './session'
@@ -20,7 +21,7 @@ export class GuestSession implements Session {
   private readonly sampler: ReturnType<typeof setInterval>
 
   private constructor(private readonly room: GuestRoom<PlayerInput, Snapshot>) {
-    this.net = startNetLog(room.id, performance.now())
+    this.net = startNetLog(room.id, performance.now(), (line) => log('net', line))
     room.onLost = (ended) => {
       clearInterval(this.sampler)
       this.onLost(ended)

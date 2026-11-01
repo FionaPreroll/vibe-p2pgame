@@ -61,7 +61,7 @@ Keys, the stick and the joystick steer a little ahead of the dot, and letting go
 
 Next to the scores, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
 
-Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message. Tapping the graph, **Network report** between rounds, after losing the host, or in the settings shows a larger graph and a report to copy or download as CSV, to send to the developer. It names players by their numbers only.
+Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message; the log notes when a connection stalls and when it recovers. All of it goes into the **debug report**, beside the log: tapping the graph, **Debug report** between rounds or after losing the host, or _Create debug report_ in the settings shows a larger graph of the last minute and the report, with a summary of every connection and its samples, to copy, download or send. It names players by their numbers only.
 
 ### Dropping out and coming back
 
@@ -78,13 +78,13 @@ Every phone samples its connections once a second: the ping, messages and data p
 - **Controls:** the joystick on the screen, and the keys and controller buttons;
 - **App,** in the Android app: whether to look for updates;
 - **Data:** the camera you last scanned with is remembered, with its zoom and brightness; _Delete all saved data_ removes everything, which is stored on the phone only;
-- **Help:** the debug report and the network report.
+- **Help:** the debug report.
 
 ⓘ on the start screen, beside ⚙, opens **About Spark Hunt**: the build (in the app also its build number), the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
 
 The website and the app say what is true where they run: the app speaks of the phone instead of the browser, mentions Bluetooth on the start screen, and leaves out the website's tip to open the page once online. On Android phones, the website offers the app.
 
-**Something does not work?** _Create debug report_ under _Help_ in the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, a summary of the last game's connection, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
+**Something does not work?** _Create debug report_ under _Help_ in the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, how well the last game's connections kept up, second by second, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
 
 ## Getting the game
 

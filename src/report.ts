@@ -1,16 +1,16 @@
 import { ROOM_PROTOCOL } from '@fionapreroll/p2p/room'
 import { currentLanguage } from './i18n'
 import { describeError, logLines, redact } from './log'
-import { latestNetLog, summaryLines } from './net/netlog'
+import { latestNetLog, networkLines } from './net/netlog'
 import { PROTOCOL } from './net/protocol'
 import { hostedGame, joinedGame } from './session/saved'
 import { settings } from './settings'
 
 /**
  * The debug report: what a developer needs to understand a problem, as Markdown to paste into a
- * GitHub issue. It says what device, versions and settings this is, what the phone can do, and
- * what happened recently; not who the player is: no name, token, code or address. The player
- * reads it before sending it.
+ * GitHub issue. It says what device, versions and settings this is, what the phone can do, how
+ * well the connections of the last game kept up, second by second, and what happened recently;
+ * not who the player is: no name, token, code or address. The player reads it before sending it.
  */
 
 /** Where the report reads from; the defaults are the real ones, tests give their own. */
@@ -68,15 +68,7 @@ export async function debugReport(sources: ReportSources): Promise<string> {
     }
   }
   const net = latestNetLog()
-  if (net && net.samples.length > 0) {
-    // The summary only: the samples are in the network report, for whoever needs them.
-    lines.push(
-      '',
-      '### Network, last game',
-      '',
-      ...net.summary().flatMap((p) => summaryLines(net, p)),
-    )
-  }
+  if (net) lines.push('', '### Network, last game', '', ...networkLines(net))
   lines.push(
     '',
     '### Log',

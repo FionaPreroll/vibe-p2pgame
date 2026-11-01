@@ -9,7 +9,7 @@ import { play, scoreSound, unlockSound } from '../sound'
 import { h } from './dom'
 import { joystick } from './joystick'
 import { drawNetGraph, pingQuality, worstLatest } from './netGraph'
-import { netReportDialog } from './netReport'
+import { reportDialog } from './report'
 
 /** Keys, the stick and the joystick steer this far ahead of the dot, in arena units. */
 const STEER_AHEAD = 120
@@ -59,9 +59,9 @@ export function gameScreen(
     {
       type: 'button',
       class: 'net',
-      ariaLabel: t('netTitle'),
+      ariaLabel: t('debugTitle'),
       hidden: true,
-      onclick: () => netReportDialog(session.net),
+      onclick: () => void reportDialog(),
     },
     netCanvas,
     netText,
@@ -286,13 +286,13 @@ export function gameScreen(
   }
 }
 
-/** A small button below the roster, between rounds, for the network report. */
-export function networkButton(session: Session): HTMLElement {
+/** A small button below the roster, between rounds, for the debug report with the connection. */
+export function reportButton(): HTMLElement {
   return h('button', {
     type: 'button',
     class: 'link',
-    textContent: t('netTitle'),
-    onclick: () => netReportDialog(session.net),
+    textContent: t('debugTitle'),
+    onclick: () => void reportDialog(),
   })
 }
 
