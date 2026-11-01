@@ -23,6 +23,7 @@ import {
 import { clearAll } from '../storage'
 import { checkForUpdate } from '../updates'
 import { h, show, toast } from './dom'
+import { privacyScreen } from './privacy'
 import { reportDialog } from './report'
 import { offer } from './updates'
 
@@ -130,7 +131,18 @@ export function settingsScreen(onBack: () => void): void {
           },
         }),
       ),
-      h('p', { class: 'muted' }, t(isApp() ? 'savedLocallyApp' : 'savedLocally')),
+      h(
+        'p',
+        { class: 'muted' },
+        t(isApp() ? 'savedLocallyApp' : 'savedLocally'),
+        ' ',
+        h('button', {
+          type: 'button',
+          class: 'link',
+          textContent: t('privacyTitle'),
+          onclick: () => privacyScreen(() => settingsScreen(onBack)),
+        }),
+      ),
 
       h('h3', {}, t('sectionHelp')),
       h('p', { class: 'muted' }, t('debugNote')),

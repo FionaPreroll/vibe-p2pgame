@@ -3,6 +3,8 @@ import { t } from '../i18n'
 import { type Block, type Inline, parseMarkdown } from '../markdown'
 import { isApp } from '../native'
 import { h, show } from './dom'
+import { blockNode, inlineNode, link } from './markdownView'
+import { privacyScreen } from './privacy'
 
 export const REPOSITORY = 'https://github.com/FionaPreroll/vibe-p2pgame'
 /** Where players write to, about the game. */
@@ -104,6 +106,16 @@ export function aboutScreen(onBack: () => void): void {
         `${t('aboutContact')} `,
         h('a', { href: `mailto:${CONTACT}`, textContent: CONTACT }),
       ),
+      h(
+        'p',
+        {},
+        h('button', {
+          type: 'button',
+          class: 'link',
+          textContent: t('privacyTitle'),
+          onclick: () => privacyScreen(() => aboutScreen(onBack)),
+        }),
+      ),
       h('h3', {}, t('changelogTitle')),
       t('changelogNote') ? h('p', { class: 'muted' }, t('changelogNote')) : null,
       changelogView(changelog),
@@ -157,31 +169,6 @@ export function changelogView(source: string): HTMLElement {
 
 function sectionTitle(title: Inline[]): string {
   return title.map((part) => part.text).join('')
-}
-
-function blockNode(block: Block): Node {
-  if (block.kind === 'heading') return h('h4', {}, ...block.content.map(inlineNode))
-  if (block.kind === 'paragraph') return h('p', {}, ...block.content.map(inlineNode))
-  return h('ul', {}, ...block.items.map((item) => h('li', {}, ...item.map(inlineNode))))
-}
-
-function inlineNode(part: Inline): Node {
-  switch (part.kind) {
-    case 'text':
-      return document.createTextNode(part.text)
-    case 'code':
-      return h('code', {}, part.text)
-    case 'em':
-      return h('em', {}, part.text)
-    case 'strong':
-      return h('strong', {}, part.text)
-    case 'link':
-      return link(part.href, part.text)
-  }
-}
-
-function link(href: string, text: string): HTMLAnchorElement {
-  return h('a', { href, target: '_blank', rel: 'noopener', textContent: text })
 }
 
 /** The list the build wrote, checked; null where there is none, as with `pnpm dev`. */

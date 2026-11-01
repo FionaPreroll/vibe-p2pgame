@@ -19,6 +19,10 @@ The README describes the project, its layout and its conventions. These rules ho
 - The README starts with two badges, linked to their pages, and keeps them: CI (`.github/workflows/ci.yml`) and coverage (Codecov). A new workflow that checks the code gets a badge there too.
 - A change that players or developers notice updates the README in the same pull request.
 
+## Privacy
+
+- `PRIVACY.md` and `PRIVACY.de.md` are the privacy policy, shown in the game too. A change to what the game keeps, shows other phones, sends anywhere or asks permission for updates both in the same branch, and the changelog says so.
+
 ## The library
 
 - `packages/p2p` is the library `@fionapreroll/p2p`, for other games too: no imports from the game's `src/`, nothing of Spark Hunt in it, and no texts players see, as games bring their own.

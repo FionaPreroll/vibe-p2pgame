@@ -80,11 +80,15 @@ Every phone samples its connections once a second: the ping, messages and data p
 - **Data:** the camera you last scanned with is remembered, with its zoom and brightness; _Delete all saved data_ removes everything, which is stored on the phone only;
 - **Help:** the debug report.
 
-ⓘ on the start screen, beside ⚙, opens **About Spark Hunt**: the build (in the app also its build number), the contact address fipreroll+app@gmail.com, the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
+ⓘ on the start screen, beside ⚙, opens **About Spark Hunt**: the build (in the app also its build number), the contact address fipreroll+app@gmail.com, the privacy policy, the changelog, and the licenses of other people's code in the game, listed by the build from what it bundles (`tools/licenses.ts` writes `licenses.json`), and in the app also the Android libraries.
 
 The website and the app say what is true where they run: the app speaks of the phone instead of the browser, mentions Bluetooth on the start screen, and leaves out the website's tip to open the page once online. On Android phones, the website offers the app.
 
 **Something does not work?** _Create debug report_ under _Help_ in the settings writes what a developer needs: the phone and its Android version, the app and web builds, what the browser can do, the settings, in the app every Bluetooth permission and whether Bluetooth and Location are on, how well the last game's connections kept up, second by second, and a log of what happened since the game started. It holds no name, token, code or address. Read it, then copy it, or open an issue on GitHub with it.
+
+## Privacy
+
+Spark Hunt has no accounts, no server of its own, no advertising and no tracking: the [privacy policy](PRIVACY.md) ([Deutsch](PRIVACY.de.md)) says what stays on the phone, what other phones see, which permissions the app asks for and why, and what GitHub and Google Play services see. The game shows the same text, from About and from the settings. A change to what the game keeps, shows or sends updates both files in the same change: `src/privacy.test.ts` checks that they match in shape.
 
 ## Getting the game
 
@@ -174,7 +178,7 @@ src/
   ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view;
                 joystick.ts; netGraph.ts and netReport.ts: the connection's graph and report
   input.ts      keys and game controllers, and their bindings
-  markdown.ts   reads the changelog for the About view (ui/about.ts)
+  markdown.ts   reads the changelog and the privacy policy for the game (ui/markdownView.ts)
   native.ts     what the Android app adds: Google's scanner
   bluetooth.ts  Bluetooth between app phones
   log.ts, report.ts   the log and the debug report

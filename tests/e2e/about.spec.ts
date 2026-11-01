@@ -63,3 +63,24 @@ test('the start screen speaks of the website on the website', async ({ browser }
     'https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/android-latest',
   )
 })
+
+test('the privacy policy opens from About and from the settings, in the player’s language', async ({
+  browser,
+}) => {
+  const page = await player(browser)
+  await page.getByRole('button', { name: 'About Spark Hunt' }).click()
+  await page.getByRole('button', { name: 'Privacy policy' }).click()
+  await expect(page.getByRole('heading', { name: 'Privacy policy' })).toBeVisible()
+  await expect(page.locator('.privacy')).toContainText('no tracking')
+  await expect(page.getByRole('heading', { name: 'What stays on your phone' })).toBeVisible()
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByRole('heading', { name: 'About Spark Hunt' })).toBeVisible()
+  await page.getByRole('button', { name: 'Back' }).click()
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByLabel('Language').selectOption('de')
+  await page.getByRole('button', { name: 'Datenschutzerklärung' }).click()
+  await expect(page.getByRole('heading', { name: 'Was auf deinem Handy bleibt' })).toBeVisible()
+  await page.getByRole('button', { name: 'Zurück' }).click()
+  await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible()
+})

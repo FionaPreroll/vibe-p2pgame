@@ -969,3 +969,26 @@ button.ready-on {
   border-color: #6be06b;
   color: #6be06b;
 }
+
+/* Documents, such as the privacy policy. */
+.document h3 {
+  margin: 1.2rem 0 0.3rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.document p,
+.document ul {
+  margin: 0.3rem 0;
+  line-height: 1.45;
+}
+
+.document ul {
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.document a {
+  color: var(--accent);
+}
