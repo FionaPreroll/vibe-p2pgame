@@ -18,7 +18,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - Points won rise from the dot that won them, as "+1" or "+3".
 - Steering with keys (arrow keys or WASD) and game controllers (left stick or D-pad), and an optional joystick on the screen, on the left or the right. Enter, Space or a controller's Start button starts a round on the host's phone.
 - Every key and controller button can be changed in the settings.
-- A small graph of the connection next to the scores. The debug report, also reachable from the graph and after a round, shows a larger graph and holds how well the connection kept up, second by second: ping, messages and data per second, lost pings and stalls, beside the log, which notes when a connection stalls and recovers. It can be copied, downloaded or sent.
+- A small graph of the connection in the top line. The debug report, also reachable from the graph and after a round, shows a larger graph and holds how well the connection kept up, second by second: ping, messages and data per second, lost pings and stalls, beside the log, which notes when a connection stalls and recovers. It can be copied, downloaded or sent.
 
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
 - An Android app, which plays together with the website and works without internet from its first start. Its newest build is always on the repository's releases page. In the app, a button opens Google's own QR scanner, which focuses and zooms by itself.
@@ -43,6 +43,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Changed
 
+- More room for names: the top line holds ×, the clock or banner, the connection graph and the sound button, and the scores get a line of their own below, wrapping with many players. The arena sits right below them and no longer jumps when a round starts; the joystick sits at the bottom, smaller on short screens.
 - Phones with this version and phones with the version before cannot play together: update both.
 - While the host is alone, _Add player_ is the highlighted button, as adding players is what comes next.
 - The settings are in sections: game, controls, app, data and help.
@@ -51,6 +52,8 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- On phones, the whole game could vanish but for the arena as a round started: the growing countdown made the page wider than the screen, and the phone zoomed. The game now always fits the screen.
+- The Download button in the debug report is centred like the others.
 - An update no longer hangs at "Android's installer takes over" when the installer does not open: the dialog now says when Android waits for your confirmation, when the update was cancelled or failed, and offers to try again if the installer stays closed.
 - The app's texts fit the app: no more "no app", the phone instead of the browser, Bluetooth on the start screen, and no tip to open a page once online. Phones of different versions say how to update both the website and the app.
 - A new screen opens at its top, instead of scrolled down as far as the screen before.

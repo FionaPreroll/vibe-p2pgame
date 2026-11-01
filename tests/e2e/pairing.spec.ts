@@ -46,7 +46,8 @@ test('two players pair with codes and play a round', async ({ browser }) => {
 
   // Before the round: free play, on both phones, and the connection graph shows the ping.
   await expect(host.locator('.banner')).toContainText('Free play')
-  await expect(guest.locator('.banner')).toContainText('the host starts the round')
+  await expect(guest.locator('.banner')).toContainText('Free play')
+  await expect(guest.locator('.sheet')).toContainText('the host starts the round')
   await expect(guest.locator('button.net')).toContainText(/\d+ ms/)
   await expect(host.locator('button.net')).toContainText(/\d+ ms/)
 

@@ -34,7 +34,7 @@ export function hostScreen(name: string, onLeave: () => void, saved?: HostedGame
       return [
         state.phase === 'over'
           ? result(state)
-          : h('p', {}, alone ? t('alone') : t('lobby'), ' ', t('steer')),
+          : h('p', {}, alone ? t('alone') : t('freePlayHost'), ' ', t('steer')),
         roster(state, session.selfId()),
         alone ? null : readiness(state),
         h(

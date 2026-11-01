@@ -8,7 +8,6 @@ test('a host alone sees free play, is shown to add players, and starts with a ke
   await page.getByRole('button', { name: 'Host a game' }).click()
 
   await expect(page.locator('.banner')).toContainText('Free play')
-  await expect(page.locator('.banner')).toContainText('Points count once you start the round.')
   await expect(page.locator('.sheet')).toContainText('Nobody else is here yet')
   const add = page.getByRole('button', { name: 'Add player' })
   await expect(add).toHaveClass(/primary/)
@@ -124,4 +123,36 @@ test('players say they are ready, or only watch, and the host sees it', async ({
   await host.getByRole('button', { name: 'Start round' }).click()
   await expect(guest.locator('.flash')).toHaveText(/^[123]$/)
   await expect(guest.locator('.clock')).toBeVisible()
+})
+
+test('a phone keeps the whole game on the screen as a round starts', async ({ browser }) => {
+  // As a phone: the browser zooms out when the page grows wider than the screen.
+  const context = await browser.newContext({
+    locale: 'en-US',
+    viewport: { width: 412, height: 839 },
+    deviceScaleFactor: 2.625,
+    isMobile: true,
+    hasTouch: true,
+  })
+  const page = await context.newPage()
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Host a game' }).click()
+  await page.getByRole('button', { name: 'Start round' }).tap()
+  // Through the countdown and "Go!", the page never grows past the screen.
+  const widest = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let widest = 0
+        const started = performance.now()
+        const look = () => {
+          widest = Math.max(widest, document.documentElement.scrollWidth, innerWidth)
+          if (performance.now() - started < 4500) requestAnimationFrame(look)
+          else resolve(widest)
+        }
+        look()
+      }),
+  )
+  expect(widest).toBe(412)
+  await expect(page.locator('.hud')).toBeInViewport()
+  await expect(page.locator('.clock')).toBeVisible()
 })

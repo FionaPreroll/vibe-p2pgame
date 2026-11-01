@@ -227,7 +227,11 @@ function nextRound(session: GuestSession, state: Snapshot): HTMLElement[] {
     },
   })
   return [
-    h('p', { class: 'muted' }, t('waitHost'), state.phase === 'over' ? ` ${t('rematchNote')}` : ''),
+    h(
+      'p',
+      { class: 'muted' },
+      state.phase === 'over' ? `${t('waitHost')} ${t('rematchNote')}` : t('freePlayGuest'),
+    ),
     h(
       'div',
       { class: 'buttons' },

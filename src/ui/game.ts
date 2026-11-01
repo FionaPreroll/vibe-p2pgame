@@ -22,12 +22,13 @@ export interface GameScreen {
 }
 
 /**
- * The game as every phone shows it: scores on top, the arena in the middle and, between
- * rounds, a sheet below with the players and what comes next. `sheet` fills that sheet; it is
- * built anew only when its content would change, not on every frame.
+ * The game as every phone shows it: a top line, the scores below it, the arena in the middle
+ * and, between rounds, a sheet below with the players and what comes next. `sheet` fills that
+ * sheet; it is built anew only when its content would change, not on every frame.
  *
- * Above the arena, either the clock of a round, or a banner that says no round is on: free
- * play before the first, and the end of the last. `onStart`, on the host's phone,
+ * In the middle of the top line, either the clock of a round, or a banner that says no round
+ * is on: free play before the first, and the end of the last. The scores get a line of their
+ * own, the whole width, so names are not cut off; with many players, it wraps. `onStart`, on the host's phone,
  * starts a round when the start key or button is pressed between rounds.
  */
 export function gameScreen(
@@ -76,8 +77,7 @@ export function gameScreen(
     h('span', { class: 'clock-track' }, clockBar),
   )
   const bannerTitle = h('strong', {})
-  const bannerNote = h('span', {})
-  const banner = h('div', { class: 'banner', hidden: true }, bannerTitle, bannerNote)
+  const banner = h('div', { class: 'banner', hidden: true }, bannerTitle)
   const flash = h('div', { class: 'flash', hidden: true, ariaHidden: 'true' })
   const mute = h('button', {
     type: 'button',
@@ -94,8 +94,8 @@ export function gameScreen(
     mute.title = mute.ariaLabel
   }
   showMute()
-  // Clock or banner in a line of their own, always as high, so they never cover the arena and
-  // the arena keeps its size as a round starts.
+  // Clock or banner in the top line, always as high, so the arena keeps its size as a round
+  // starts.
   const status = h('div', { class: 'status' }, clock, banner)
   const field = h('div', { class: 'field' }, canvas, flash)
   const pad = options.joystick === 'off' ? null : joystick(t('joystick'))
@@ -103,8 +103,8 @@ export function gameScreen(
   const element = h(
     'div',
     { class: `screen game${pad ? ` joystick-${options.joystick}` : ''}` },
-    h('div', { class: 'hud' }, leave, scores, options.netGraph && net, mute),
-    status,
+    h('div', { class: 'hud' }, leave, status, options.netGraph && net, mute),
+    scores,
     stage,
     sheetBox,
   )
@@ -255,8 +255,6 @@ export function gameScreen(
       banner.hidden = nextBanner === ''
       banner.classList.toggle('over', state.phase === 'over')
       bannerTitle.textContent = state.phase === 'over' ? t('roundOver') : t('freePlay')
-      bannerNote.textContent =
-        state.phase === 'lobby' ? t(session.isHost ? 'freePlayHost' : 'freePlayGuest') : ''
     }
     lastPhase = state.phase
   }

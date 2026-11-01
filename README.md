@@ -19,7 +19,9 @@ The game is small on purpose, as the project is about the connection. Every play
 
 1. **Host:** one phone taps **Host a game**. The arena appears at once in **free play**, as a banner above it says: sparks and mines work, but nothing counts yet, so everyone can warm up.
 2. **Add players:** for every further player, the host taps **Add player**, and the new player taps **Join a game**. In the Android app, both are asked how to connect (below); in a browser, it is always the QR code. While the host is alone, **Add player** is the highlighted button.
-3. **Play:** once everyone is in, the host taps **Start round**, or presses the start key or controller button. After a countdown, "Go!" flashes, a big clock with a bar runs above the arena and turns red for the last ten seconds, and points won rise from the dot that won them. Short sounds go with sparks, mines, the countdown and the end; 🔊 next to the scores mutes them.
+3. **Play:** once everyone is in, the host taps **Start round**, or presses the start key or controller button. After a countdown, "Go!" flashes, a big clock with a bar runs in the top line and turns red for the last ten seconds, and points won rise from the dot that won them. Short sounds go with sparks, mines, the countdown and the end; 🔊 in the top line mutes them.
+
+The top line holds ×, the clock or the banner, the connection graph and 🔊; the scores follow on their own line, the whole width, wrapping with many players. The arena sits right below them and stays in place when the sheet below hides as a round starts; on a phone held upright, the free space gathers at the bottom, where the joystick goes.
 4. **Next round:** after a round, everyone sees who caught how many sparks, golden ones among them, and touched how many mines. Players tap **Ready for the next round**; once every player is ready, the next round starts by itself, and the host sees how many are ready. A player can also **Just watch**: their dot leaves the arena, their score stays, and **Play along again** brings them back from the next round on.
 
 If a player's connection keeps stalling, the host is told, at most once a minute per player.
@@ -59,7 +61,7 @@ Keys, the stick and the joystick steer a little ahead of the dot, and letting go
 
 ### The connection
 
-Next to the scores, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
+In the top line, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
 
 Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message; the log notes when a connection stalls and when it recovers. All of it goes into the **debug report**, beside the log: tapping the graph, **Debug report** between rounds or after losing the host, or _Create debug report_ in the settings shows a larger graph of the last minute and the report, with a summary of every connection and its samples, to copy, download or send. It names players by their numbers only.
 
