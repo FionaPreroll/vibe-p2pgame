@@ -1,0 +1,48 @@
+name: Update screenshots
+
+# Takes the README's screenshots anew from main (pnpm screenshots, see the README), and opens
+# a pull request with them if any changed, to review and merge by hand.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm screenshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/screenshots
+          retention-days: 7
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: feature/update_screenshots
+          delete-branch: true
+          add-paths: docs/screenshots/*.png
+          commit-message: Update the README's screenshots
+          title: Update the README's screenshots
+          body: |
+            The README's screenshots, taken anew from `main` by the workflow **Update screenshots** (run ${{ github.run_number }}, commit ${{ github.sha }}).
+
+            Look through the pictures in _Files changed_; merge if they show the game as it is.
+
+            ---
+            _Made by the workflow `.github/workflows/screenshots.yml`._

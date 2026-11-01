@@ -11,6 +11,23 @@ A game for phones lying side by side, with **no internet and no server**. The ph
 
 The networking is a library of its own, [`@fionapreroll/p2p`](packages/p2p/README.md), for other games to use too.
 
+<table>
+  <tr>
+    <td valign="top" width="25%"><img src="docs/screenshots/home.png" alt="The start screen" width="100%"><br><sub>The start screen</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/pairing.png" alt="Adding a player by QR code" width="100%"><br><sub>Adding a player by QR code</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/lobby.png" alt="Free play before the first round, with the connection graph" width="100%"><br><sub>Free play before the first round, with the connection graph</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/round.png" alt="A round: the clock, sparks, mines and scores" width="100%"><br><sub>A round: the clock, sparks, mines and scores</sub></td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="docs/screenshots/results.png" alt="After a round: who caught what" width="100%"><br><sub>After a round: who caught what</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/report.png" alt="The debug report, with the pings of the last minute" width="100%"><br><sub>The debug report, with the pings of the last minute</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/settings.png" alt="Keys and controller buttons, changeable" width="100%"><br><sub>Keys and controller buttons, changeable</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/home-de.png" alt="Auf Deutsch" width="100%"><br><sub>Auf Deutsch</sub></td>
+  </tr>
+</table>
+
+The pictures come from a real game of three players, taken by `pnpm screenshots`; see [Screenshots](#screenshots) for keeping them current.
+
 ## The game
 
 The game is small on purpose, as the project is about the connection. Every player steers a glowing dot toward the spot they touch, and whoever reaches a spark first scores; golden sparks count three. Red mines cost two points: a touched mine explodes and appears again elsewhere, and scores can drop below zero. A new mine is grey and harmless for its first second, and never appears right next to a player. A round starts with a countdown of three seconds and lasts a minute (30 to 120 seconds in the settings), and up to eight phones play together. Every player has a colour and a shape of their own, so the dots stay apart for players who tell colours apart badly. The game is in English and German, after the browser's language or as chosen in the settings.
@@ -248,11 +265,18 @@ cd android && ./gradlew assembleDebug
 | `deploy.yml`      | Pushes to `main`, or by hand         | Publishes the website to GitHub Pages; in the repository settings under _Pages_, the source must be _GitHub Actions_         |
 | `android.yml`     | Pull requests and pushes to `main`   | Builds the APK; from `main`, replaces it in the release _Spark Hunt for Android_ (tag `android-latest`), with `version.json` |
 | `publish-p2p.yml` | By hand on `main`, or a tag `p2p-v…` | Publishes the library to GitHub's npm registry and tags the version                                                          |
+| `screenshots.yml` | By hand                              | Takes the README's screenshots anew and opens a pull request with them, if any changed                                       |
 
 ### Changelog and game versions
 
 - `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Changes that players can see go under `## [Unreleased]`, in `### Added`, `### Changed`, `### Fixed` or `### Removed`, written in English for players. Changes only developers notice, such as tests, tooling or refactoring, need no entry.
 - A version is made only when asked. The entries under `## [Unreleased]` then move to a new `## [x.y.z] - YYYY-MM-DD` section, `package.json` gets the same version, and the commit is tagged `vx.y.z`. The empty `## [Unreleased]` heading stays for the next changes, and the link definitions at the end of the file point at the comparison and the release. Versions follow [Semantic Versioning](https://semver.org/).
+
+### Screenshots
+
+The README's pictures, in `docs/screenshots/`, show one real game of three players, played by `tests/screenshots/readme.spec.ts` with Playwright: the host as a phone held upright, the others joining through the text codes. Random numbers come from a fixed seed, so a new run changes only what the game changed. `pnpm screenshots` takes them locally (with `CHROMIUM_PATH` in containers with a preinstalled Chromium).
+
+To bring them up to date, run **Update screenshots** in the Actions tab (`.github/workflows/screenshots.yml`): it takes them anew on `main` and, if any changed, opens a pull request from `feature/update_screenshots` to review and merge. The repository's settings must allow GitHub Actions to create pull requests (_Settings_ → _Actions_ → _General_ → _Workflow permissions_). Pull requests made by Actions do not start CI by themselves; the pictures are all they change.
 
 ### Library versions
 
