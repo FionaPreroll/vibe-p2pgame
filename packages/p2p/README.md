@@ -126,6 +126,35 @@ const scanner = await startScanner(video, (text) => {
 })
 ```
 
+`startScanner` only reads codes. For a whole camera view, with what helps when a phone will not focus on a screen nearby, use `cameraView`:
+
+```ts
+import { cameraView, parseCameraChoice } from '@fionapreroll/p2p/qr'
+
+const camera = cameraView({
+  texts: {
+    zoom: 'Zoom',
+    brightness: 'Brightness',
+    switchCamera: 'Switch camera',
+    takePhoto: 'Take a photo instead',
+    liveCamera: 'Back to the live camera',
+  },
+  onCodes: (texts) => texts.some(takeAnswer), // true takes one: the view stops
+  camera: parseCameraChoice(JSON.parse(localStorage.camera ?? 'null')),
+  onCameraChange: (choice) => {
+    localStorage.camera = JSON.stringify(choice)
+  },
+  onPhoto: (state) => say(state === 'reading' ? 'Reading the photo…' : 'No code found'),
+  onError: () => say('The camera did not start'),
+})
+panel.append(camera.viewfinder, camera.controls, camera.buttons)
+```
+
+- `viewfinder` holds the live picture, `video.camera`. Tapping it focuses and meters anew on that spot, and shows `.focus-ring` there, with the class `pulse` added anew for each tap. Give `.viewfinder` `position: relative`, and `.focus-ring` `position: absolute` and an animation on `.pulse`.
+- `controls` holds sliders for zoom, so the phone can be held further away, where it focuses, and brightness, against a code that glares, each `label.slider`, only where the camera has them.
+- `buttons` holds switching cameras (shown with two or more), a photo from the phone's camera app (`input.photo`), which focuses better than a live picture in the browser, and back to the live camera.
+- `release()` lets go of the camera for another app, such as a native scanner, and `start()` opens it again; `stop()` ends the view. `onLive` tells when the picture opens, with its `Scanner`, and closes.
+
 Open the camera **before** making the offer: Chrome puts a page's real local addresses into its codes only once the page may use the camera, and real addresses work on hotspots that do not pass on mDNS. Phones open the camera only on HTTPS pages.
 
 `unpack` also reads a link with the code in its fragment, such as `https://example.com/game/#o=<code>`: put the offer in such a link, and a player can scan it with the phone's own camera app to open your game and join.
@@ -173,7 +202,7 @@ For Bluetooth in Android apps made with Capacitor, [`@fionapreroll/p2p-nearby`](
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@fionapreroll/p2p`         | `pack`, `unpack`, `fromSdp`, `toSdp`: codes. `createOffer`, `answerOffer`, `acceptAnswer`, `opened`, `onLost`: connections. `send`, `listen`, `decode`, `cleanName` and checks (`isObject`, `isNumber`, `isId`, `inRange`, `list`, `clamp`) for writing parsers. |
 | `@fionapreroll/p2p/room`    | `HostRoom`, `GuestRoom`, `Seats`, `randomToken`, `ROOM_PROTOCOL`, `PING_LOST_MS`, `MAX_EVENTS_PER_SECOND`, the room's messages and their parsers.                                                                                                                |
-| `@fionapreroll/p2p/qr`      | `qrSvg`, `qrElement`, `startScanner`, `cameraIds`, `decodePhoto`. Needs a DOM.                                                                                                                                                                                   |
+| `@fionapreroll/p2p/qr`      | `qrSvg`, `qrElement`, `startScanner`, `cameraIds`, `decodePhoto`, `cameraView`, `parseCameraChoice`. Needs a DOM.                                                                                                                                                |
 | `@fionapreroll/p2p/testing` | `linkPair()`: two connections in memory, with `dropping` to lose messages and `close()` and `fail()` to end them.                                                                                                                                                |
 
 ## Security

@@ -201,7 +201,7 @@ src/
   game/         sim.ts: the rules, pure and tested; draw.ts: the canvas
   net/          protocol.ts: Spark Hunt's input and snapshots, checked; netlog.ts: the network log
   session/      host.ts and guest.ts: Spark Hunt on the library's rooms; saved.ts: what a host keeps
-  ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view;
+  ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view, built on the library's `cameraView`;
                 joystick.ts; netGraph.ts and netReport.ts: the connection's graph and report
   input.ts      keys and game controllers, and their bindings
   markdown.ts   reads the changelog and the privacy policy for the game (ui/markdownView.ts)
