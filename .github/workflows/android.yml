@@ -88,15 +88,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: spark-hunt-apk
-      - name: Skip if main has moved on
+      - name: Skip if main has moved on, or a newer build is out
         id: current
         run: |
           head=$(git ls-remote origin refs/heads/main | cut -f1)
-          if [ "$head" = "$GITHUB_SHA" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
+          # The build in the release now: a run started later, such as one by hand on the same
+          # commit, may have finished first, and an older build must not replace it.
+          published=$(gh release download "$TAG" --pattern version.json --output - 2>/dev/null |
+            node -e 'let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+              try { console.log(Number(JSON.parse(s).build) || 0) } catch { console.log(0) } })')
+          if [ "$head" != "$GITHUB_SHA" ]; then
             echo "::notice::main is at $head now; its own run publishes that build instead."
             echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [ "${published:-0}" -gt "$GITHUB_RUN_NUMBER" ]; then
+            echo "::notice::Build $published is out already, newer than this build $GITHUB_RUN_NUMBER."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Publish the release
         if: steps.current.outputs.publish == 'true'
