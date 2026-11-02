@@ -13,6 +13,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: Also release the version in package.json as "Spark Hunt x.y.z", tagged vx.y.z (on main)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -118,10 +123,14 @@ jobs:
           fi
 
   version-release:
-    # A game version, tagged vX.Y.Z: its APK as a release of its own, "Spark Hunt X.Y.Z", with the
-    # version's changelog. It is never marked latest: the app's updates follow the release
-    # "Spark Hunt for Android" above, whose address must keep naming the newest build of main.
-    if: startsWith(github.ref, 'refs/tags/v')
+    # A game version: its APK as a release of its own, "Spark Hunt X.Y.Z", with the version's
+    # changelog, tagged vX.Y.Z. Either the tag was pushed, or the workflow was run by hand on main
+    # with release_version, and the release makes the tag. It is never marked latest: the app's
+    # updates follow the release "Spark Hunt for Android" above, whose address must keep naming
+    # the newest build of main.
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_version && github.ref == 'refs/heads/main')
     needs: apk
     runs-on: ubuntu-latest
     permissions:
@@ -135,9 +144,14 @@ jobs:
           name: spark-hunt-apk
       - name: Publish the release
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          if [ "$(node -p "require('./package.json').version")" != "$version" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json"
+          version="$(node -p "require('./package.json').version")"
+          tag="v$version"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($version)"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" != tag ] && git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "::error::$tag exists already: raise the version in package.json first"
             exit 1
           fi
           # The version's section of the changelog, without its heading.
@@ -157,9 +171,9 @@ jobs:
             cat changes.md
           } > notes.md
           mv spark-hunt.apk "spark-hunt-$version.apk"
-          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "spark-hunt-$version.apk" --clobber
-            gh release edit "$GITHUB_REF_NAME" --title "Spark Hunt $version" --notes-file notes.md --latest=false
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "spark-hunt-$version.apk" --clobber
+            gh release edit "$tag" --title "Spark Hunt $version" --notes-file notes.md --latest=false
           else
-            gh release create "$GITHUB_REF_NAME" "spark-hunt-$version.apk" --title "Spark Hunt $version" --notes-file notes.md --latest=false
+            gh release create "$tag" "spark-hunt-$version.apk" --target "$GITHUB_SHA" --title "Spark Hunt $version" --notes-file notes.md --latest=false
           fi
