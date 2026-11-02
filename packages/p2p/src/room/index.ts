@@ -5,6 +5,7 @@ export {
   type HostRoomOptions,
   type Joined,
   type LeaveReason,
+  MAX_EVENTS_PER_SECOND,
   type Pairing,
   type RoomPlayer,
 } from './host.ts'

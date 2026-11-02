@@ -4,6 +4,19 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-02
+
+### Added
+
+- Events: `HostRoom.send(id, event)`, `HostRoom.broadcast(event)` and `GuestRoom.send(event)` carry a game's events, such as moves, over the reliable channel, each once and in order; `onEvent` on both sides takes them, checked by the new `parseEvent` option. A player sends at most `MAX_EVENTS_PER_SECOND`, 30. Events the host sends as a player joins wait for the player's first `onEvent`.
+- `HostRoom.stateFor`: each player gets their own part of the state, such as their cards.
+- Every version is also a file on a GitHub release, to install without logging in to GitHub's registry.
+
+### Changed
+
+- `ROOM_PROTOCOL` is 2: phones with 0.3 and 0.4 do not play together.
+- `HostRoom`, `GuestRoom` and their options take the game's event type as a third type parameter, `never` by default; games without events need no change.
+
 ## [0.3.1] - 2026-11-01
 
 ### Changed
@@ -54,7 +67,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 - Checks for writing parsers, and name cleaning.
 - Connections in memory for tests (`@fionapreroll/p2p/testing`).
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.1...HEAD
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.4.0...HEAD
+[0.4.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.1...p2p-v0.4.0
 [0.3.1]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.0...p2p-v0.3.1
 [0.3.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.2.0...p2p-v0.3.0
 [0.2.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.1.1...p2p-v0.2.0

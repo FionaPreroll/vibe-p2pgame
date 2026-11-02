@@ -4,6 +4,10 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Changed
+
+- Phones with this version and phones with 0.2.0 cannot play together: update both.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added

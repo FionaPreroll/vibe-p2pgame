@@ -9,13 +9,18 @@ import { type Traffic, TrafficCounter } from './traffic.ts'
 /** The host's own player id: players who join get 1, 2 and so on. */
 export const HOST_ID = 0
 
-export interface HostRoomOptions<Input> {
+/** Events a player may send in a second; more are dropped, so no phone can flood the host. */
+export const MAX_EVENTS_PER_SECOND = 30
+
+export interface HostRoomOptions<Input, Event = never> {
   /** The host's name, as players see it. */
   readonly name: string
   /** The game's version of its input and state: only players with the same one get in. */
   readonly version: number
   /** Checks a player's input: anything it turns down is dropped. */
   readonly parseInput: Parse<Input>
+  /** Checks a player's events (see `onEvent`); without it, the room takes none. */
+  readonly parseEvent?: Parse<Event>
   /** Players at most, the host included. Default 8. */
   readonly maxPlayers?: number
   /** How often `onTick` runs and the state goes out, in milliseconds. Default 1000 / 30. */
@@ -63,6 +68,9 @@ interface Guest {
   ping: number | null
   readonly traffic: TrafficCounter
   lastSeen: number
+  /** The events taken in the current second, and when it began. */
+  events: number
+  eventsSince: number
 }
 
 /**
@@ -71,22 +79,33 @@ interface Guest {
  * for when they rejoin, drops players who fall silent, answers pings, and every tick sends the
  * game's state to everyone. The game itself lives in the callbacks.
  *
- * Every message from a player is checked, the game's input by `parseInput`; a player only ever
- * sends input for themselves, and player tokens never leave the host.
+ * Two ways carry a game: input and state, sent many times a second, where only the newest
+ * counts and a lost one is skipped; and events, such as a move or a chat line, which arrive
+ * once each, in order. `stateFor` gives each player a state of their own, such as their cards.
+ *
+ * Every message from a player is checked, the game's input by `parseInput` and its events by
+ * `parseEvent`; a player only ever sends for themselves, and player tokens never leave the host.
  */
-export class HostRoom<Input, State> {
+export class HostRoom<Input, State, Event = never> {
   /** A player came in; `rejoined` if they had a place before. */
   onJoin: (player: RoomPlayer, rejoined: boolean) => void = () => {}
   /** A player left, but keeps their place. */
   onLeave: (player: RoomPlayer, reason: LeaveReason) => void = () => {}
   /** A player's input, checked by `parseInput`. */
   onInput: (player: RoomPlayer, input: Input) => void = () => {}
+  /** A player's event, checked by `parseEvent`: each arrives once, in the order sent. */
+  onEvent: (player: RoomPlayer, event: Event) => void = () => {}
   /** Runs every tick with the seconds since the last one; returns the state to send, if any. */
   onTick: (dt: number) => State | undefined = () => undefined
+  /**
+   * What each player gets of the tick's state, such as only their own cards. Without it,
+   * everyone gets the same. It runs once a tick for each player who gets a state.
+   */
+  stateFor: ((player: RoomPlayer, state: State) => State) | null = null
 
   private readonly guests = new Map<number, Guest>()
   private readonly seats: Seats
-  private readonly parse: Parse<ToHost<Input>>
+  private readonly parse: Parse<ToHost<Input, Event>>
   private readonly maxPlayers: number
   private readonly silenceMs: number
   private readonly helloTimeoutMs: number
@@ -95,8 +114,8 @@ export class HostRoom<Input, State> {
   private readonly timer: ReturnType<typeof setInterval>
   private closed = false
 
-  constructor(private readonly options: HostRoomOptions<Input>) {
-    this.parse = hostParser(options.parseInput)
+  constructor(private readonly options: HostRoomOptions<Input, Event>) {
+    this.parse = hostParser(options.parseInput, options.parseEvent)
     this.maxPlayers = options.maxPlayers ?? 8
     this.silenceMs = options.silenceMs ?? 8000
     this.helloTimeoutMs = options.helloTimeoutMs ?? 15_000
@@ -186,6 +205,22 @@ export class HostRoom<Input, State> {
     return [...this.guests].map(([id, guest]) => ({ id, name: guest.name, ping: guest.ping }))
   }
 
+  /**
+   * Sends one player an event, which arrives once, in order with the others. False if the
+   * player is not connected now: a player who rejoins gets the game's state, not what they
+   * missed.
+   */
+  send(id: number, event: Event): boolean {
+    const guest = this.guests.get(id)
+    if (!guest || this.closed) return false
+    return guest.traffic.out(send(guest.connection.control, { type: 'event', data: event })) > 0
+  }
+
+  /** Sends every player connected now the same event. */
+  broadcast(event: Event): void {
+    for (const id of this.guests.keys()) this.send(id, event)
+  }
+
   /** What went to and from a player connected now, since they got in; null for anyone else. */
   traffic(id: number): Traffic | null {
     return this.guests.get(id)?.traffic.read() ?? null
@@ -227,7 +262,7 @@ export class HostRoom<Input, State> {
     }, 300)
   }
 
-  private refuse(link: Connection, message: ToGuest<State>): void {
+  private refuse(link: Connection, message: ToGuest<State, Event>): void {
     send(link.control, message)
     setTimeout(() => link.close(), 500)
   }
@@ -244,6 +279,8 @@ export class HostRoom<Input, State> {
       traffic: new TrafficCounter(),
       lastSeen: performance.now(),
       lastState: Number.NEGATIVE_INFINITY,
+      events: 0,
+      eventsSince: Number.NEGATIVE_INFINITY,
     }
     this.guests.set(id, guest)
     guest.traffic.watch(link.control, link.fast)
@@ -255,15 +292,27 @@ export class HostRoom<Input, State> {
         rejoined,
         room: ROOM_PROTOCOL,
         version: this.options.version,
-      } satisfies ToGuest<State>),
+      } satisfies ToGuest<State, Event>),
     )
-    // Only `fast` carries messages after the hello; whatever else arrives is dropped.
+    // After the hello, `control` carries only events, a few a second at most.
+    listen(link.control, this.parse, (message) => {
+      if (this.guests.get(id) !== guest || message.type !== 'event') return
+      const now = performance.now()
+      guest.lastSeen = now
+      if (now - guest.eventsSince >= 1000) {
+        guest.eventsSince = now
+        guest.events = 0
+      }
+      if (++guest.events > MAX_EVENTS_PER_SECOND) return
+      this.onEvent({ id, name, ping: guest.ping }, message.data)
+    })
+    // `fast` carries input and pings; whatever else arrives is dropped.
     listen(link.fast, this.parse, (message) => {
       if (this.guests.get(id) !== guest) return
       guest.lastSeen = performance.now()
       if (message.type === 'ping') {
         guest.traffic.out(
-          send(link.fast, { type: 'pong', sent: message.sent } satisfies ToGuest<State>),
+          send(link.fast, { type: 'pong', sent: message.sent } satisfies ToGuest<State, Event>),
         )
       } else if (message.type === 'input') {
         guest.ping = message.ping === null ? null : Math.round(message.ping)
@@ -294,8 +343,8 @@ export class HostRoom<Input, State> {
     }
     const state = this.onTick(dt)
     if (state === undefined) return
-    const message = JSON.stringify({ type: 'state', data: state } satisfies ToGuest<State>)
-    for (const guest of this.guests.values()) {
+    const shared = this.stateFor ? null : stateMessage(state)
+    for (const [id, guest] of this.guests) {
       const { fast, minStateIntervalMs = 0 } = guest.connection
       // Half a tick of leeway: ticks do not fall exactly on the interval.
       if (
@@ -305,8 +354,15 @@ export class HostRoom<Input, State> {
         continue
       }
       guest.lastState = now
+      const message =
+        shared ??
+        stateMessage(this.stateFor?.({ id, name: guest.name, ping: guest.ping }, state) ?? state)
       fast.send(message)
       guest.traffic.out(message.length)
     }
   }
+}
+
+function stateMessage<State>(state: State): string {
+  return JSON.stringify({ type: 'state', data: state } satisfies ToGuest<State>)
 }

@@ -26,6 +26,7 @@ const message = fc
       'full',
       'state',
       'pong',
+      'event',
       'other',
     ),
     fc.dictionary(
@@ -112,5 +113,22 @@ describe('room messages', () => {
     expect(randomToken()).not.toBe(token)
     expect(isToken('short')).toBe(false)
     expect(isToken('has space in it')).toBe(false)
+  })
+})
+
+describe('events', () => {
+  const parseEvent = (v: unknown) => (typeof v === 'string' && v.length <= 10 ? v : undefined)
+
+  it('are read only by a game that takes them, and only as the game checks them', () => {
+    const event = { type: 'event', data: 'move-3' }
+    expect(hostParser(parseInput, parseEvent)(event)).toEqual(event)
+    expect(guestParser(parseState, parseEvent)(event)).toEqual(event)
+    expect(
+      hostParser(parseInput, parseEvent)({ type: 'event', data: 'x'.repeat(11) }),
+    ).toBeUndefined()
+    expect(guestParser(parseState, parseEvent)({ type: 'event' })).toBeUndefined()
+    // A game without events takes none.
+    expect(toHost(event)).toBeUndefined()
+    expect(toGuest(event)).toBeUndefined()
   })
 })

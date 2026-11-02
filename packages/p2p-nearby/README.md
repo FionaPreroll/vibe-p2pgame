@@ -17,6 +17,12 @@ Like `@fionapreroll/p2p`, from [GitHub's npm registry](https://github.com/FionaP
 pnpm add @fionapreroll/p2p-nearby
 ```
 
+Or without logging in, from the file on the version's release:
+
+```bash
+pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.1.2/fionapreroll-p2p-nearby-0.1.2.tgz
+```
+
 ```bash
 npx cap sync android
 ```

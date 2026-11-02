@@ -25,6 +25,12 @@ Set `NODE_AUTH_TOKEN` to a GitHub token with the `read:packages` scope (on your 
 pnpm add @fionapreroll/p2p
 ```
 
+Or without logging in, from the file on the version's release (see its [releases](https://github.com/FionaPreroll/vibe-p2pgame/releases)):
+
+```bash
+pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-v0.4.0/fionapreroll-p2p-0.4.0.tgz
+```
+
 It is ESM only, written in TypeScript with its types included, and runs in browsers. The room and the codes also run in Node, for tests.
 
 ## How a game uses it
@@ -76,6 +82,34 @@ guest.setInput({ dx: 1 }) // sent many times a second
 guest.onState = (state) => draw(state)
 guest.onLost = (ended) => (ended ? goHome() : offerRejoin())
 ```
+
+### Events, and a state for each player
+
+Input and state suit what changes all the time: only the newest counts, and a lost one is skipped. Moves of a board game, a card played or a chat line must arrive instead, once each and in order: those are events, over the reliable channel, both ways. A game that keeps secrets, such as everyone's cards, gives each player their own part of the state with `stateFor`.
+
+```ts
+type Event = { play: number } | { say: string }
+const parseEvent = (v: unknown): Event | undefined =>
+  isObject(v) && isId(v.play) ? { play: v.play } : undefined // and so on
+
+// On the host's phone:
+const room = new HostRoom<Input, State, Event>({
+  name: 'Ada',
+  version: VERSION,
+  parseInput,
+  parseEvent,
+})
+room.onEvent = (player, event) => play(player.id, event) // each once, in order
+room.send(player.id, { say: 'your turn' }) // to one player; room.broadcast(event) to all
+room.stateFor = (player, state) => ({ ...state, hand: hands.get(player.id) ?? [] })
+
+// On a player's phone:
+const guest = await GuestRoom.join<Input, State, Event>(link, { /* … */ parseEvent })
+guest.onEvent = (event) => show(event) // events from before this line come here too
+guest.send({ play: 7 })
+```
+
+A player sends `MAX_EVENTS_PER_SECOND`, 30, at most; more are dropped. An event to a player who is away is not kept for them: when they rejoin, the state tells them where the game is. Without `stateFor`, everyone gets the same state, which every phone can read, whatever the game shows.
 
 ### Pairing with QR codes
 
@@ -138,7 +172,7 @@ For Bluetooth in Android apps made with Capacitor, [`@fionapreroll/p2p-nearby`](
 | Import                      | What it has                                                                                                                                                                                                                                                      |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@fionapreroll/p2p`         | `pack`, `unpack`, `fromSdp`, `toSdp`: codes. `createOffer`, `answerOffer`, `acceptAnswer`, `opened`, `onLost`: connections. `send`, `listen`, `decode`, `cleanName` and checks (`isObject`, `isNumber`, `isId`, `inRange`, `list`, `clamp`) for writing parsers. |
-| `@fionapreroll/p2p/room`    | `HostRoom`, `GuestRoom`, `Seats`, `randomToken`, `ROOM_PROTOCOL`, `PING_LOST_MS`, the room's messages and their parsers.                                                                                                                                         |
+| `@fionapreroll/p2p/room`    | `HostRoom`, `GuestRoom`, `Seats`, `randomToken`, `ROOM_PROTOCOL`, `PING_LOST_MS`, `MAX_EVENTS_PER_SECOND`, the room's messages and their parsers.                                                                                                                |
 | `@fionapreroll/p2p/qr`      | `qrSvg`, `qrElement`, `startScanner`, `cameraIds`, `decodePhoto`. Needs a DOM.                                                                                                                                                                                   |
 | `@fionapreroll/p2p/testing` | `linkPair()`: two connections in memory, with `dropping` to lose messages and `close()` and `fail()` to end them.                                                                                                                                                |
 
@@ -150,7 +184,8 @@ Anyone can make a QR code, and any phone that pairs can send whatever it likes:
 - Messages longer than 16 KB are dropped unread; the rest is parsed as JSON and checked field by field, the game's part by the game's parsers. Write those with the checks of the main entry point: `isNumber` turns down Infinity, which JSON reads from `1e999`.
 - Names lose control and formatting characters and are cut to 16 characters.
 - A connection that opens but says no hello is closed after 15 seconds, so a phone cannot hold one without joining.
-- A player only ever sends input for themselves. Player tokens never leave the host's room, so nobody can take another player's place by guessing.
+- A player sends at most 30 events a second; more are dropped before they reach the game.
+- A player only ever sends input and events for themselves. Player tokens never leave the host's room, so nobody can take another player's place by guessing.
 - A host can only answer pings the player sent, each once: a made-up round trip is ignored.
 - The connection is encrypted by WebRTC (DTLS), but a paired phone can still lie about its own input: the game decides what is possible.
 

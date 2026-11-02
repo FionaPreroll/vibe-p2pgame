@@ -4,13 +4,13 @@ import { cleanName, inRange, isId, isNumber, isObject, type Parse } from '../cha
  * The version of the room's own messages. A game has a version of its own besides, for its
  * input and state; a player is let in only when both match the host's.
  */
-export const ROOM_PROTOCOL = 1
+export const ROOM_PROTOCOL = 2
 
 /** The longest a round trip may honestly take to be shown, in milliseconds. */
 const MAX_PING_MS = 60_000
 
 /** Messages a player's phone sends to the host. */
-export type ToHost<Input> =
+export type ToHost<Input, Event = never> =
   /**
    * On `control`, once the channels are open. The token is the browser's own: a player who
    * comes back with it gets their place back.
@@ -20,9 +20,11 @@ export type ToHost<Input> =
   | { type: 'input'; data: Input; ping: number | null }
   /** On `fast`, once a second: the host answers at once, so the player can time the trip. */
   | { type: 'ping'; sent: number }
+  /** On `control`, now and then: one of the game's events, such as a move, which must arrive. */
+  | { type: 'event'; data: Event }
 
 /** Messages the host sends to a player's phone. */
-export type ToGuest<State> =
+export type ToGuest<State, Event = never> =
   /** On `control`, in answer to `hello`: the player's id. */
   | { type: 'welcome'; id: number; host: string; rejoined: boolean; room: number; version: number }
   /** On `control`, in answer to `hello`, when the versions differ. */
@@ -34,9 +36,17 @@ export type ToGuest<State> =
   /** On `fast`, many times a second: the game's state. */
   | { type: 'state'; data: State }
   | { type: 'pong'; sent: number }
+  /** On `control`, now and then: one of the game's events, which must arrive. */
+  | { type: 'event'; data: Event }
 
-/** Reads messages to the host; `parseInput` checks the game's part. */
-export function hostParser<Input>(parseInput: Parse<Input>): Parse<ToHost<Input>> {
+/** Takes no event at all: for games without events. */
+const noEvents: Parse<never> = () => undefined
+
+/** Reads messages to the host; `parseInput` and `parseEvent` check the game's part. */
+export function hostParser<Input, Event = never>(
+  parseInput: Parse<Input>,
+  parseEvent: Parse<Event> = noEvents,
+): Parse<ToHost<Input, Event>> {
   return (value) => {
     if (!isObject(value)) return undefined
     switch (value.type) {
@@ -59,14 +69,21 @@ export function hostParser<Input>(parseInput: Parse<Input>): Parse<ToHost<Input>
       }
       case 'ping':
         return isNumber(value.sent) ? { type: 'ping', sent: value.sent } : undefined
+      case 'event': {
+        const data = parseEvent(value.data)
+        return data === undefined ? undefined : { type: 'event', data }
+      }
       default:
         return undefined
     }
   }
 }
 
-/** Reads messages to a player; `parseState` checks the game's part. */
-export function guestParser<State>(parseState: Parse<State>): Parse<ToGuest<State>> {
+/** Reads messages to a player; `parseState` and `parseEvent` check the game's part. */
+export function guestParser<State, Event = never>(
+  parseState: Parse<State>,
+  parseEvent: Parse<Event> = noEvents,
+): Parse<ToGuest<State, Event>> {
   return (value) => {
     if (!isObject(value)) return undefined
     switch (value.type) {
@@ -96,6 +113,10 @@ export function guestParser<State>(parseState: Parse<State>): Parse<ToGuest<Stat
       }
       case 'pong':
         return isNumber(value.sent) ? { type: 'pong', sent: value.sent } : undefined
+      case 'event': {
+        const data = parseEvent(value.data)
+        return data === undefined ? undefined : { type: 'event', data }
+      }
       default:
         return undefined
     }

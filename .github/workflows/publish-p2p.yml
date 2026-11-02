@@ -94,3 +94,34 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag -a "$TAG" -m "@fionapreroll/$PACKAGE $VERSION"
           git push origin "$TAG"
+      # The package as a file on a release of its own, which anyone can install without logging
+      # in to GitHub's registry: pnpm add https://github.com/…/releases/download/<tag>/<file>.
+      # It is never marked latest, which stays the Android app's release.
+      - name: Attach the package to a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PACKAGE: ${{ steps.version.outputs.package }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          (cd "packages/$PACKAGE" && pnpm pack --pack-destination "$RUNNER_TEMP")
+          file="$RUNNER_TEMP/fionapreroll-$PACKAGE-$VERSION.tgz"
+          test -f "$file"
+          awk -v heading="## [$VERSION] - " '
+            index($0, heading) == 1 { on = 1; next }
+            on && (/^## / || /^\[/) { exit }
+            on { print }
+          ' "packages/$PACKAGE/CHANGELOG.md" > changes.md
+          {
+            echo "\`@fionapreroll/$PACKAGE\` $VERSION, also on [GitHub's npm registry](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/$PACKAGE). To install it without logging in:"
+            echo
+            echo '```bash'
+            echo "pnpm add https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/fionapreroll-$PACKAGE-$VERSION.tgz"
+            echo '```'
+            cat changes.md
+          } > notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$file" --clobber
+          else
+            gh release create "$TAG" "$file" --verify-tag --title "@fionapreroll/$PACKAGE $VERSION" --notes-file notes.md --latest=false
+          fi

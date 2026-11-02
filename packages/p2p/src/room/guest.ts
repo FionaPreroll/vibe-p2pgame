@@ -6,7 +6,7 @@ import { type GuestTraffic, TrafficCounter } from './traffic.ts'
 /** A ping unanswered this long, in milliseconds, is taken for lost. */
 export const PING_LOST_MS = 3000
 
-export interface GuestRoomOptions<State> {
+export interface GuestRoomOptions<State, Event = never> {
   /** The player's name, as everyone sees it (the host shortens and cleans it). */
   readonly name: string
   /** The browser's own token, kept between visits, so the host knows a returning player. */
@@ -15,6 +15,8 @@ export interface GuestRoomOptions<State> {
   readonly version: number
   /** Checks the host's state: a state it turns down is dropped, and the next one comes soon. */
   readonly parseState: Parse<State>
+  /** Checks the host's events (see `onEvent`); without it, the player takes none. */
+  readonly parseEvent?: Parse<Event>
   /** How often the input goes out, in milliseconds. Default 1000 / 30. */
   readonly tickMs?: number
   /** How often the round trip is measured. Default 1000. */
@@ -27,10 +29,11 @@ export interface GuestRoomOptions<State> {
 
 /**
  * A player's side of a game: it sends the game's input to the host many times a second, and
- * keeps the newest state the host sends back. Everything from the host is checked, the
- * game's state by `parseState`.
+ * keeps the newest state the host sends back. Events, such as a move, go both ways and arrive
+ * once each, in order. Everything from the host is checked, the game's state by `parseState`
+ * and its events by `parseEvent`.
  */
-export class GuestRoom<Input, State> {
+export class GuestRoom<Input, State, Event = never> {
   /** A new state from the host, checked. */
   onState: (state: State) => void = () => {}
   /** Called once if the host is gone: `ended` if the host ended the game on purpose. */
@@ -47,6 +50,9 @@ export class GuestRoom<Input, State> {
   private lostPings = 0
   /** When the pings still unanswered went out, oldest first. */
   private readonly waiting: number[] = []
+  private eventListener: ((event: Event) => void) | null = null
+  /** Events that came before anyone listened, such as one the host sent on joining. */
+  private readonly early: Event[] = []
 
   private constructor(
     private readonly link: Connection,
@@ -56,13 +62,11 @@ export class GuestRoom<Input, State> {
     readonly host: string,
     /** True if the host gave this player back their old place. */
     readonly rejoined: boolean,
-    parse: Parse<ToGuest<State>>,
-    options: GuestRoomOptions<State>,
+    parse: Parse<ToGuest<State, Event>>,
+    options: GuestRoomOptions<State, Event>,
   ) {
     this.counter.watch(link.control, link.fast)
-    listen(link.control, parse, (message) => {
-      if (message.type === 'bye') this.lose(true)
-    })
+    listen(link.control, parse, (message) => this.control(message))
     listen(link.fast, parse, (message) => {
       this.lastSeen = performance.now()
       if (message.type === 'state') {
@@ -88,7 +92,7 @@ export class GuestRoom<Input, State> {
                 type: 'input',
                 data: this.input.value,
                 ping: this.measured,
-              } satisfies ToHost<Input>),
+              } satisfies ToHost<Input, Event>),
             )
           }
           if (performance.now() - this.lastSeen > silenceMs) this.lose(false)
@@ -101,7 +105,7 @@ export class GuestRoom<Input, State> {
           this.waiting.shift()
           this.lostPings++
         }
-        const ping = { type: 'ping', sent: now } satisfies ToHost<Input>
+        const ping = { type: 'ping', sent: now } satisfies ToHost<Input, Event>
         if (this.counter.out(send(link.fast, ping)) > 0) {
           this.pings++
           this.waiting.push(now)
@@ -115,24 +119,35 @@ export class GuestRoom<Input, State> {
    * Rejects with `version` if the host runs another version, `full` if there is no room, and
    * `timeout` if the host does not answer.
    */
-  static async join<Input, State>(
+  static async join<Input, State, Event = never>(
     link: Connection,
-    options: GuestRoomOptions<State>,
-  ): Promise<GuestRoom<Input, State>> {
-    const parse = guestParser(options.parseState)
+    options: GuestRoomOptions<State, Event>,
+  ): Promise<GuestRoom<Input, State, Event>> {
+    const parse = guestParser(options.parseState, options.parseEvent)
     await opened(link)
-    const welcome = await new Promise<Extract<ToGuest<State>, { type: 'welcome' }>>(
+    // What the host says right after its welcome, such as an event on joining, waits here
+    // until the room listens itself.
+    let welcomed = false
+    let room: GuestRoom<Input, State, Event> | null = null
+    const queued: ToGuest<State, Event>[] = []
+    const welcome = await new Promise<Extract<ToGuest<State, Event>, { type: 'welcome' }>>(
       (resolve, reject) => {
         const timer = setTimeout(
           () => reject(new Error('timeout')),
           options.welcomeTimeoutMs ?? 10_000,
         )
         listen(link.control, parse, (message) => {
+          if (room) return
+          if (welcomed) {
+            if (queued.length < 100) queued.push(message)
+            return
+          }
           if (message.type === 'welcome') {
             // A host of another version sends states this phone would misread.
-            if (message.room === ROOM_PROTOCOL && message.version === options.version)
+            if (message.room === ROOM_PROTOCOL && message.version === options.version) {
+              welcomed = true
               resolve(message)
-            else reject(new Error('version'))
+            } else reject(new Error('version'))
           } else if (message.type === 'mismatch') reject(new Error('version'))
           else if (message.type === 'full') reject(new Error('full'))
           else return
@@ -144,10 +159,10 @@ export class GuestRoom<Input, State> {
           token: options.token,
           room: ROOM_PROTOCOL,
           version: options.version,
-        } satisfies ToHost<Input>)
+        } satisfies ToHost<Input, Event>)
       },
     )
-    return new GuestRoom<Input, State>(
+    room = new GuestRoom<Input, State, Event>(
       link,
       welcome.id,
       welcome.host,
@@ -155,6 +170,27 @@ export class GuestRoom<Input, State> {
       parse,
       options,
     )
+    for (const message of queued) room.control(message)
+    return room
+  }
+
+  /**
+   * The host's events, checked by `parseEvent`, each once and in order. Events that came before
+   * a listener was set are handed to the first one.
+   */
+  get onEvent(): (event: Event) => void {
+    return this.eventListener ?? (() => {})
+  }
+
+  set onEvent(listener: (event: Event) => void) {
+    this.eventListener = listener
+    for (const event of this.early.splice(0)) listener(event)
+  }
+
+  /** Sends the host an event, which arrives once, in order with the others. False once lost. */
+  send(event: Event): boolean {
+    if (this.lost) return false
+    return this.counter.out(send(this.link.control, { type: 'event', data: event })) > 0
   }
 
   /** The newest state from the host, or null before the first. */
@@ -182,6 +218,15 @@ export class GuestRoom<Input, State> {
       pings: this.pings,
       pongs: this.pongs,
       lostPings: this.lostPings,
+    }
+  }
+
+  private control(message: ToGuest<State, Event>): void {
+    if (message.type === 'bye') this.lose(true)
+    else if (message.type === 'event' && !this.lost) {
+      this.lastSeen = performance.now()
+      if (this.eventListener) this.eventListener(message.data)
+      else if (this.early.length < 100) this.early.push(message.data)
     }
   }
 
