@@ -4,6 +4,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
 ### Added
 
 - `cameraView` in `@fionapreroll/p2p/qr`: a ready camera for reading the other phone's code, with what helps when a code will not come sharp. Tapping the picture focuses there and shows a ring; zoom and brightness sliders where the camera has them; switching between the phone's cameras; a photo from the phone's own camera app; and the camera, its zoom and brightness to remember, checked by `parseCameraChoice` when read back. The game brings the texts and the look.
@@ -71,7 +73,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 - Checks for writing parsers, and name cleaning.
 - Connections in memory for tests (`@fionapreroll/p2p/testing`).
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.4.0...HEAD
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.5.0...HEAD
+[0.5.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.4.0...p2p-v0.5.0
 [0.4.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.1...p2p-v0.4.0
 [0.3.1]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.0...p2p-v0.3.1
 [0.3.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.2.0...p2p-v0.3.0
