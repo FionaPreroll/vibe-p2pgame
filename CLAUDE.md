@@ -30,7 +30,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - A change to a library that its users notice adds an entry to its own `CHANGELOG.md`, apart from the game's changelog, and updates its `README.md`.
 - Raise `ROOM_PROTOCOL` in `packages/p2p/src/room/messages.ts` whenever the room's own messages change.
 - Library code imports its own files with `.ts` extensions, which `tsc` rewrites to `.js` in the build.
-- A version is published only when asked: see "Library versions" in the README.
+- A version is published only when asked: see "Library versions" in the README. The game always uses the newest versions: a new library version raises the game's dependency on it (`workspace:^x.y.z` in the root `package.json`) in the same commit, as `tools/libraries.test.ts` checks.
 
 ## Android app
 

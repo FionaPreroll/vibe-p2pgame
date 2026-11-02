@@ -298,9 +298,9 @@ To bring them up to date, run **Update screenshots** in the Actions tab (`.githu
 
 ### Library versions
 
-`packages/p2p` and `packages/p2p-nearby` are pnpm workspace packages. The game uses them as `workspace:*`, straight from their sources, so a change to a library is tested with the game at once; `pnpm build:p2p` builds both into their `dist` folders. Each library has its own version and `CHANGELOG.md`, apart from the game's. A version is published only when asked:
+`packages/p2p` and `packages/p2p-nearby` are pnpm workspace packages. The game uses them straight from their sources, so a change to a library is tested with the game at once, and always names their newest version, as `workspace:^x.y.z`; `pnpm build:p2p` builds both into their `dist` folders. Each library has its own version and `CHANGELOG.md`, apart from the game's. A version is published only when asked:
 
-1. Move the entries under `## [Unreleased]` in the library's `CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in its `package.json` to the same, and bring that to `main`.
+1. Move the entries under `## [Unreleased]` in the library's `CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in its `package.json` to the same, raise the game's dependency on it in the root `package.json` to `workspace:^x.y.z` (`tools/libraries.test.ts` fails until it is), run `pnpm install`, and bring that to `main`.
 2. In the Actions tab, run **Publish p2p** on `main`, choosing the library. It checks that the version is new and in the changelog, runs every check, publishes the package, and then tags the commit `p2p-vx.y.z` or `p2p-nearby-vx.y.z`. Pushing such a tag yourself publishes too, once it matches the version in the library's `package.json`.
 
 Games that use the libraries install them as their READMEs describe ([`@fionapreroll/p2p`](packages/p2p/README.md), [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md)), with a token that may read packages. Their published versions are listed on the packages' pages: [`@fionapreroll/p2p`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p) and [`@fionapreroll/p2p-nearby`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby).
