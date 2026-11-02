@@ -194,7 +194,7 @@ const en = {
   resetBindings: 'Reset keys and buttons',
   bindingsReset: 'Keys and buttons reset.',
   aboutTitle: 'About Spark Hunt',
-  aboutBuild: 'Web build {commit}, from {date}.',
+  aboutBuild: 'Version {version}, web build {commit}, from {date}.',
   aboutSource: 'Source code and issues on GitHub',
   aboutContact: 'Contact:',
   privacyTitle: 'Privacy policy',
@@ -230,7 +230,7 @@ const en = {
   languageAutoApp: 'Like the phone',
   clearConfirmApp: 'Delete your name, settings and saved games in this app?',
   savedLocallyApp: 'Everything is saved on this phone only.',
-  aboutAppBuild: 'App build {build}, web build {commit}, from {date}.',
+  aboutAppBuild: 'Version {version}, app build {build}, web build {commit}, from {date}.',
   about: 'About',
 }
 
@@ -432,7 +432,7 @@ const de: Record<TextKey, string> = {
   resetBindings: 'Tasten und Knöpfe zurücksetzen',
   bindingsReset: 'Tasten und Knöpfe zurückgesetzt.',
   aboutTitle: 'Über Funkenjagd',
-  aboutBuild: 'Web-Build {commit} vom {date}.',
+  aboutBuild: 'Version {version}, Web-Build {commit} vom {date}.',
   aboutSource: 'Quellcode und Fehlermeldungen auf GitHub',
   aboutContact: 'Kontakt:',
   privacyTitle: 'Datenschutzerklärung',
@@ -469,7 +469,7 @@ const de: Record<TextKey, string> = {
   languageAutoApp: 'Wie das Handy',
   clearConfirmApp: 'Name, Einstellungen und gespeicherte Spiele in dieser App löschen?',
   savedLocallyApp: 'Alles wird nur auf diesem Handy gespeichert.',
-  aboutAppBuild: 'App-Build {build}, Web-Build {commit} vom {date}.',
+  aboutAppBuild: 'Version {version}, App-Build {build}, Web-Build {commit} vom {date}.',
   about: 'Über',
 }
 

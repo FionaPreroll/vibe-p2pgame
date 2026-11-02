@@ -69,7 +69,11 @@ const NATIVE: readonly { name: string; license: string; url: string }[] = [
  */
 export function aboutScreen(onBack: () => void): void {
   const licenses = h('div', { class: 'licenses' }, h('p', { class: 'muted' }, '…'))
-  const web = { commit: __BUILD__.commit, date: __BUILD__.time.slice(0, 10) }
+  const web = {
+    version: __BUILD__.version,
+    commit: __BUILD__.commit,
+    date: __BUILD__.time.slice(0, 10),
+  }
   const build = h('p', { class: 'muted' }, t('aboutBuild', web))
   // In the app, its own build number too, as the updates count by it.
   if (isApp()) {

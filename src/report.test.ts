@@ -51,7 +51,7 @@ describe('the debug report', () => {
     expect(report).toContain('## Spark Hunt debug report')
     expect(report).toContain('- Created: 2026-10-31T12:00:00.000Z')
     expect(report).toContain('- Running as: website in a browser')
-    expect(report).toMatch(/- Web build: \S+, built /)
+    expect(report).toMatch(/- Version: \d+\.\d+\.\d+\n- Web build: \S+, built /)
     expect(report).toContain('- Protocols: game 4, room 1')
     expect(report).toContain('TestBrowser')
     expect(report).toContain('- Online: no')

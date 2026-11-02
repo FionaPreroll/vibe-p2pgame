@@ -1,2 +1,6 @@
-/** Which build this is, written in by Vite (see vite.config.ts): for the debug report. */
-declare const __BUILD__: { readonly commit: string; readonly time: string }
+/** Which version and build this is, written in by Vite (see vite.config.ts). */
+declare const __BUILD__: {
+  readonly version: string
+  readonly commit: string
+  readonly time: string
+}

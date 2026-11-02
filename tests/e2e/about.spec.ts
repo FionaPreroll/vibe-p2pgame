@@ -14,7 +14,9 @@ test('the About view shows the changelog and the licenses of other people’s co
   await page.getByRole('button', { name: 'About Spark Hunt' }).click()
   await expect(page.getByRole('heading', { name: 'About Spark Hunt' })).toBeVisible()
   expect(await page.evaluate(() => window.scrollY)).toBe(0)
-  await expect(page.locator('.about')).toContainText(/Web build \w+, from \d{4}-\d\d-\d\d\./)
+  await expect(page.locator('.about')).toContainText(
+    /Version \d+\.\d+\.\d+, web build \w+, from \d{4}-\d\d-\d\d\./,
+  )
   await expect(page.getByRole('link', { name: /Source code/ })).toHaveAttribute(
     'href',
     'https://github.com/FionaPreroll/vibe-p2pgame',

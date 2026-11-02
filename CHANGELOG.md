@@ -4,27 +4,15 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
-### Added
+## [0.2.0] - 2026-11-02
 
-- A countdown of three seconds before every round.
-- After a round, everyone sees who caught how many sparks, golden ones among them, and touched how many mines.
-- Players can say they are ready for the next round: once every player is ready, it starts by itself. The host sees how many are ready.
-- Players can just watch for a while, without their dot, and play along again from the next round on, with their score.
-- Sounds for sparks, golden sparks, mines, the countdown and the end of a round, with a mute button next to the scores and a switch in the settings.
-- Every player's dot carries a shape as well as a colour, also in the lists, for players who tell colours apart badly.
-- The host is told when a player's connection keeps stalling.
-- Free play: before the first round, a banner above the arena says that points do not count yet, and they do not; sparks and mines work as in a round. After a round, the banner says it is over.
-- A big clock above the arena during a round, with a bar that runs down and turns red, ticking, for the last ten seconds. "Go!" flashes as a round starts.
-- Points won rise from the dot that won them, as "+1" or "+3".
-- Steering with keys (arrow keys or WASD) and game controllers (left stick or D-pad), and an optional joystick on the screen, on the left or the right. Enter, Space or a controller's Start button starts a round on the host's phone.
-- Every key and controller button can be changed in the settings.
-- A small graph of the connection in the top line. The debug report, also reachable from the graph and after a round, shows a larger graph and holds how well the connection kept up, second by second: ping, messages and data per second, lost pings and stalls, beside the log, which notes when a connection stalls and recovers. It can be copied, downloaded or sent.
+### Added
 
 - Spark Hunt, a game for phones side by side: every player steers a glowing dot to the spot they touch and catches sparks, golden ones counting three. A round lasts a minute, and up to eight phones play together.
 - An Android app, which plays together with the website and works without internet from its first start. Its newest build is always on the repository's releases page. In the app, a button opens Google's own QR scanner, which focuses and zooms by itself.
 - A privacy policy, in English and German, from _About Spark Hunt_ and from the settings: no accounts, no server, no tracking, and what stays on the phone, what other phones see, and what the app's permissions are for.
 - On Android phones, the website offers the Android app.
-- _About Spark Hunt_, ⓘ on the start screen: which build this is, an address to write to, what changed from version to version, and the licenses of the open-source code inside the game and the app.
+- _About Spark Hunt_, ⓘ on the start screen: which version and build this is, an address to write to, what changed from version to version, and the licenses of the open-source code inside the game and the app.
 - _Look for a new version now_ in the app's settings.
 - The app's update dialog says how large the download is, warns on mobile data or another metered connection, shows the download's progress, and can pause it. A paused or broken download goes on where it stopped, also after closing the app.
 - A debug report in the settings: if something does not work, create it, read it, and copy it or open an issue on GitHub with it. It says what phone and versions this is and what happened recently, not who you are.
@@ -40,6 +28,19 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - Rejoining: a player who drops out gets their place, color and score back, even in the middle of a round. Players who are away show as such between rounds.
 - A host whose page closed can carry on with the same players and scores. When the host ends the game, everyone is told.
 - Settings, kept in the browser: name, language, vibration, keeping the screen on and the round length. The camera last used to scan is remembered, with its zoom and brightness.
+- A countdown of three seconds before every round.
+- After a round, everyone sees who caught how many sparks, golden ones among them, and touched how many mines.
+- Players can say they are ready for the next round: once every player is ready, it starts by itself. The host sees how many are ready.
+- Players can just watch for a while, without their dot, and play along again from the next round on, with their score.
+- Sounds for sparks, golden sparks, mines, the countdown and the end of a round, with a mute button next to the scores and a switch in the settings.
+- Every player's dot carries a shape as well as a colour, also in the lists, for players who tell colours apart badly.
+- The host is told when a player's connection keeps stalling.
+- Free play: before the first round, a banner above the arena says that points do not count yet, and they do not; sparks and mines work as in a round. After a round, the banner says it is over.
+- A big clock above the arena during a round, with a bar that runs down and turns red, ticking, for the last ten seconds. "Go!" flashes as a round starts.
+- Points won rise from the dot that won them, as "+1" or "+3".
+- Steering with keys (arrow keys or WASD) and game controllers (left stick or D-pad), and an optional joystick on the screen, on the left or the right. Enter, Space or a controller's Start button starts a round on the host's phone.
+- Every key and controller button can be changed in the settings.
+- A small graph of the connection in the top line. The debug report, also reachable from the graph and after a round, shows a larger graph and holds how well the connection kept up, second by second: ping, messages and data per second, lost pings and stalls, beside the log, which notes when a connection stalls and recovers. It can be copied, downloaded or sent.
 
 ### Changed
 
@@ -61,4 +62,5 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - Joining a game over Bluetooth works on newer Android versions: the app now also asks for Location, which finding games nearby needs. Approximate is enough.
 - After allowing the app to install apps, an update installs right away, without downloading again.
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/commits/main
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/v0.2.0

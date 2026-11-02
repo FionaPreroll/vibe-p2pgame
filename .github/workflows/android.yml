@@ -9,6 +9,8 @@ name: Android
 on:
   push:
     branches: [main]
+    # A game version (see "Changelog and game versions" in the README): its APK as a release too.
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -36,8 +38,10 @@ jobs:
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: ${{ github.run_number }}-${{ github.sha }}
-        run: ./gradlew assembleDebug --no-daemon
+        # The game's version, the build number and the commit, as Android shows the app's version.
+        run: |
+          VERSION_NAME="$(node -p "require('../package.json').version")-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" \
+            ./gradlew assembleDebug --no-daemon
       # The Java unit tests (UpdateRules, NearbyRules), with JaCoCo's coverage of all the app's and
       # the Bluetooth library's Java, plugins included, for Codecov.
       - name: Test the Java, with coverage
@@ -111,4 +115,51 @@ jobs:
             gh release edit "$TAG" --title "Spark Hunt for Android" --notes-file notes.md --latest
           else
             gh release create "$TAG" spark-hunt.apk version.json --title "Spark Hunt for Android" --notes-file notes.md --latest
+          fi
+
+  version-release:
+    # A game version, tagged vX.Y.Z: its APK as a release of its own, "Spark Hunt X.Y.Z", with the
+    # version's changelog. It is never marked latest: the app's updates follow the release
+    # "Spark Hunt for Android" above, whose address must keep naming the newest build of main.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: spark-hunt-apk
+      - name: Publish the release
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [ "$(node -p "require('./package.json').version")" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json"
+            exit 1
+          fi
+          # The version's section of the changelog, without its heading.
+          awk -v heading="## [$version] - " '
+            index($0, heading) == 1 { on = 1; next }
+            on && (/^## / || /^\[/) { exit }
+            on { print }
+          ' CHANGELOG.md > changes.md
+          if ! grep -q '[^[:space:]]' changes.md; then
+            echo "::error::CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+          {
+            echo "Spark Hunt $version for Android, from commit ${GITHUB_SHA::7} (build ${GITHUB_RUN_NUMBER}). The newest build is always in the release _Spark Hunt for Android_; the website is always the newest."
+            echo
+            echo "**Installing:** download \`spark-hunt-$version.apk\` below and open it on the phone; Android asks once to allow installing apps from that source. A newer APK installs over an older one and keeps the game's settings. This is a debug build, signed with the project's debug key."
+            cat changes.md
+          } > notes.md
+          mv spark-hunt.apk "spark-hunt-$version.apk"
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "spark-hunt-$version.apk" --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "Spark Hunt $version" --notes-file notes.md --latest=false
+          else
+            gh release create "$GITHUB_REF_NAME" "spark-hunt-$version.apk" --title "Spark Hunt $version" --notes-file notes.md --latest=false
           fi

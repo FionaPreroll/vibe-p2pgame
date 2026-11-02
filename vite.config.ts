@@ -1,11 +1,16 @@
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { defineConfig } from 'vitest/config'
 import { licenses } from './tools/licenses.ts'
 import { serviceWorker } from './tools/serviceWorker.ts'
 
-/** Which build this is, for the debug report: the commit, from CI or from git, and the time. */
-function buildInfo(): { commit: string; time: string } {
+/**
+ * Which build this is, for About and the debug report: the game's version from package.json, the
+ * commit, from CI or from git, and the time.
+ */
+function buildInfo(): { version: string; commit: string; time: string } {
+  const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
   let commit = process.env.GITHUB_SHA?.slice(0, 7)
   if (!commit) {
     try {
@@ -16,7 +21,7 @@ function buildInfo(): { commit: string; time: string } {
       commit = 'unknown'
     }
   }
-  return { commit, time: new Date().toISOString() }
+  return { version, commit, time: new Date().toISOString() }
 }
 
 export default defineConfig(({ mode }) => ({

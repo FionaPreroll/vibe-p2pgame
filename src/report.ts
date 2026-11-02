@@ -39,6 +39,7 @@ export async function debugReport(sources: ReportSources): Promise<string> {
     '',
     `- Created: ${sources.now.toISOString()}`,
     `- Running as: ${sources.app ? 'Android app' : 'website in a browser'}`,
+    `- Version: ${__BUILD__.version}`,
     `- Web build: ${__BUILD__.commit}, built ${__BUILD__.time}`,
   ]
   if (sources.appInfo) {
