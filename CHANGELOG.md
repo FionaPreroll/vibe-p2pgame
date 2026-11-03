@@ -13,7 +13,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 - A player who leaves the Bluetooth search while asking a host no longer stays in the host's list, where the host could still accept them.
 - After a Bluetooth player could not join, the host's list keeps them with the reason until the host removes them, instead of offering to accept them again.
 - A Bluetooth player the host let in whose phone never connects no longer stays on _Connecting…_ in the host's list: after 30 seconds, the list says the connection timed out.
-- Pairing by copied text codes: the player's phone now waits up to a minute for the host to take its code, instead of 30 seconds.
+- Pairing by copied text codes: the player's phone now waits up to 10 minutes for the host to take its code, as in the Spielekiste, instead of 30 seconds.
 
 ## [0.2.0] - 2026-11-02
 

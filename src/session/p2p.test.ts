@@ -355,20 +355,20 @@ describe('a malicious host', () => {
 })
 
 describe('a player whose code is copied over', () => {
-  it('waits a minute for the host to take it, and then gives up', async () => {
+  it('waits ten minutes for the host to take it, and then gives up', async () => {
     const host = new HostSession('Hosty')
-    expect(ANSWER_WAIT_MS).toBe(60_000)
-    // Taken after 45 seconds, longer than the library's own 30: the player gets in.
+    expect(ANSWER_WAIT_MS).toBe(10 * 60_000)
+    // Taken after 9 minutes, far longer than the library's own 30 seconds: the player gets in.
     const slow = linkPair()
     const attached = host.attach(slow.host.link)
     const joining = GuestSession.join(slow.guest.link, 'Slowpoke', token())
-    await later(45_000)
+    await later(9 * 60_000)
     slow.open()
     const guest = await joining
     await attached.joined
     expect(guest.selfId()).toBe(1)
 
-    // Never taken: after a minute, the player hears that it timed out.
+    // Never taken: after ten minutes, the player hears that it timed out.
     const never = linkPair()
     host.attach(never.host.link).joined.catch(() => {})
     const waiting = GuestSession.join(never.guest.link, 'Waity', token())
