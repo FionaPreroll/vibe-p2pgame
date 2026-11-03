@@ -97,6 +97,14 @@ class FakePeerConnection extends EventTarget {
     this.closed = true
     this.connectionState = 'closed'
   }
+  async getStats() {
+    return new Map([
+      ['T', { id: 'T', type: 'transport', selectedCandidatePairId: 'P', dtlsState: 'connected' }],
+      ['P', { id: 'P', type: 'candidate-pair', localCandidateId: 'L', remoteCandidateId: 'R' }],
+      ['L', { id: 'L', type: 'local-candidate', address: '10.0.0.2', protocol: 'udp' }],
+      ['R', { id: 'R', type: 'remote-candidate', address: '10.0.0.3', protocol: 'udp' }],
+    ])
+  }
 }
 
 /** The connection made last, once its code waits for its addresses. */
@@ -244,5 +252,15 @@ describe('a link', () => {
     c.link.close()
     expect(c.pc.closed).toBe(true)
     expect(c.link.state).toBe('closed')
+  })
+
+  it('tells its details from the browser’s stats', async () => {
+    const { link } = await opened()
+    expect(await link.details()).toMatchObject({
+      transport: 'webrtc',
+      state: 'connected',
+      local: { address: '10.0.0.2', protocol: 'udp' },
+      remote: { address: '10.0.0.3', protocol: 'udp' },
+    })
   })
 })

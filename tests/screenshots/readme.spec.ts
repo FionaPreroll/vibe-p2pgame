@@ -124,11 +124,15 @@ test('screenshots for the README', async ({ browser }) => {
   await expect(host.locator('.banner')).toContainText('Round over', { timeout: 40_000 })
   await shot(host, 'results')
 
-  // The debug report, with the graph of the connections.
+  // The connection details, after a connection test.
   await host.locator('button.net').tap()
-  await expect(host.locator('.modal textarea.report')).toHaveValue(/## Spark Hunt debug report/)
-  await shot(host, 'report')
-  await host.getByRole('button', { name: 'Cancel' }).click()
+  await host.getByRole('button', { name: 'Test connections' }).tap()
+  await expect(host.locator('.modal .connection-test')).toContainText('From the host', {
+    timeout: 15_000,
+  })
+  await host.locator('.modal').evaluate((modal) => modal.scrollTo(0, 0))
+  await shot(host, 'connection')
+  await host.locator('.modal').getByRole('button', { name: 'Close' }).click()
 
   // A player's view, in German.
   const german = (await phone(browser, 30)).page

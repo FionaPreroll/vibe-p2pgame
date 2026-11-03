@@ -1,4 +1,5 @@
 import type { Connection, ConnectionState } from './connection.ts'
+import { type ConnectionDetails, rtcDetails } from './details.ts'
 import { fromSdp, pack, type Signal, toSdp } from './signal.ts'
 
 /**
@@ -14,6 +15,8 @@ export interface Link extends Connection {
   readonly pc: RTCPeerConnection
   readonly control: RTCDataChannel
   readonly fast: RTCDataChannel
+  /** The pair of addresses in use, both channels and the transport, from `getStats()`. */
+  details(): Promise<ConnectionDetails>
 }
 
 class RtcLink implements Link {
@@ -46,6 +49,11 @@ class RtcLink implements Link {
       channel.addEventListener('open', listener)
       channel.addEventListener('close', listener)
     }
+  }
+
+  async details(): Promise<ConnectionDetails> {
+    const report = await this.pc.getStats()
+    return rtcDetails(report.values() as Iterable<Record<string, unknown>>)
   }
 
   close(): void {

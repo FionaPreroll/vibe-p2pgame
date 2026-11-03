@@ -70,7 +70,8 @@ test('one report holds the connection, second by second, and the log', async ({ 
   await pair(host, guest)
   await expect(guest.locator('button.net')).toContainText(/\d+ ms/, { timeout: 10_000 })
 
-  // The graph next to the scores and the button below the roster open the same report.
+  // The button below the roster opens the report; the graph next to the scores opens the
+  // connection, with a way to the report.
   await guest.locator('.sheet').getByRole('button', { name: 'Debug report' }).click()
   const report = guest.locator('.modal textarea.report')
   await expect(report).toHaveValue(/## Spark Hunt debug report/)
@@ -79,7 +80,10 @@ test('one report holds the connection, second by second, and the log', async ({ 
   expect(text).toContain('### Network, last game')
   expect(text).toMatch(/- Phone: player \d/)
   expect(text).toContain('- To the host')
-  expect(text).toMatch(/States received: [\d.]+ per second/)
+  expect(text).toMatch(/Messages received: [\d.]+ per second/)
+  expect(text).toContain('Connections now:')
+  expect(text).toContain('over webrtc')
+  expect(text).toContain('- No connection test was run.')
   expect(text).toContain('t_s,peer,ping_ms')
   expect(text).toContain('### Log')
   expect(text).toMatch(/\[qr\] joined as player \d/)
@@ -92,9 +96,30 @@ test('one report holds the connection, second by second, and the log', async ({ 
   expect(await guest.evaluate(() => navigator.clipboard.readText())).toBe(text)
   await guest.getByRole('button', { name: 'Cancel' }).click()
 
-  // The host's report has a line for the player.
+  // The host's connection: the player's, with its addresses hidden until shown.
   await host.locator('button.net').click()
+  const view = host.locator('.modal .connection-view')
+  await expect(view.locator('section.connection')).toHaveCount(1)
+  await expect(view).toContainText('Wi-Fi (WebRTC)')
+  await view.getByText('Addresses, protocol and packets').click()
+  await expect(view.locator('.address').first()).toHaveClass(/masked/)
+  await host.getByRole('button', { name: 'Show addresses' }).click()
+  await expect(view.locator('.address').first()).not.toHaveClass(/masked/)
+  await expect(view.locator('.address').first()).not.toContainText('•')
+
+  // The host tests the connection: both phones hear how it went.
+  await host.getByRole('button', { name: 'Test connections' }).click()
+  await expect(guest.locator('.toast')).toContainText('testing the connection')
+  await expect(view.locator('.connection-test')).toContainText(/From the host\s*[\d.]+ kB\/s/, {
+    timeout: 15_000,
+  })
+  await guest.locator('button.net').click()
+  await expect(guest.locator('.modal .connection-test')).toContainText(/Ping under load\s*\d+ ms/)
+
+  // The host's report has a line for the player, and the test.
+  await host.locator('.modal').getByRole('button', { name: 'Debug report' }).click()
   await expect(host.locator('.modal textarea.report')).toHaveValue(/- To player \d/)
+  await expect(host.locator('.modal textarea.report')).toHaveValue(/ {2}- player \d: ping \d+ ms/)
 })
 
 test('players say they are ready, or only watch, and the host sees it', async ({ browser }) => {

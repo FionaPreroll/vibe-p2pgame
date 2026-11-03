@@ -1,10 +1,19 @@
-import { cleanName, inRange, isId, isNumber, isObject, type Parse } from '../channel.ts'
+import {
+  cleanName,
+  inRange,
+  isId,
+  isNumber,
+  isObject,
+  MAX_MESSAGE_LENGTH,
+  type Parse,
+} from '../channel.ts'
+import { type ConnectionTest, MAX_TEST_MS, parseConnectionTest } from './probe.ts'
 
 /**
  * The version of the room's own messages. A game has a version of its own besides, for its
  * input and state; a player is let in only when both match the host's.
  */
-export const ROOM_PROTOCOL = 2
+export const ROOM_PROTOCOL = 3
 
 /** The longest a round trip may honestly take to be shown, in milliseconds. */
 const MAX_PING_MS = 60_000
@@ -22,6 +31,19 @@ export type ToHost<Input, Event = never> =
   | { type: 'ping'; sent: number }
   /** On `control`, now and then: one of the game's events, such as a move, which must arrive. */
   | { type: 'event'; data: Event }
+  /** On `fast`, during a connection test: data to measure how much gets through. */
+  | { type: 'probe'; test: number; pad: string }
+  /** On `fast`, during a connection test: the answer to the host's probe `seq`, at once. */
+  | { type: 'echo'; test: number; seq: number }
+  /** On `control`, as a connection test ends: what the player sent and received in it. */
+  | {
+      type: 'tested'
+      test: number
+      sent: number
+      sentChars: number
+      received: number
+      receivedChars: number
+    }
 
 /** Messages the host sends to a player's phone. */
 export type ToGuest<State, Event = never> =
@@ -38,6 +60,15 @@ export type ToGuest<State, Event = never> =
   | { type: 'pong'; sent: number }
   /** On `control`, now and then: one of the game's events, which must arrive. */
   | { type: 'event'; data: Event }
+  /** On `control`: a connection test of `ms` milliseconds begins. */
+  | { type: 'test'; test: number; ms: number }
+  /**
+   * On `fast`, during a connection test: data to measure how much gets through, or, with a
+   * `seq`, a ping for the player to answer at once.
+   */
+  | { type: 'probe'; test: number; seq: number | null; pad: string }
+  /** On `control`, once a connection test is over: how it went. */
+  | { type: 'tested'; test: number; result: ConnectionTest }
 
 /** Takes no event at all: for games without events. */
 const noEvents: Parse<never> = () => undefined
@@ -73,6 +104,29 @@ export function hostParser<Input, Event = never>(
         const data = parseEvent(value.data)
         return data === undefined ? undefined : { type: 'event', data }
       }
+      case 'probe':
+        return isId(value.test) && isPad(value.pad)
+          ? { type: 'probe', test: value.test, pad: value.pad }
+          : undefined
+      case 'echo':
+        return isId(value.test) && isId(value.seq)
+          ? { type: 'echo', test: value.test, seq: value.seq }
+          : undefined
+      case 'tested':
+        return isId(value.test) &&
+          isId(value.sent) &&
+          isId(value.sentChars) &&
+          isId(value.received) &&
+          isId(value.receivedChars)
+          ? {
+              type: 'tested',
+              test: value.test,
+              sent: value.sent,
+              sentChars: value.sentChars,
+              received: value.received,
+              receivedChars: value.receivedChars,
+            }
+          : undefined
       default:
         return undefined
     }
@@ -117,10 +171,27 @@ export function guestParser<State, Event = never>(
         const data = parseEvent(value.data)
         return data === undefined ? undefined : { type: 'event', data }
       }
+      case 'test':
+        return isId(value.test) && inRange(value.ms, 0, MAX_TEST_MS)
+          ? { type: 'test', test: value.test, ms: value.ms }
+          : undefined
+      case 'probe':
+        return isId(value.test) && (value.seq === null || isId(value.seq)) && isPad(value.pad)
+          ? { type: 'probe', test: value.test, seq: value.seq, pad: value.pad }
+          : undefined
+      case 'tested': {
+        const result = parseConnectionTest(value.result)
+        return isId(value.test) && result ? { type: 'tested', test: value.test, result } : undefined
+      }
       default:
         return undefined
     }
   }
+}
+
+/** A connection test's filler: any text, as only its length counts. */
+function isPad(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= MAX_MESSAGE_LENGTH
 }
 
 /** A player token as browsers make them: random letters, digits and dashes. */

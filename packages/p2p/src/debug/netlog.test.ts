@@ -6,7 +6,7 @@ import {
   REPORT_SAMPLES,
   STALL_MS,
   samplesCsv,
-} from './netlog'
+} from './netlog.ts'
 
 const reading = (
   ping: number | null,

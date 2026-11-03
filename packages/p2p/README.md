@@ -172,6 +172,26 @@ room.traffic(id) // { sent, sentChars, received, receivedChars } for one player
 
 The counts run from when the player got in, over both channels; `receivedChars` also counts messages dropped as malformed. Read them now and then, say once a second, and take the differences for rates. A ping counts as lost once it has gone unanswered for `PING_LOST_MS` (3 seconds); answers to pings the player never sent, or sent and gave up on, are ignored, and do not change `ping()` either.
 
+Every room also samples its connections once a second by itself, into a `NetLog` (`room.net`, `guest.net`, from `@fionapreroll/p2p/debug`): the ping, messages and kilobytes per second each way, the share of pings lost, and the longest wait for a message. `netNote` in the options takes a line for the game's log when a connection stalls for half a second (`STALL_MS`) and when it recovers.
+
+```ts
+import { connectionView, DebugLog, drawNetGraph, networkLines } from '@fionapreroll/p2p/debug'
+
+drawNetGraph(canvas, room.net, performance.now(), 30) // the last half minute, a line a player
+networkLines(room.net) // a summary of every connection and its samples as CSV, for a report
+
+await room.details(id) // what the transport tells: see below
+await guest.details()
+```
+
+**What a connection tells about itself:** `Connection.details()`, and the rooms' `details`, give a `ConnectionDetails`: what carries it (`webrtc`, `bluetooth`, `memory`), both ends of the path in use with address, port, protocol (`udp`, `tcp`), kind of candidate and network, every address offered, the transport's own round trip, what it could send, its packets and bytes, its encryption and its channels. WebRTC reads them from `getStats()` (`rtcDetails`), a packet connection from its transport's `details` and its own counts. Addresses are on the screen only: show them with `maskAddress` until the player asks, and put only `addressKind` into a report, as `detailsLines` does.
+
+**A connection test:** `room.testConnections(ms)` (5 seconds by default, 10 at most) has the host and every player send each other as much data as their connections take, on `fast` beside the game, while the host pings each player ten times a second. It resolves with each player's `ConnectionTest`: the ping under load (min, median, max), the share of pings lost, and the kilobytes a second that got through each way, with the share of data that did not. Players take part by themselves, hear of it with `guest.onTestStart`, and get their own result with `guest.onTestResult`; `lastTest()` on both sides keeps the last. Over WebRTC, the data goes out as long as the channel's buffer has room, up to about 2 MB a second each way; over transports without a buffer to read, one message of 8 kB a tick.
+
+**The connection view:** `connectionView({ texts, net, connections, test, lastTest })` builds all of it into one element for a game's dialog: the graph of the last minute, every connection's numbers and details, a button that shows the addresses, masked until then, and on the host's phone the button for the test, with the last test's results. It reads anew every second until `stop()`. The game brings the texts and the look.
+
+**A log for debug reports:** `new DebugLog()` keeps the last 300 lines, each with the seconds since it began and an area, and masks what must not leave the phone as it goes in: codes, IP and MAC addresses, mDNS names and tokens (`redact`). `describeError` makes any error a short line, and `captureErrors()` logs those nobody caught.
+
 ### Other transports, such as Bluetooth
 
 Rooms work on any `Connection`: WebRTC is one, and `packetConnection` makes one from any transport that carries text messages. The transport sends each message with its channel, and hands what arrives to `receive`; the connection checks it.
@@ -202,8 +222,9 @@ For Bluetooth in Android apps made with Capacitor, [`@fionapreroll/p2p-nearby`](
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@fionapreroll/p2p`         | `pack`, `unpack`, `fromSdp`, `toSdp`: codes. `createOffer`, `answerOffer`, `acceptAnswer`, `opened`, `onLost`: connections. `send`, `listen`, `decode`, `cleanName` and checks (`isObject`, `isNumber`, `isId`, `inRange`, `list`, `clamp`) for writing parsers. |
 | `@fionapreroll/p2p/room`    | `HostRoom`, `GuestRoom`, `Seats`, `randomToken`, `ROOM_PROTOCOL`, `PING_LOST_MS`, `MAX_EVENTS_PER_SECOND`, the room's messages and their parsers.                                                                                                                |
+| `@fionapreroll/p2p/debug`   | `NetLog`, `networkLines`, `detailsLines`, `testLines`, `drawNetGraph`, `pingQuality`, `worstLatest`, `connectionView`, `DebugLog`, `redact`, `describeError`. The graph and the view need a DOM.                                                                 |
 | `@fionapreroll/p2p/qr`      | `qrSvg`, `qrElement`, `startScanner`, `cameraIds`, `decodePhoto`, `cameraView`, `parseCameraChoice`. Needs a DOM.                                                                                                                                                |
-| `@fionapreroll/p2p/testing` | `linkPair()`: two connections in memory, with `dropping` to lose messages and `close()` and `fail()` to end them.                                                                                                                                                |
+| `@fionapreroll/p2p/testing` | `linkPair()`: two connections in memory, with `conditions` to lose, delay and reorder messages by seed, `dropping` to lose them all, and `close()` and `fail()` to end them.                                                                                     |
 
 ## Security
 
@@ -236,9 +257,11 @@ const guest = await GuestRoom.join(pair.guest.link, {
 
 With fake timers (`vi.useFakeTimers` in Vitest, faking `performance` too), a whole game runs in milliseconds.
 
+**Over a weak connection,** as on a hotspot at the edge of its range: `linkPair({ conditions: { loss: 0.3, delayMs: [20, 200], seed } })` loses 30 % of the `fast` messages each way, delays every message by 20 to 200 ms, so `fast` ones overtake each other, and keeps `control` lossless and in order, only late, as a reliable channel would. The same seed loses the same messages, so a failing test fails every time; fast-check can pick the seeds. Each channel's `conditions` can also be changed on its own during a test, and `lost` counts what it lost. With delays, advance the timers while joining: hello and welcome take their time too.
+
 ## Versions
 
-The package follows [Semantic Versioning](https://semver.org/); changes are listed in `CHANGELOG.md`. `ROOM_PROTOCOL` is the version of the room's own messages: phones with different ones do not play together, whatever the game's version.
+The package follows [Semantic Versioning](https://semver.org/); changes are listed in `CHANGELOG.md`. `ROOM_PROTOCOL` is the version of the room's own messages, 3 since 0.6.0: phones with different ones do not play together, whatever the game's version.
 
 ## License
 

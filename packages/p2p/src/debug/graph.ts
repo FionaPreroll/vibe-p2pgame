@@ -1,5 +1,16 @@
-import { playerColor } from '../game/draw'
-import { type NetLog, type NetSample, STALL_MS } from '../net/netlog'
+import { type NetLog, type NetSample, STALL_MS } from './netlog.ts'
+
+/** How the graph looks: `drawNetGraph` takes any of these. */
+export interface NetGraphOptions {
+  /** Adds the scale, for a large graph: the top in ms, 0, and the time from the left to now. */
+  readonly axes?: boolean
+  /** The line of each connection, by the other phone's player id. Default a warm yellow. */
+  readonly color?: (peer: number) => string
+  /** The mark of a second with a stall or lost pings. */
+  readonly stallColor?: string
+  /** The text at the right end of the time axis. Default `0 s`, as the game brings its words. */
+  readonly nowLabel?: string
+}
 
 /** How a ping reads: under 60 ms players feel nothing, over 150 ms they do. */
 export function pingQuality(
@@ -30,17 +41,23 @@ export function worstLatest(log: NetLog, now: number): NetSample | null {
 }
 
 /**
- * Draws the ping of every connection over the last `seconds`, one line per connection in the
- * player's colour, and a red mark below for every second with a stall or lost pings. `axes`
- * adds the scale, for the large graph.
+ * Draws the ping of every connection over the last `seconds` up to `now` (as
+ * `performance.now()`), one line per connection, with faint lines at 60 and 150 ms, and a mark
+ * below for every second with a stall or lost pings.
  */
 export function drawNetGraph(
   canvas: HTMLCanvasElement,
   log: NetLog,
   now: number,
   seconds: number,
-  axes = false,
+  options: NetGraphOptions = {},
 ): void {
+  const {
+    axes = false,
+    color = () => '#ffc400',
+    stallColor = '#ff5470',
+    nowLabel = '0 s',
+  } = options
   const ratio = globalThis.devicePixelRatio || 1
   const width = Math.max(1, Math.round(canvas.clientWidth * ratio))
   const height = Math.max(1, Math.round(canvas.clientHeight * ratio))
@@ -76,7 +93,7 @@ export function drawNetGraph(
     c.textBaseline = 'bottom'
     c.fillText(`−${seconds} s`, left, height)
     c.textAlign = 'right'
-    c.fillText('now', width, height)
+    c.fillText(nowLabel, width, height)
   }
   // 60 ms and 150 ms: where players start to feel it, and where it hurts.
   c.strokeStyle = 'rgba(255,255,255,0.12)'
@@ -90,7 +107,7 @@ export function drawNetGraph(
   c.stroke()
 
   for (const peer of new Set(recent.map((s) => s.peer))) {
-    c.strokeStyle = log.self === 0 ? playerColor(peer) : '#ffc400'
+    c.strokeStyle = color(peer)
     c.lineWidth = 1.5 * ratio
     c.beginPath()
     let drawing = false
@@ -108,7 +125,7 @@ export function drawNetGraph(
     c.stroke()
   }
 
-  c.fillStyle = '#ff5470'
+  c.fillStyle = stallColor
   const barWidth = Math.max(ratio, (width - left) / seconds - ratio)
   for (const sample of recent) {
     if (sample.gap >= STALL_MS || (sample.loss ?? 0) > 0) {

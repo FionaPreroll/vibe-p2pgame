@@ -4,9 +4,16 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- Connection details: tapping the connection graph shows, for every connection, the ping, pings lost, stalls, messages and data each way, what connects the phones (Wi-Fi or Bluetooth), the addresses and protocols on both ends, the packets and bytes the connection carried, and its encryption. Addresses stay hidden until you tap _Show addresses_.
+- A connection test: in the connection details, the host taps _Test connections_, and for five seconds the phones send each other as much as their connections take. Everyone then sees the ping under load and how many kilobytes a second got through each way. The debug report holds the last test.
+
 ### Changed
 
 - Phones with this version and phones with 0.2.0 cannot play together: update both.
+- The connection graph opens the connection details, with a button to the debug report. The debug report also tells what kind of connection each player has, without addresses.
+- The privacy policy says what a connection test sends, and that the connection details show addresses on your screen only.
 
 ### Fixed
 

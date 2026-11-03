@@ -1,8 +1,9 @@
+import { drawNetGraph } from '@fionapreroll/p2p/debug'
+import { playerColor } from '../game/draw'
 import { t } from '../i18n'
-import { latestNetLog } from '../net/netlog'
+import { latestNet } from '../net/netlog'
 import { debugReport, issueLink, reportSources } from '../report'
 import { cancelOnBack, h } from './dom'
-import { drawNetGraph } from './netGraph'
 
 /**
  * Shows the debug report, to read, copy, download or send: nothing leaves the phone by itself.
@@ -21,7 +22,7 @@ export async function reportDialog(): Promise<void> {
   })
   const note = h('p', { class: 'muted' })
   const close = h('button', { type: 'button', textContent: t('cancel') })
-  const net = latestNetLog()
+  const net = latestNet()?.net ?? null
   const graph = h('canvas', { class: 'net-graph large' })
   const card = h(
     'div',
@@ -45,13 +46,11 @@ export async function reportDialog(): Promise<void> {
     // The canvas has its size only once it is on the page; the minute up to the last sample.
     const last = net.samples.at(-1)
     const now = performance.now()
-    drawNetGraph(
-      graph,
-      net,
-      last ? Math.min(now, net.startedAt + last.t * 1000 + 1000) : now,
-      60,
-      true,
-    )
+    drawNetGraph(graph, net, last ? Math.min(now, net.startedAt + last.t * 1000 + 1000) : now, 60, {
+      axes: true,
+      color: netColor(net.self),
+      nowLabel: t('now'),
+    })
   }
   text.value = '…'
   const report = await debugReport(await reportSources())
@@ -74,4 +73,9 @@ export async function reportDialog(): Promise<void> {
     void toClipboard()
     note.textContent = t('debugCopiedForIssue')
   }
+}
+
+/** The line of each connection: the player's colour on the host's phone, the host's otherwise. */
+export function netColor(self: number): (peer: number) => string {
+  return (peer) => (self === 0 ? playerColor(peer) : '#ffc400')
 }

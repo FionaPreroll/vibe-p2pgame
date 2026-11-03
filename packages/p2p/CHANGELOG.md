@@ -4,6 +4,19 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+### Added
+
+- `@fionapreroll/p2p/testing`: `linkPair({ conditions })` and each channel's `conditions` make a connection in memory weak, by seed: `fast` loses a share of messages, and delays and reorders them; `control` is only delayed, and keeps its order. `lost` counts what a channel lost; `seededRandom` is the generator it uses.
+- `@fionapreroll/p2p/debug`, for what helps find out why a game misbehaves on a phone: `NetLog`, the connections' samples, once a second, with their summary and CSV for a report (`networkLines`); `drawNetGraph`, `pingQuality` and `worstLatest`, the graph of the pings; `connectionView`, a ready view of every connection's numbers and details, with addresses masked until the player shows them, and the connection test; `DebugLog`, `redact` and `describeError`, a log that masks codes, addresses and tokens; `detailsLines` and `testLines` for a report.
+- Every room samples its connections by itself: `HostRoom.net` and `GuestRoom.net`, with `netNote` in the options for the log's lines about stalls.
+- `Connection.details()`, `HostRoom.details(id)` and `GuestRoom.details()`: what carries a connection, both ends with address, port, protocol and kind, every address offered, the transport's round trip, packets, bytes, encryption and channels. WebRTC reads them from `getStats()` (`rtcDetails`), packet connections from `PacketTransport.details` and their own counts. `addressKind` and `maskAddress` tell and hide what an address is.
+- `HostRoom.testConnections(ms)`: a connection test with every player at once, which measures the ping under load and the kilobytes a second each way. Players take part by themselves (`GuestRoom.onTestStart`, `onTestResult`); `lastTest()` keeps the last on both sides.
+
+### Changed
+
+- `ROOM_PROTOCOL` is 3: phones with 0.5 and earlier do not play together, as the connection test brings messages of its own.
+- `TrafficCounter.watch` takes the channels as a list, and calls back with every message.
+
 ## [0.5.0] - 2026-11-02
 
 ### Added

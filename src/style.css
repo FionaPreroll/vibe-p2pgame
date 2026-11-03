@@ -556,6 +556,57 @@ canvas.net-graph.large {
   font-size: 0.85rem;
 }
 
+/* The connection view of @fionapreroll/p2p/debug: every connection's numbers and details. */
+.connection-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.connection-view h3 {
+  margin: 0.3rem 0 0;
+  font-size: 0.95rem;
+}
+
+dl.connection-stats {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 38%) 1fr;
+  gap: 0.15rem 0.7rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+}
+
+dl.connection-stats dt {
+  color: var(--muted);
+}
+
+dl.connection-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+dl.connection-stats dt.name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.connection-transport summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.connection-view .address {
+  font-family: ui-monospace, monospace;
+}
+
+.connection-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 /* What to do next, when it is the obvious thing: adding a player to a game of one. */
 button.attention {
   animation: attention 1.6s ease-out infinite;

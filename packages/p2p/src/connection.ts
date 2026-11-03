@@ -1,4 +1,5 @@
 import type { Channel } from './channel.ts'
+import type { ConnectionDetails } from './details.ts'
 
 /**
  * A connection between a host and a player, whatever carries it: WebRTC (`createOffer`), a
@@ -22,6 +23,11 @@ export interface Connection {
    * as many as before.
    */
   readonly minStateIntervalMs?: number
+  /**
+   * What the transport tells about the connection: addresses, protocols and its own counts
+   * (see `ConnectionDetails`). Connections that cannot tell leave it out.
+   */
+  details?(): Promise<ConnectionDetails>
 }
 
 /** Resolves once the connection is open, and rejects if it closes or times out first. */

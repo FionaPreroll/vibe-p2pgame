@@ -1,5 +1,6 @@
 import { type Channel, MAX_MESSAGE_LENGTH } from './channel.ts'
 import type { Connection, ConnectionState } from './connection.ts'
+import type { ConnectionDetails } from './details.ts'
 
 /**
  * A connection over any transport that carries text messages, such as Bluetooth: the transport
@@ -12,6 +13,11 @@ export interface PacketTransport {
   send(channel: ChannelName, data: string): void
   /** Ends the transport's connection. `markClosed` follows, or is called here. */
   close(): void
+  /**
+   * What the transport tells about the connection, such as what it is (`bluetooth`) and the
+   * other end's id, for `Connection.details`; the channels' counts are added.
+   */
+  details?(): Partial<ConnectionDetails> | Promise<Partial<ConnectionDetails>>
 }
 
 export interface PacketConnection extends Connection {
@@ -25,6 +31,8 @@ export interface PacketConnection extends Connection {
   markOpen(): void
   /** The transport is gone: the channels close, for good. */
   markClosed(): void
+  /** The channels' counts, beside what the transport tells (`PacketTransport.details`). */
+  details(): Promise<ConnectionDetails>
 }
 
 export interface PacketOptions {
@@ -34,6 +42,10 @@ export interface PacketOptions {
 
 class PacketChannel implements Channel {
   private readonly events = new EventTarget()
+  messagesSent = 0
+  messagesReceived = 0
+  charsSent = 0
+  charsReceived = 0
 
   constructor(
     private readonly owner: PacketConnectionImpl,
@@ -47,6 +59,8 @@ class PacketChannel implements Channel {
 
   send(data: string): void {
     if (this.owner.state !== 'open') throw new Error(`send on a ${this.readyState} channel`)
+    this.messagesSent++
+    this.charsSent += data.length
     this.owner.transport.send(this.name, data)
   }
 
@@ -55,6 +69,8 @@ class PacketChannel implements Channel {
   }
 
   deliver(data: string): void {
+    this.messagesReceived++
+    this.charsReceived += data.length
     this.events.dispatchEvent(new MessageEvent('message', { data }))
   }
 }
@@ -102,6 +118,19 @@ class PacketConnectionImpl implements PacketConnection {
     if (this.state === 'closed') return
     this.markClosed()
     this.transport.close()
+  }
+
+  async details(): Promise<ConnectionDetails> {
+    const own = (await this.transport.details?.()) ?? {}
+    const channels = [this.control, this.fast].map((channel, i) => ({
+      label: i === 0 ? 'control' : 'fast',
+      state: channel.readyState,
+      messagesSent: channel.messagesSent,
+      messagesReceived: channel.messagesReceived,
+      bytesSent: channel.charsSent,
+      bytesReceived: channel.charsReceived,
+    }))
+    return { transport: 'packets', ...own, channels: [...channels, ...(own.channels ?? [])] }
   }
 
   private changed(): void {
