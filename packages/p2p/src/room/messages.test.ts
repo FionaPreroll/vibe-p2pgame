@@ -73,6 +73,12 @@ describe('room messages', () => {
     }
     expect(toGuest(welcome)).toEqual(welcome)
     expect(toGuest({ type: 'state', data: 'hi' })).toEqual({ type: 'state', data: 'hi' })
+    expect(toGuest({ type: 'state', data: 'hi', n: 4 })).toEqual({
+      type: 'state',
+      data: 'hi',
+      n: 4,
+    })
+    expect(toGuest({ type: 'state', data: 'hi', n: -1 })).toEqual({ type: 'state', data: 'hi' })
     for (const type of ['bye', 'full']) expect(toGuest({ type })).toEqual({ type })
   })
 

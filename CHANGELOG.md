@@ -17,6 +17,7 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- On a weak Wi-Fi, a player's screen no longer jumps back for a moment when an older update of the game arrives after a newer one.
 - A player who leaves the Bluetooth search while asking a host no longer stays in the host's list, where the host could still accept them.
 - After a Bluetooth player could not join, the host's list keeps them with the reason until the host removes them, instead of offering to accept them again.
 - A Bluetooth player the host let in whose phone never connects no longer stays on _Connecting…_ in the host's list: after 30 seconds, the list says the connection timed out.

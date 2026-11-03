@@ -12,6 +12,10 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 - `Connection.details()`, `HostRoom.details(id)` and `GuestRoom.details()`: what carries a connection, both ends with address, port, protocol and kind, every address offered, the transport's round trip, packets, bytes, encryption and channels. WebRTC reads them from `getStats()` (`rtcDetails`), packet connections from `PacketTransport.details` and their own counts. `addressKind` and `maskAddress` tell and hide what an address is.
 - `HostRoom.testConnections(ms)`: a connection test with every player at once, which measures the ping under load and the kilobytes a second each way. Players take part by themselves (`GuestRoom.onTestStart`, `onTestResult`); `lastTest()` keeps the last on both sides.
 
+### Fixed
+
+- A player's room no longer goes back to an older state that arrived after a newer one, as `fast` may reorder: the host numbers its states, and `GuestRoom` skips those older than the one it has. Found by the new tests over weak connections.
+
 ### Changed
 
 - `ROOM_PROTOCOL` is 3: phones with 0.5 and earlier do not play together, as the connection test brings messages of its own.

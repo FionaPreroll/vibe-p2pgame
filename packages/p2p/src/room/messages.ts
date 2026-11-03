@@ -55,8 +55,11 @@ export type ToGuest<State, Event = never> =
   | { type: 'bye' }
   /** On `control`, when the host has no room left. */
   | { type: 'full' }
-  /** On `fast`, many times a second: the game's state. */
-  | { type: 'state'; data: State }
+  /**
+   * On `fast`, many times a second: the game's state, numbered by the host's tick, so a player
+   * can tell an old state that arrives after a newer one, as `fast` may reorder.
+   */
+  | { type: 'state'; data: State; n?: number }
   | { type: 'pong'; sent: number }
   /** On `control`, now and then: one of the game's events, which must arrive. */
   | { type: 'event'; data: Event }
@@ -163,7 +166,8 @@ export function guestParser<State, Event = never>(
         return { type: 'full' }
       case 'state': {
         const data = parseState(value.data)
-        return data === undefined ? undefined : { type: 'state', data }
+        if (data === undefined) return undefined
+        return isId(value.n) ? { type: 'state', data, n: value.n } : { type: 'state', data }
       }
       case 'pong':
         return isNumber(value.sent) ? { type: 'pong', sent: value.sent } : undefined
