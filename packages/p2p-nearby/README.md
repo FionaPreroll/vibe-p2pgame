@@ -1,6 +1,6 @@
 # @fionapreroll/p2p-nearby
 
-Bluetooth for [`@fionapreroll/p2p`](../p2p/README.md) in Android apps made with [Capacitor](https://capacitorjs.com/): phones find each other nearby and connect without any Wi-Fi, through Google's Nearby Connections. Every connection is a `Connection` of the library, so rooms play over it as over WebRTC, and one room can mix both.
+Bluetooth for [`@fionapreroll/p2p`](../p2p/README.md) in Android apps made with [Capacitor](https://capacitorjs.com/): phones find each other nearby and connect without any Wi-Fi, through Google's Nearby Connections. Every connection is a `Connection` of the library, so rooms play over it as over WebRTC, and one room can mix both. A connection's `details()` say it is carried by `bluetooth` and name the other phone by Nearby's endpoint id, new with every start; Bluetooth addresses stay hidden from apps.
 
 - **The host advertises** its game under the host's name; **players look** for games nearby and ask one to let them in.
 - **Both phones show the same code**, and the host accepts a player only after comparing it, so nobody nearby slips in.

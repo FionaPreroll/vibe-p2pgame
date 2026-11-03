@@ -1,6 +1,7 @@
+import { NetLog } from '@fionapreroll/p2p/debug'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearLog, log } from './log'
-import { startNetLog } from './net/netlog'
+import { rememberNet } from './net/netlog'
 import { debugReport, issueLink, type ReportSources } from './report'
 import { forgetSettings, updateSettings } from './settings'
 
@@ -52,7 +53,7 @@ describe('the debug report', () => {
     expect(report).toContain('- Created: 2026-10-31T12:00:00.000Z')
     expect(report).toContain('- Running as: website in a browser')
     expect(report).toMatch(/- Version: \d+\.\d+\.\d+\n- Web build: \S+, built /)
-    expect(report).toContain('- Protocols: game 4, room 2')
+    expect(report).toContain('- Protocols: game 4, room 3')
     expect(report).toContain('TestBrowser')
     expect(report).toContain('- Online: no')
     expect(report).toContain('WebRTC yes, camera yes, QR detector no')
@@ -65,7 +66,7 @@ describe('the debug report', () => {
   })
 
   it('carries the network of the last game, summed up and second by second, before the log', async () => {
-    const net = startNetLog(2, 0)
+    const net = new NetLog(2, 0)
     const traffic = (n: number) => ({
       sent: n,
       sentChars: n * 40,
@@ -76,11 +77,31 @@ describe('the debug report', () => {
     })
     net.sample(0, 0, { ping: null, traffic: traffic(0) })
     net.sample(0, 1000, { ping: 23, traffic: traffic(30) })
+    rememberNet({
+      net,
+      peers: () => [0],
+      details: async () => ({
+        transport: 'webrtc',
+        local: { address: '192.168.43.12', protocol: 'udp', type: 'host' },
+        remote: { address: '192.168.43.1', protocol: 'udp', type: 'host' },
+      }),
+      lastTest: () => ({
+        ms: 5000,
+        ping: { min: 9, median: 12, max: 40 },
+        pingLoss: 0,
+        down: { kbPerSecond: 900, loss: 0.05 },
+        up: { kbPerSecond: 700, loss: 0 },
+      }),
+    })
     const report = await debugReport({ now: new Date(), app: false, browser })
     expect(report).toContain('### Network, last game')
     expect(report).toContain('median 23 ms')
     expect(report).toContain('t_s,peer,ping_ms')
     expect(report).toContain('\n1,0,23,')
+    // The kind of each end, never the address; and the last connection test.
+    expect(report).toContain('This phone: ipv4-local host udp; the other: ipv4-local host udp')
+    expect(report).not.toContain('192.168')
+    expect(report).toContain('- Over 5 s: ping 12 ms (9–40), 0% lost; down 900 kB/s')
     expect(report.indexOf('### Network')).toBeLessThan(report.indexOf('### Log'))
   })
 

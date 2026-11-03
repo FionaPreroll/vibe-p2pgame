@@ -14,6 +14,7 @@
     ".": "./src/index.ts",
     "./room": "./src/room/index.ts",
     "./qr": "./src/qr/index.ts",
+    "./debug": "./src/debug/index.ts",
     "./testing": "./src/testing.ts"
   },
   "publishConfig": {
@@ -30,6 +31,10 @@
       "./qr": {
         "types": "./dist/qr/index.d.ts",
         "default": "./dist/qr/index.js"
+      },
+      "./debug": {
+        "types": "./dist/debug/index.d.ts",
+        "default": "./dist/debug/index.js"
       },
       "./testing": {
         "types": "./dist/testing.d.ts",

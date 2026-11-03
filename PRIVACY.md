@@ -30,6 +30,7 @@ You play with phones you pair with yourself, and they exchange data directly, wi
 - **While pairing by QR code,** the codes on the screens carry what the phones need to connect: their addresses in the local network, and keys for the encrypted connection. Only phones that scan a code, or are given it as text, can use it. In a join link, the code follows the `#`, which browsers do not send to the website's server.
 - **While pairing by Bluetooth,** in the app, your name is visible to phones nearby that look for or offer games in Spark Hunt, and both phones show a four-digit code to compare.
 - **During a game,** every player sees every player's name, colour, position, score and ping. The host receives where you steer, whether you are ready or watching, and your token; the token never goes to other players.
+- **During a connection test,** which the host starts, the phones send each other filler data for a few seconds, to measure the connection; each player sees how their own connection did.
 
 The connection is encrypted. A player who quits keeps the names and scores they saw on their screen.
 
@@ -50,7 +51,7 @@ The connection is encrypted. A player who quits keeps the names and scores they 
 
 ## Debug reports
 
-A debug report is made only when you ask for one, and you read it before it goes anywhere. It holds your phone's model and Android version, the browser, the game's versions, what the phone can do, your settings without your name, how well the connections of the last game kept up, and the recent log. It holds no names, tokens, codes or addresses. It reaches the developer only if you send it: by copying it into a message, or as an issue on GitHub, where it is public.
+A debug report is made only when you ask for one, and you read it before it goes anywhere. It holds your phone's model and Android version, the browser, the game's versions, what the phone can do, your settings without your name, how well the connections of the last game kept up, the last connection test, and the recent log. It holds no names, tokens, codes or addresses. The connection details, from the connection graph, show your phone's address and those of the phones you play with on your own screen only, hidden until you tap _Show addresses_. It reaches the developer only if you send it: by copying it into a message, or as an issue on GitHub, where it is public.
 
 ## Mail
 

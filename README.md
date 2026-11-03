@@ -26,7 +26,7 @@ The networking is a library of its own, for other games to use too, Bluetooth fo
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="docs/screenshots/results.png" alt="After a round: who caught what" width="100%"><br><sub>After a round: who caught what</sub></td>
-    <td valign="top" width="25%"><img src="docs/screenshots/report.png" alt="The debug report, with the pings of the last minute" width="100%"><br><sub>The debug report, with the pings of the last minute</sub></td>
+    <td valign="top" width="25%"><img src="docs/screenshots/connection.png" alt="The connection details, after a connection test" width="100%"><br><sub>The connection details, after a connection test</sub></td>
     <td valign="top" width="25%"><img src="docs/screenshots/settings.png" alt="Keys and controller buttons, changeable" width="100%"><br><sub>Keys and controller buttons, changeable</sub></td>
     <td valign="top" width="25%"><img src="docs/screenshots/home-de.png" alt="Auf Deutsch" width="100%"><br><sub>Auf Deutsch</sub></td>
   </tr>
@@ -86,7 +86,13 @@ Keys, the stick and the joystick steer a little ahead of the dot, and letting go
 
 In the top line, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
 
-Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message; the log notes when a connection stalls and when it recovers. All of it goes into the **debug report**, beside the log: tapping the graph, **Debug report** between rounds or after losing the host, or _Create debug report_ in the settings shows a larger graph of the last minute and the report, with a summary of every connection and its samples, to copy, download or send. It names players by their numbers only.
+Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message; the log notes when a connection stalls and when it recovers.
+
+**Tapping the graph** shows the connection details: a larger graph of the last minute, and for every connection the ping, pings lost, stalls, messages and data each way, what connects the phones (Wi-Fi by WebRTC, or Bluetooth), both ends of the connection with their kind of address, protocol and network, the packets and bytes the connection carried, its own round trip and encryption, and its channels. Addresses show as `•••.•••.•••.•••` until _Show addresses_, so a screenshot does not give them away.
+
+**The connection test:** in the connection details, the host taps _Test connections_. For five seconds, the host and every player send each other as much data as their connections take, beside the game, and the host pings each player ten times a second. Then everyone sees the ping under load, the pings lost, and how many kilobytes a second got through each way.
+
+All of it goes into the **debug report**, beside the log: **Debug report** in the connection details, between rounds or after losing the host, or _Create debug report_ in the settings shows the larger graph and the report, with a summary of every connection and its samples, the kind of each connection's ends (never the addresses) and the last connection test, to copy, download or send. It names players by their numbers only.
 
 ### Dropping out and coming back
 
@@ -199,14 +205,16 @@ packages/p2p-nearby/   the library @fionapreroll/p2p-nearby: Bluetooth through N
 packages/p2p/   the library @fionapreroll/p2p, with its own README and CHANGELOG
   src/          signal.ts: codes; link.ts: WebRTC; connection.ts: connections of any kind;
                 packet.ts: connections over message transports; channel.ts: messages and checks;
-                room/: HostRoom, GuestRoom, Seats; qr/: QR codes and the camera;
-                testing.ts: connections in memory, for tests
+                details.ts: what a connection tells about itself; room/: HostRoom, GuestRoom, Seats,
+                probe.ts: the connection test; qr/: QR codes and the camera; debug/: the log,
+                NetLog, the graph and the connection view; testing.ts: connections in memory,
+                lossy and late by seed, for tests
 src/
   game/         sim.ts: the rules, pure and tested; draw.ts: the canvas
-  net/          protocol.ts: Spark Hunt's input and snapshots, checked; netlog.ts: the network log
+  net/          protocol.ts: Spark Hunt's input and snapshots, checked; netlog.ts: the last game's connections, for the report
   session/      host.ts and guest.ts: Spark Hunt on the library's rooms; saved.ts: what a host keeps
   ui/           the screens, plain DOM without a framework; scanPanel.ts: the camera view, built on the library's `cameraView`;
-                joystick.ts; netGraph.ts and netReport.ts: the connection's graph and report
+                joystick.ts; connection.ts: the connection details, built on the library's `connectionView`; report.ts: the debug report
   input.ts      keys and game controllers, and their bindings
   markdown.ts   reads the changelog and the privacy policy for the game (ui/markdownView.ts)
   native.ts     what the Android app adds: Google's scanner
@@ -239,7 +247,7 @@ pnpm check
 
 `pnpm check` runs the type check, Biome and the unit tests of the game and the library:
 
-- `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds. `packages/p2p-nearby/src/nearby.test.ts` plays Bluetooth between fake phones (`NearbyAir` from that library's `testing` entry point), against a misbehaving native side too, and `src/bluetooth.test.ts` plays Spark Hunt over it.
+- `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/room/loss.test.ts` plays them over weak connections, which lose, delay and reorder messages by seed (`linkPair({ conditions })`), and `probe.test.ts` runs connection tests. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds. `packages/p2p-nearby/src/nearby.test.ts` plays Bluetooth between fake phones (`NearbyAir` from that library's `testing` entry point), against a misbehaving native side too, and `src/bluetooth.test.ts` plays Spark Hunt over it.
 - `src/bluetooth.test.ts` plays Spark Hunt over Bluetooth against a fake Nearby: several fake phones that advertise, ask, answer and carry messages between them, and native events that misbehave.
 - Screens that only the app shows run in [happy-dom](https://github.com/capricorn86/happy-dom) (`// @vitest-environment happy-dom` at a file's top), against fakes of the native side: `packages/app-updates/src/dialog.test.ts` plays the update dialog through with the library's `FakeUpdater` (size, mobile data, progress, pause and resume, permission, the installer's answers or silence), and `src/ui/bluetoothUi.test.ts` the host's dialog and the player's screen on the fake Nearby. `packages/p2p/src/link.test.ts` checks the WebRTC side with a stand-in `RTCPeerConnection`: the channels' settings, the state, and gathering that never ends.
 - `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the codes, the room's messages, the game's parsers and rules, and hosts and players under random hostile traffic. They play the attacks a phone can make once it reaches the game, over Wi-Fi or Bluetooth:

@@ -2,6 +2,7 @@ import { ROOM_PROTOCOL } from '@fionapreroll/p2p/room'
 import { linkPair } from '@fionapreroll/p2p/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ARENA, MAX_PLAYERS, PLAYER_RADIUS } from '../game/sim'
+import { latestNet } from '../net/netlog'
 import { PROTOCOL, parseSnapshot } from '../net/protocol'
 import { ANSWER_WAIT_MS, GuestSession } from './guest'
 import { HostSession } from './host'
@@ -61,6 +62,32 @@ function player(host: HostSession, id: number) {
 }
 
 describe('Spark Hunt between phones', () => {
+  it('keeps the room’s samples, details and connection tests for the screens and the report', async () => {
+    const host = new HostSession('Hosty')
+    const { guest } = await join(host)
+    expect(latestNet()).toBe(guest)
+    const results: unknown[] = []
+    let started = 0
+    guest.onTestStart = () => started++
+    guest.onTestResult = (result) => results.push(result)
+    await later(3000)
+    expect(host.net.peerIds()).toEqual([1])
+    expect(guest.net.peerIds()).toEqual([0])
+    expect(host.peers()).toEqual([1])
+    expect(guest.peers()).toEqual([0])
+    expect(await host.details(1)).toMatchObject({ transport: 'memory' })
+    expect(await guest.details()).toMatchObject({ transport: 'memory' })
+    expect(host.lastTest()).toBeNull()
+    const run = host.testConnections()
+    await later(9000)
+    expect((await run).players[0]?.result?.down.kbPerSecond).toBeGreaterThan(0)
+    expect(started).toBe(1)
+    expect(results).toEqual([(await run).players[0]?.result])
+    expect(guest.lastTest()).toEqual(results[0])
+    expect(host.lastTest()).toBe(await run)
+    host.close()
+  })
+
   it('moves a player where they steer, on every phone, and shows their ping', async () => {
     const host = new HostSession('Hosty')
     const { guest } = await join(host)

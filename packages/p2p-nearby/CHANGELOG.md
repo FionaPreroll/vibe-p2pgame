@@ -4,6 +4,14 @@ All notable changes to `@fionapreroll/p2p-nearby` are listed here. The format fo
 
 ## [Unreleased]
 
+### Added
+
+- Connections tell their details (`Connection.details()` of `@fionapreroll/p2p` 0.6): carried by `bluetooth`, with the other phone named by Nearby's endpoint id, as Bluetooth addresses stay hidden from apps.
+
+### Changed
+
+- Works with `@fionapreroll/p2p` 0.6 too.
+
 ## [0.2.1] - 2026-11-03
 
 ### Fixed

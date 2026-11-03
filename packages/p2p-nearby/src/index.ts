@@ -335,6 +335,12 @@ export class Nearby {
           this.links.delete(endpointId)
           void this.plugin.disconnect({ endpointId }).catch(() => {})
         },
+        // Nearby names the other phone by an id of its own, new with every start; Bluetooth
+        // addresses stay hidden, also from the app.
+        details: () => ({
+          transport: 'bluetooth',
+          remote: { address: endpointId, type: 'nearby' },
+        }),
       },
       { minStateIntervalMs },
     )

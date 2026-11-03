@@ -1,5 +1,12 @@
-import type { Connection } from '@fionapreroll/p2p'
-import { HOST_ID, HostRoom, type Joined, type Pairing } from '@fionapreroll/p2p/room'
+import type { Connection, ConnectionDetails } from '@fionapreroll/p2p'
+import { type NetLog, SAMPLE_MS } from '@fionapreroll/p2p/debug'
+import {
+  type ConnectionTestRun,
+  HOST_ID,
+  HostRoom,
+  type Joined,
+  type Pairing,
+} from '@fionapreroll/p2p/room'
 import {
   addPlayer,
   allReady,
@@ -15,7 +22,7 @@ import {
   type World,
 } from '../game/sim'
 import { log } from '../log'
-import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
+import { rememberNet } from '../net/netlog'
 import { type PlayerInput, PROTOCOL, parseInput } from '../net/protocol'
 import { forgetHostedGame, type HostedGame, saveHostedGame } from './saved'
 import type { Session } from './session'
@@ -57,7 +64,6 @@ export class HostSession implements Session {
   /** Players who only watch, with their names and scores, for when they play again. */
   private readonly watchers = new Map<number, { name: string; score: number }>()
   private readonly stallWarnings = new Map<number, number>()
-  readonly net: NetLog = startNetLog(HOST_ID, performance.now(), (line) => log('net', line))
   private lastSave = 0
   private lastSample = performance.now()
   private readonly onPageHide = () => this.save()
@@ -76,7 +82,9 @@ export class HostSession implements Session {
             seats: saved.players.map(({ token, id, name }) => ({ token, id, name })),
           }
         : undefined,
+      netNote: (line) => log('net', line),
     })
+    rememberNet(this)
     this.room.onJoin = (player) => {
       addPlayer(this.world, player.id, player.name).score = this.awayScores.get(player.id) ?? 0
       this.awayScores.delete(player.id)
@@ -87,14 +95,10 @@ export class HostSession implements Session {
       this.watchers.delete(player.id)
       this.targets.delete(player.id)
       removePlayer(this.world, player.id)
-      this.net.forget(player.id)
       this.save()
       if (reason === 'lost') this.onLeave(player.name)
     }
-    this.room.onInput = (player, input) => {
-      this.net.arrived(player.id, performance.now())
-      this.input(player.id, player.name, input)
-    }
+    this.room.onInput = (player, input) => this.input(player.id, player.name, input)
     this.room.onTick = (dt) => this.tick(dt)
     globalThis.addEventListener?.('pagehide', this.onPageHide)
     this.save()
@@ -102,6 +106,35 @@ export class HostSession implements Session {
 
   selfId(): number {
     return HOST_ID
+  }
+
+  /** How well the connection to every player keeps up, as the room samples it. */
+  get net(): NetLog {
+    return this.room.net
+  }
+
+  peers(): number[] {
+    return this.room.players().map((p) => p.id)
+  }
+
+  details(peer: number): Promise<ConnectionDetails | null> {
+    return this.room.details(peer)
+  }
+
+  /** Tests every player's connection for five seconds, beside the game. */
+  testConnections(): Promise<ConnectionTestRun> {
+    log('net', 'connection test started')
+    return this.room.testConnections().then((run) => {
+      log(
+        'net',
+        `connection test over: ${run.players.filter((p) => p.result).length} of ${run.players.length} answered`,
+      )
+      return run
+    })
+  }
+
+  lastTest(): ConnectionTestRun | null {
+    return this.room.lastTest()
   }
 
   /**
@@ -219,11 +252,7 @@ export class HostSession implements Session {
     if (now - this.lastSave > SAVE_MS) this.save()
     if (now - this.lastSample >= SAMPLE_MS) {
       this.lastSample = now
-      for (const { id, ping } of this.room.players()) {
-        const traffic = this.room.traffic(id)
-        if (traffic) this.net.sample(id, now, { ping, traffic })
-        this.warnOfStalls(id, now)
-      }
+      for (const { id } of this.room.players()) this.warnOfStalls(id, now)
     }
     return compact(this.snapshot())
   }
