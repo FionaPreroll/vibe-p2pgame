@@ -9,12 +9,13 @@ A game for phones lying side by side, with **no internet and no server**. The ph
 - **Play in the browser:** <https://fionapreroll.github.io/vibe-p2pgame/>
 - **Android app:** [`spark-hunt.apk`](https://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk), always the newest build (see [Android app](#android-app))
 
-The networking is a library of its own, for other games to use too, and Bluetooth for Android apps a second one, both published on GitHub's npm registry:
+The networking is a library of its own, for other games to use too, Bluetooth for Android apps a second one, and updates of Android apps from their releases a third, all published on GitHub's npm registry:
 
-| Library                                                     | What                                                                               | Published                                                                           |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [`@fionapreroll/p2p`](packages/p2p/README.md)               | Codes, WebRTC, connections over any transport, rooms, QR codes                     | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p)        |
-| [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md) | Bluetooth in Android apps made with Capacitor, through Google's Nearby Connections | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby) |
+| Library                                                       | What                                                                               | Published                                                                            |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [`@fionapreroll/p2p`](packages/p2p/README.md)                 | Codes, WebRTC, connections over any transport, rooms, QR codes                     | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p)         |
+| [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md)   | Bluetooth in Android apps made with Capacitor, through Google's Nearby Connections | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby)  |
+| [`@fionapreroll/app-updates`](packages/app-updates/README.md) | Updates of Android apps made with Capacitor, from their own GitHub release         | [GitHub Packages](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/app-updates) |
 
 <table>
   <tr>
@@ -173,7 +174,7 @@ Browsers cannot do this: Web Bluetooth can only connect to devices, and a web pa
 - **Versions:** phones update the game in the background, so a host and a player may run different versions. `hello` and `welcome` carry two versions, the room's own (`ROOM_PROTOCOL` in the library) and the game's (`PROTOCOL` in `src/net/protocol.ts`). If either differs, the player is not let in and both phones say so.
 - **Rejoining** (`Seats` in the library, `src/session/saved.ts`): a phone that closes, fails or stays silent for 8 seconds is dropped, but its seat is kept under its browser's token, and the game keeps its score. A `hello` with that token gets the same id back, and with it the score. If the same browser says hello while its old connection has not timed out yet, the old one is dropped first. The host saves the seats every 2 seconds and when the page is hidden; when it ends the game, it sends `bye`.
 - **Storage** (`src/storage.ts`, `src/settings.ts`): everything lives in `localStorage` under the `vibe-p2pgame:` prefix. Every stored value is checked on reading, and an invalid value falls back to its default.
-- **App updates** (`src/updates.ts`, `AppUpdaterPlugin.java`): the release holds `version.json` beside the APK, naming its build. The app compares it with its own build number, the APK's `versionCode`; CI sets both to the Android workflow's run number.
+- **App updates** ([`@fionapreroll/app-updates`](packages/app-updates/README.md), used by `src/updates.ts` and `src/ui/updates.ts`; the releases it may read from are in `capacitor.config.ts`): the release holds `version.json` beside the APK, naming its build. The app compares it with its own build number, the APK's `versionCode`; CI sets both to the Android workflow's run number.
 
 ## Security
 
@@ -190,6 +191,8 @@ Anyone can make a QR code, any phone nearby can ask over Bluetooth, and any phon
 ## Layout
 
 ```
+packages/app-updates/  the library @fionapreroll/app-updates: updates from the app's release, a Capacitor
+                plugin (src/: the TypeScript side and the dialogs; android/: AppUpdaterPlugin, UpdateRules)
 packages/p2p-nearby/   the library @fionapreroll/p2p-nearby: Bluetooth through Nearby Connections, a
                 Capacitor plugin (src/: the TypeScript side; android/: NearbyPlugin and its permissions)
 packages/p2p/   the library @fionapreroll/p2p, with its own README and CHANGELOG
@@ -237,7 +240,7 @@ pnpm check
 
 - `packages/p2p/src/room/room.test.ts` connects host and player rooms through connections in memory (`linkPair` from the library's `testing` entry point), with fake timers and a tiny made-up game: joining, input and state, pings, a full room, versions, silence, leaving and rejoining, and attacks from players and hosts. `packages/p2p/src/packet.test.ts` does the same over packet connections. `src/session/p2p.test.ts` covers what Spark Hunt adds. `packages/p2p-nearby/src/nearby.test.ts` plays Bluetooth between fake phones (`NearbyAir` from that library's `testing` entry point), against a misbehaving native side too, and `src/bluetooth.test.ts` plays Spark Hunt over it.
 - `src/bluetooth.test.ts` plays Spark Hunt over Bluetooth against a fake Nearby: several fake phones that advertise, ask, answer and carry messages between them, and native events that misbehave.
-- Screens that only the app shows run in [happy-dom](https://github.com/capricorn86/happy-dom) (`// @vitest-environment happy-dom` at a file's top), against fakes of the native side: `src/ui/updates.test.ts` plays the update dialog through with a fake AppUpdaterPlugin (size, mobile data, progress, pause and resume, permission, the installer's answers or silence), and `src/ui/bluetoothUi.test.ts` the host's dialog and the player's screen on the fake Nearby. `packages/p2p/src/link.test.ts` checks the WebRTC side with a stand-in `RTCPeerConnection`: the channels' settings, the state, and gathering that never ends.
+- Screens that only the app shows run in [happy-dom](https://github.com/capricorn86/happy-dom) (`// @vitest-environment happy-dom` at a file's top), against fakes of the native side: `packages/app-updates/src/dialog.test.ts` plays the update dialog through with the library's `FakeUpdater` (size, mobile data, progress, pause and resume, permission, the installer's answers or silence), and `src/ui/bluetoothUi.test.ts` the host's dialog and the player's screen on the fake Nearby. `packages/p2p/src/link.test.ts` checks the WebRTC side with a stand-in `RTCPeerConnection`: the channels' settings, the state, and gathering that never ends.
 - `*.fuzz.test.ts` use [fast-check](https://fast-check.dev/) to fuzz the codes, the room's messages, the game's parsers and rules, and hosts and players under random hostile traffic. When a property fails, fast-check prints the smallest input that breaks it.
 
 **Logs and the debug report:** `log()` from `src/log.ts` keeps the last 300 lines in memory, and NearbyPlugin keeps its own; `src/report.ts` puts both into the debug report. A log line says what happened, never what was said: `log()` masks anything that looks like a code, an address or a token, and a test checks that the report holds none.
@@ -246,11 +249,11 @@ pnpm check
 
 **Coverage** comes from three kinds of tests, which CI uploads to Codecov separately, each with its flag, and Codecov puts together:
 
-| Flag      | Tests                                             | Measures                                                                                                                | Locally                                             |
-| --------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `unit`    | Vitest, in Node, and happy-dom for app screens    | `src/`, both libraries' `src/` and `tools/`                                                                             | `pnpm test:coverage` → `coverage/lcov.info`         |
-| `e2e`     | Playwright, in Chromium (`tests/e2e/coverage.ts`) | the same TypeScript as the browser runs it, through the build's source maps: the screens, WebRTC and the camera too     | `pnpm test:e2e:coverage` → `coverage/e2e/lcov.info` |
-| `android` | JUnit, with JaCoCo                                | all the Java: the app's (`AppUpdaterPlugin`, `UpdateRules`) and the Bluetooth library's (`NearbyPlugin`, `NearbyRules`) | `./gradlew testDebugUnitTest` in `android/`         |
+| Flag      | Tests                                             | Measures                                                                                                                  | Locally                                             |
+| --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `unit`    | Vitest, in Node, and happy-dom for app screens    | `src/`, the libraries' `src/` and `tools/`                                                                                | `pnpm test:coverage` → `coverage/lcov.info`         |
+| `e2e`     | Playwright, in Chromium (`tests/e2e/coverage.ts`) | the same TypeScript as the browser runs it, through the build's source maps: the screens, WebRTC and the camera too       | `pnpm test:e2e:coverage` → `coverage/e2e/lcov.info` |
+| `android` | JUnit, with JaCoCo                                | all the libraries' Java: the updates' (`AppUpdaterPlugin`, `UpdateRules`) and Bluetooth's (`NearbyPlugin`, `NearbyRules`) | `./gradlew testDebugUnitTest` in `android/`         |
 
 Left out on purpose: the tests themselves, the libraries' `testing.ts` fakes, and the core library's `index.ts` files, which only re-export. The plugins' decisions live in plain Java without Android (`UpdateRules`, `NearbyRules`), which JUnit tests on any computer; what is left in the plugins is Android and Google Play services, measured but only tried on phones.
 
@@ -266,7 +269,7 @@ pnpm android:sync
 cd android && ./gradlew assembleDebug
 ```
 
-`pnpm android:sync` builds the game and copies it into the Android project; run it after every change to the game. `pnpm exec cap open android` opens the project in Android Studio, and `pnpm icons:android` draws the app's icon and splash screen from `public/icon.svg`. Native features go through `src/native.ts`, `src/bluetooth.ts` and `src/updates.ts`, which do nothing in a browser, so the website and the app stay one codebase. The app's permissions are in `android/app/src/main/AndroidManifest.xml`, each with a comment why; those for Bluetooth come with `@fionapreroll/p2p-nearby`, in `packages/p2p-nearby/android/src/main/AndroidManifest.xml`, merged in by Android's build. Every build is signed with the same debug key, `android/app/debug.keystore`, in the repository on purpose, so that each APK installs over the one before.
+`pnpm android:sync` builds the game and copies it into the Android project; run it after every change to the game. `pnpm exec cap open android` opens the project in Android Studio, and `pnpm icons:android` draws the app's icon and splash screen from `public/icon.svg`. Native features go through `src/native.ts`, `src/bluetooth.ts` and `src/updates.ts`, which do nothing in a browser, so the website and the app stay one codebase. The app's permissions are in `android/app/src/main/AndroidManifest.xml`, each with a comment why; those for Bluetooth come with `@fionapreroll/p2p-nearby`, in `packages/p2p-nearby/android/src/main/AndroidManifest.xml`, and those for updates with `@fionapreroll/app-updates`, in `packages/app-updates/android/src/main/AndroidManifest.xml`, merged in by Android's build. Every build is signed with the same debug key, `android/app/debug.keystore`, in the repository on purpose, so that each APK installs over the one before.
 
 ## Workflow
 
@@ -298,12 +301,12 @@ To bring them up to date, run **Update screenshots** in the Actions tab (`.githu
 
 ### Library versions
 
-`packages/p2p` and `packages/p2p-nearby` are pnpm workspace packages. The game uses them straight from their sources, so a change to a library is tested with the game at once, and always names their newest version, as `workspace:^x.y.z`; `pnpm build:p2p` builds both into their `dist` folders. Each library has its own version and `CHANGELOG.md`, apart from the game's. A version is published only when asked:
+`packages/p2p`, `packages/p2p-nearby` and `packages/app-updates` are pnpm workspace packages. The game uses them straight from their sources, so a change to a library is tested with the game at once, and always names their newest version, as `workspace:^x.y.z`; `pnpm build:p2p` builds them into their `dist` folders. Each library has its own version and `CHANGELOG.md`, apart from the game's. A version is published only when asked:
 
 1. Move the entries under `## [Unreleased]` in the library's `CHANGELOG.md` to a new `## [x.y.z] - YYYY-MM-DD` section, set `"version"` in its `package.json` to the same, raise the game's dependency on it in the root `package.json` to `workspace:^x.y.z` (`tools/libraries.test.ts` fails until it is), run `pnpm install`, and bring that to `main`.
-2. In the Actions tab, run **Publish p2p** on `main`, choosing the library. It checks that the version is new and in the changelog, runs every check, publishes the package, and then tags the commit `p2p-vx.y.z` or `p2p-nearby-vx.y.z`. Pushing such a tag yourself publishes too, once it matches the version in the library's `package.json`.
+2. In the Actions tab, run **Publish p2p** on `main`, choosing the library. It checks that the version is new and in the changelog, runs every check, publishes the package, and then tags the commit `p2p-vx.y.z`, `p2p-nearby-vx.y.z` or `app-updates-vx.y.z`. Pushing such a tag yourself publishes too, once it matches the version in the library's `package.json`.
 
-Each version is also a file on a release of its own (`p2p-vx.y.z`, `p2p-nearby-vx.y.z`, never marked latest), which games can install without logging in to GitHub's registry. Games that use the libraries install them as their READMEs describe ([`@fionapreroll/p2p`](packages/p2p/README.md), [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md)), with a token that may read packages. Their published versions are listed on the packages' pages: [`@fionapreroll/p2p`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p) and [`@fionapreroll/p2p-nearby`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby).
+Each version is also a file on a release of its own (`p2p-vx.y.z`, `p2p-nearby-vx.y.z`, `app-updates-vx.y.z`, never marked latest), which games can install without logging in to GitHub's registry. Games that use the libraries install them as their READMEs describe ([`@fionapreroll/p2p`](packages/p2p/README.md), [`@fionapreroll/p2p-nearby`](packages/p2p-nearby/README.md), [`@fionapreroll/app-updates`](packages/app-updates/README.md)), with a token that may read packages. Their published versions are listed on the packages' pages: [`@fionapreroll/p2p`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p) [`@fionapreroll/p2p-nearby`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/p2p-nearby) and [`@fionapreroll/app-updates`](https://github.com/FionaPreroll/vibe-p2pgame/pkgs/npm/app-updates).
 
 ## Known limits
 

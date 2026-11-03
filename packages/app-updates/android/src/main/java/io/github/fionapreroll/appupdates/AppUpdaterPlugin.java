@@ -1,4 +1,4 @@
-package io.github.fionapreroll.sparkhunt;
+package io.github.fionapreroll.appupdates;
 
 import android.content.Intent;
 import android.app.Activity;
@@ -35,7 +35,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Updates the app from its GitHub release, for src/updates.ts: reads the installed build number,
+ * Updates the app from its GitHub release, for @fionapreroll/app-updates (src/index.ts): reads the installed build number,
  * reads the release's version.json, downloads the new APK and hands it to Android's package
  * installer. The installer asks the player, and takes the APK only if it is signed with the same
  * key as the app installed.
@@ -45,6 +45,27 @@ import java.nio.charset.StandardCharsets;
  */
 @CapacitorPlugin(name = "AppUpdater")
 public class AppUpdaterPlugin extends Plugin {
+
+    /**
+     * The app's own releases, from its Capacitor config (`plugins.AppUpdater.releases`), so that
+     * the page can name no other place to download from.
+     */
+    private String releases() {
+        return getConfig().getString("releases", "");
+    }
+
+    /** Rejects a call for an address outside the app's releases; true if it did. */
+    private boolean refused(PluginCall call, String url) {
+        if (!UpdateRules.soundReleases(releases())) {
+            call.reject("No releases in the Capacitor config (plugins.AppUpdater.releases)", "config");
+            return true;
+        }
+        if (!UpdateRules.fromReleases(url, releases())) {
+            call.reject("Not a release of this app", "address");
+            return true;
+        }
+        return false;
+    }
 
     // The limits and decisions are in UpdateRules, tested apart from Android.
 
@@ -71,10 +92,7 @@ public class AppUpdaterPlugin extends Plugin {
     @PluginMethod
     public void fetchText(PluginCall call) {
         String url = call.getString("url", "");
-        if (!UpdateRules.fromReleases(url)) {
-            call.reject("Not a release of this game");
-            return;
-        }
+        if (refused(call, url)) return;
         execute(() -> {
             HttpURLConnection connection = null;
             try {
@@ -107,10 +125,7 @@ public class AppUpdaterPlugin extends Plugin {
     public void download(PluginCall call) {
         String url = call.getString("url", "");
         Integer build = call.getInt("build");
-        if (!UpdateRules.fromReleases(url)) {
-            call.reject("Not a release of this game");
-            return;
-        }
+        if (refused(call, url)) return;
         if (build == null || build < 1) {
             call.reject("No build");
             return;
@@ -285,7 +300,7 @@ public class AppUpdaterPlugin extends Plugin {
         params.setAppPackageName(getContext().getPackageName());
         int id = installer.createSession(params);
         try (PackageInstaller.Session session = installer.openSession(id)) {
-            try (InputStream in = new FileInputStream(apk); OutputStream out = session.openWrite("spark-hunt.apk", 0, apk.length())) {
+            try (InputStream in = new FileInputStream(apk); OutputStream out = session.openWrite(UpdateRules.APK, 0, apk.length())) {
                 byte[] buffer = new byte[64 * 1024];
                 int read;
                 while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
@@ -341,7 +356,7 @@ public class AppUpdaterPlugin extends Plugin {
 
     /** The old way: opens the APK with the installer, which tells nothing back. */
     private void installWithIntent(File apk) {
-        Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", apk);
+        Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + UpdateFileProvider.SUFFIX, apk);
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "application/vnd.android.package-archive");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -369,7 +384,7 @@ public class AppUpdaterPlugin extends Plugin {
     }
 
     private File apkFile() {
-        return new File(updatesDir(), "spark-hunt.apk");
+        return new File(updatesDir(), UpdateRules.APK);
     }
 
     private File partFile(int build) {

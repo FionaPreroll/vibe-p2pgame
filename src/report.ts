@@ -135,7 +135,7 @@ export async function reportSources(): Promise<ReportSources> {
     },
   }
   if (!app) return { now: new Date(), app, browser }
-  const [{ AppUpdater }, { bluetooth }] = await Promise.all([
+  const [{ appBuild }, { bluetooth }] = await Promise.all([
     import('./updates'),
     import('./bluetooth'),
   ])
@@ -143,7 +143,7 @@ export async function reportSources(): Promise<ReportSources> {
     now: new Date(),
     app,
     browser,
-    appInfo: () => AppUpdater.info(),
+    appInfo: () => appBuild(),
     bluetooth: () => bluetooth().diagnostics(),
   }
 }

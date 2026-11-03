@@ -1,15 +1,10 @@
 package io.github.fionapreroll.sparkhunt;
 
-import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 
-public class MainActivity extends BridgeActivity {
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        // The app's own plugin, for updates from its GitHub release (see AppUpdaterPlugin).
-        registerPlugin(AppUpdaterPlugin.class);
-        // Bluetooth between phones comes from @fionapreroll/p2p-nearby, which Capacitor registers.
-        super.onCreate(savedInstanceState);
-    }
-}
+/**
+ * The app's only screen, Capacitor's WebView with the game. Its plugins come with their packages,
+ * which Capacitor registers: updates from @fionapreroll/app-updates, Bluetooth from
+ * @fionapreroll/p2p-nearby.
+ */
+public class MainActivity extends BridgeActivity {}

@@ -1,16 +1,16 @@
-package io.github.fionapreroll.sparkhunt;
+package io.github.fionapreroll.appupdates;
 
 /**
  * What AppUpdaterPlugin decides, in plain Java without Android, so that JUnit tests it on any
- * computer: where it may read and download from, how a download goes on where it stopped, its
+ * computer: which releases an app may name, where it may read and download from, how a download goes on where it stopped, its
  * limits, how often it tells its progress, and what Android's installer answered.
  */
 final class UpdateRules {
 
     private UpdateRules() {}
 
-    /** Only the game's own releases are read, and followed where GitHub redirects them. */
-    static final String RELEASES = "https://github.com/FionaPreroll/vibe-p2pgame/releases/";
+    /** The APK downloaded last, ready to install, in the plugin's own folder of the cache. */
+    static final String APK = "update.apk";
     static final long MAX_APK_BYTES = 200L * 1024 * 1024;
     static final int MAX_TEXT_BYTES = 64 * 1024;
     /** Progress is told at most this often, in milliseconds, and at every whole percent. */
@@ -25,9 +25,20 @@ final class UpdateRules {
     static final int STATUS_SUCCESS = 0;
     static final int STATUS_FAILURE_ABORTED = 3;
 
-    /** Whether an address is of this game's releases, over HTTPS. */
-    static boolean fromReleases(String url) {
-        return url != null && url.startsWith(RELEASES) && !url.contains("..");
+    /**
+     * Whether the app's Capacitor config names sound releases (`plugins.AppUpdater.releases`):
+     * those of one GitHub repository, as `https://github.com/<owner>/<repository>/releases/`.
+     * Only these are read, and followed where GitHub redirects them.
+     */
+    static boolean soundReleases(String releases) {
+        return releases != null
+            && releases.matches("https://github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+/releases/")
+            && !releases.contains("..");
+    }
+
+    /** Whether an address is of the app's own releases, over HTTPS. */
+    static boolean fromReleases(String url, String releases) {
+        return soundReleases(releases) && url != null && url.startsWith(releases) && !url.contains("..");
     }
 
     /**
@@ -58,12 +69,16 @@ final class UpdateRules {
 
     /** The part a download of a build keeps, until it is whole. */
     static String partName(int build) {
-        return "spark-hunt-" + build + ".part";
+        return "update-" + build + ".part";
     }
 
-    /** Parts of other builds are of no use any more. */
+    /**
+     * Files of no use any more: parts of other builds, and APKs under other names, such as those
+     * an app's own updater kept before it used this plugin.
+     */
     static boolean otherPart(String fileName, int build) {
-        return fileName.endsWith(".part") && !fileName.equals(partName(build));
+        if (fileName.endsWith(".part")) return !fileName.equals(partName(build));
+        return fileName.endsWith(".apk") && !fileName.equals(APK);
     }
 
     /** The percent done, or -1 while the size is unknown. */
@@ -84,7 +99,7 @@ final class UpdateRules {
         }
     }
 
-    /** What the installer's status means for the game: `confirm`, `success`, `aborted` or `failure`. */
+    /** What the installer's status means for the app: `confirm`, `success`, `aborted` or `failure`. */
     static String installStatus(int status) {
         switch (status) {
             case STATUS_PENDING_USER_ACTION:

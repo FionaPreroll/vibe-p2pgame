@@ -47,20 +47,20 @@ jobs:
         run: |
           VERSION_NAME="$(node -p "require('../package.json').version")-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" \
             ./gradlew assembleDebug --no-daemon
-      # The Java unit tests (UpdateRules, NearbyRules), with JaCoCo's coverage of all the app's and
-      # the Bluetooth library's Java, plugins included, for Codecov.
+      # The Java unit tests of the libraries (UpdateRules, NearbyRules), with JaCoCo's coverage of
+      # their Java, plugins included, for Codecov. The app's own Java is only MainActivity.
       - name: Test the Java, with coverage
         working-directory: android
-        run: ./gradlew :app:createDebugUnitTestCoverageReport :fionapreroll-p2p-nearby:createDebugUnitTestCoverageReport --no-daemon
+        run: ./gradlew :fionapreroll-app-updates:createDebugUnitTestCoverageReport :fionapreroll-p2p-nearby:createDebugUnitTestCoverageReport --no-daemon
       - name: List the coverage reports
-        run: find android/app/build/reports/coverage packages/p2p-nearby/android/build/reports/coverage -name '*.xml'
+        run: find packages/app-updates/android/build/reports/coverage packages/p2p-nearby/android/build/reports/coverage -name '*.xml'
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: android
           # Only the files named: a search would add the other reports to this flag.
           disable_search: true
-          files: android/app/build/reports/coverage/test/debug/report.xml,packages/p2p-nearby/android/build/reports/coverage/test/debug/report.xml
+          files: packages/app-updates/android/build/reports/coverage/test/debug/report.xml,packages/p2p-nearby/android/build/reports/coverage/test/debug/report.xml
           fail_ci_if_error: true
       - run: mv android/app/build/outputs/apk/debug/app-debug.apk spark-hunt.apk
       - uses: actions/upload-artifact@v4
@@ -118,7 +118,7 @@ jobs:
 
           This is a debug build, signed with the project's debug key: for testing and playing with friends, not for the Play Store.
           NOTES
-          # What the app compares with its own build number to find updates (src/updates.ts).
+          # What the app compares with its own build number to find updates (@fionapreroll/app-updates).
           printf '{"build":%s,"commit":"%s","size":%s}\n' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" "$(stat -c %s spark-hunt.apk)" > version.json
           # The tag follows main: it always names the commit of the APK in the release.
           git tag -f "$TAG" "$GITHUB_SHA"

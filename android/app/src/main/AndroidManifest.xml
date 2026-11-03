@@ -42,14 +42,13 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Whether an update would download over mobile data, to warn before (AppUpdaterPlugin). -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- The in-page scanner, and with it real local addresses in the codes (see the README). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- A buzz for sparks and mines; without it, the WebView ignores navigator.vibrate. -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- In-app updates: hands a new APK from the game's release to Android's installer, which asks. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- In-app updates: @fionapreroll/app-updates brings its permissions (network state, and
+         handing an APK to Android's installer) in its own manifest
+         (packages/app-updates/android/src/main/AndroidManifest.xml), merged in here. -->
     <!-- Bluetooth between phones: @fionapreroll/p2p-nearby brings its permissions in its own
          manifest (packages/p2p-nearby/android/src/main/AndroidManifest.xml), merged in here. -->
 </manifest>

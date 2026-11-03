@@ -1,20 +1,20 @@
 name: Publish p2p
 
-# Publishes a library of packages/ to GitHub's npm registry: @fionapreroll/p2p or
-# @fionapreroll/p2p-nearby, in one of two ways:
+# Publishes a library of packages/ to GitHub's npm registry: @fionapreroll/p2p,
+# @fionapreroll/p2p-nearby or @fionapreroll/app-updates, in one of two ways:
 # - Run workflow (Actions tab, on main), choosing the package: publishes the version in its
-#   package.json, then tags the commit p2p-vX.Y.Z or p2p-nearby-vX.Y.Z.
+#   package.json, then tags the commit p2p-vX.Y.Z, p2p-nearby-vX.Y.Z or app-updates-vX.Y.Z.
 # - Pushing such a tag: publishes that package's version; the tag must match its package.json.
 
 on:
   push:
-    tags: ["p2p-v*", "p2p-nearby-v*"]
+    tags: ["p2p-v*", "p2p-nearby-v*", "app-updates-v*"]
   workflow_dispatch:
     inputs:
       package:
         description: Which library to publish
         type: choice
-        options: [p2p, p2p-nearby]
+        options: [p2p, p2p-nearby, app-updates]
         default: p2p
 
 permissions:
@@ -46,6 +46,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             case "$GITHUB_REF_NAME" in
               p2p-nearby-v*) package=p2p-nearby ;;
+              app-updates-v*) package=app-updates ;;
               *) package=p2p ;;
             esac
           else

@@ -1,4 +1,4 @@
-package io.github.fionapreroll.sparkhunt;
+package io.github.fionapreroll.appupdates;
 
 import static org.junit.Assert.assertEquals;
 

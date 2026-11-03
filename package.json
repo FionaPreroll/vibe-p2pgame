@@ -14,7 +14,7 @@
     "dev:phone": "vite --host --mode phone",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && pnpm --filter @fionapreroll/p2p --filter @fionapreroll/p2p-nearby typecheck",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && pnpm --filter @fionapreroll/p2p --filter @fionapreroll/p2p-nearby --filter @fionapreroll/app-updates typecheck",
     "lint": "biome check",
     "format": "biome check --write",
     "test": "vitest run",
@@ -24,7 +24,7 @@
     "test:e2e:coverage": "COVERAGE=1 pnpm test:e2e",
     "screenshots": "pnpm build && playwright test -c playwright.screenshots.config.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "build:p2p": "pnpm --filter @fionapreroll/p2p --filter @fionapreroll/p2p-nearby build",
+    "build:p2p": "pnpm --filter @fionapreroll/p2p --filter @fionapreroll/p2p-nearby --filter @fionapreroll/app-updates build",
     "icons:android": "node --experimental-strip-types tools/androidIcons.ts",
     "android:sync": "pnpm build && cap sync android"
   },
@@ -33,6 +33,7 @@
     "@capacitor/android": "^8.6.0",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
+    "@fionapreroll/app-updates": "workspace:^0.1.0",
     "@fionapreroll/p2p": "workspace:^0.5.0",
     "@fionapreroll/p2p-nearby": "workspace:^0.1.2"
   },

@@ -10,3 +10,6 @@ project(':capacitor-app').projectDir = new File('../node_modules/.pnpm/@capacito
 
 include ':fionapreroll-p2p-nearby'
 project(':fionapreroll-p2p-nearby').projectDir = new File('../node_modules/@fionapreroll/p2p-nearby/android')
+
+include ':fionapreroll-app-updates'
+project(':fionapreroll-app-updates').projectDir = new File('../node_modules/@fionapreroll/app-updates/android')

@@ -12,6 +12,10 @@ const config: CapacitorConfig = {
     // The game draws its own dark background; no white flash while the WebView starts.
     backgroundColor: '#0b0d1a',
   },
+  plugins: {
+    // The only releases the app's updates read and download from (@fionapreroll/app-updates).
+    AppUpdater: { releases: 'https://github.com/FionaPreroll/vibe-p2pgame/releases/' },
+  },
 }
 
 export default config

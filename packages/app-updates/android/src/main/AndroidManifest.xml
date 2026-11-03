@@ -1,0 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Merged into the app that uses this plugin. -->
+    <!-- Reads the release's version.json and downloads its APK. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Whether an update would download over mobile data, to warn before. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Hands a new APK from the app's release to Android's installer, which asks the player. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application>
+        <!-- The APK for Android's installer, where an installer session cannot be made. -->
+        <provider
+            android:name="io.github.fionapreroll.appupdates.UpdateFileProvider"
+            android:authorities="${applicationId}.appupdates.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/app_updates_paths" />
+        </provider>
+    </application>
+</manifest>

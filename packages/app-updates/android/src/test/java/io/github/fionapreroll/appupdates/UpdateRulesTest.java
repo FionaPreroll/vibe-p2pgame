@@ -1,4 +1,4 @@
-package io.github.fionapreroll.sparkhunt;
+package io.github.fionapreroll.appupdates;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -9,19 +9,43 @@ import org.junit.Test;
 /** AppUpdaterPlugin's decisions, without Android: see UpdateRules. */
 public class UpdateRulesTest {
 
+    private static final String RELEASES = "https://github.com/FionaPreroll/vibe-p2pgame/releases/";
+
     @Test
-    public void readsOnlyThisGamesReleases() {
-        assertTrue(UpdateRules.fromReleases(UpdateRules.RELEASES + "latest/download/version.json"));
+    public void takesOnlyTheReleasesOfOneGitHubRepository() {
+        assertTrue(UpdateRules.soundReleases(RELEASES));
+        assertTrue(UpdateRules.soundReleases("https://github.com/a-b/c.d_e/releases/"));
+        for (String releases : new String[] {
+            null,
+            "",
+            "http://github.com/FionaPreroll/vibe-p2pgame/releases/",
+            "https://github.com/FionaPreroll/vibe-p2pgame/releases",
+            "https://github.com/FionaPreroll/releases/",
+            "https://github.com/FionaPreroll/vibe-p2pgame/",
+            "https://github.com.example.com/FionaPreroll/vibe-p2pgame/releases/",
+            "https://github.com/FionaPreroll/../releases/",
+            "https://example.com/FionaPreroll/vibe-p2pgame/releases/",
+        }) {
+            assertFalse(String.valueOf(releases), UpdateRules.soundReleases(releases));
+        }
+    }
+
+    @Test
+    public void readsOnlyTheAppsReleases() {
+        assertTrue(UpdateRules.fromReleases(RELEASES + "latest/download/version.json", RELEASES));
         for (String url : new String[] {
             null,
             "",
             "http://github.com/FionaPreroll/vibe-p2pgame/releases/latest/download/spark-hunt.apk",
             "https://github.com/FionaPreroll/other/releases/latest/download/spark-hunt.apk",
-            "https://example.com/" + UpdateRules.RELEASES,
-            UpdateRules.RELEASES + "../../other/releases/x.apk",
+            "https://example.com/" + RELEASES,
+            RELEASES + "../../other/releases/x.apk",
         }) {
-            assertFalse(String.valueOf(url), UpdateRules.fromReleases(url));
+            assertFalse(String.valueOf(url), UpdateRules.fromReleases(url, RELEASES));
         }
+        // Without sound releases in the config, nothing.
+        assertFalse(UpdateRules.fromReleases(RELEASES + "latest/download/version.json", ""));
+        assertFalse(UpdateRules.fromReleases("https://example.com/x.apk", "https://example.com/"));
     }
 
     @Test
@@ -61,10 +85,14 @@ public class UpdateRulesTest {
 
     @Test
     public void keepsOnePartPerBuild() {
-        assertEquals("spark-hunt-12.part", UpdateRules.partName(12));
-        assertTrue(UpdateRules.otherPart("spark-hunt-11.part", 12));
-        assertFalse(UpdateRules.otherPart("spark-hunt-12.part", 12));
-        assertFalse(UpdateRules.otherPart("spark-hunt.apk", 12));
+        assertEquals("update-12.part", UpdateRules.partName(12));
+        assertTrue(UpdateRules.otherPart("update-11.part", 12));
+        assertFalse(UpdateRules.otherPart("update-12.part", 12));
+        assertFalse(UpdateRules.otherPart(UpdateRules.APK, 12));
+        // What an app's own updater left before: of no use.
+        assertTrue(UpdateRules.otherPart("spark-hunt.apk", 12));
+        assertTrue(UpdateRules.otherPart("spark-hunt-12.part", 12));
+        assertFalse(UpdateRules.otherPart("notes.txt", 12));
     }
 
     @Test

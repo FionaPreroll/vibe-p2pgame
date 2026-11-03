@@ -25,7 +25,7 @@ The README describes the project, its layout and its conventions. These rules ho
 
 ## The library
 
-- `packages/p2p` is the library `@fionapreroll/p2p`, and `packages/p2p-nearby` the library `@fionapreroll/p2p-nearby` (Bluetooth through Nearby Connections, a Capacitor plugin with its native side), both for other games too: no imports from the game's `src/`, nothing of Spark Hunt in them, and no texts players see, as games bring their own.
+- `packages/p2p` is the library `@fionapreroll/p2p`, `packages/p2p-nearby` the library `@fionapreroll/p2p-nearby` (Bluetooth through Nearby Connections, a Capacitor plugin with its native side), and `packages/app-updates` the library `@fionapreroll/app-updates` (updates from the app's GitHub release, a Capacitor plugin too), all for other games too: no imports from the game's `src/`, nothing of Spark Hunt in them, and no texts players see, as games bring their own.
 - `@fionapreroll/p2p` stays free of native code and of anything only one platform has: what needs Capacitor, Android or Google Play services goes into `@fionapreroll/p2p-nearby`, or a package of its own.
 - A change to a library that its users notice adds an entry to its own `CHANGELOG.md`, apart from the game's changelog, and updates its `README.md`.
 - Raise `ROOM_PROTOCOL` in `packages/p2p/src/room/messages.ts` whenever the room's own messages change.
@@ -40,7 +40,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - This container cannot reach Google's Android downloads: the APK is built and checked by `.github/workflows/android.yml` only.
 - The plugins' decisions go into plain Java without Android (`UpdateRules`, `NearbyRules`), with JUnit tests beside them (`src/test/java`); the plugins keep only what needs Android. Those tests compile and run here with plain `javac` and the JUnit of `/opt/gradle-*/lib`, before CI runs them all with JaCoCo.
 - The release "Spark Hunt for Android" (tag `android-latest`) is replaced by CI with every push to `main`; that tag moves on purpose, and is the only one that does. Numbered game versions stay for when they are asked for.
-- In-app updates (`src/updates.ts`, `AppUpdaterPlugin.java`) compare the release's `version.json` with the APK's `versionCode`; both are the Android workflow's run number, so the release job keeps publishing `version.json` beside the APK. The plugin reads and downloads only from this repository's releases.
+- In-app updates (`@fionapreroll/app-updates`, used by `src/updates.ts`) compare the release's `version.json` with the APK's `versionCode`; both are the Android workflow's run number, so the release job keeps publishing `version.json` beside the APK. The plugin reads and downloads only from the releases named in `capacitor.config.ts`, this repository's.
 
 - Bluetooth comes from `@fionapreroll/p2p-nearby` (`packages/p2p-nearby/src/index.ts`, `NearbyPlugin.java`) and reaches the game only as `@fionapreroll/p2p`'s `packetConnection`: rooms know nothing of it. `src/bluetooth.ts` only gives it Spark Hunt's service and log. Its limits are on both sides, native and in the library, and every native event is checked there like a message from another phone.
 

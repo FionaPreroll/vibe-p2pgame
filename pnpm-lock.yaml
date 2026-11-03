@@ -178,6 +178,9 @@ importers:
       '@capacitor/core':
         specifier: ^8.6.0
         version: 8.6.0
+      '@fionapreroll/app-updates':
+        specifier: workspace:^0.1.0
+        version: link:packages/app-updates
       '@fionapreroll/p2p':
         specifier: workspace:^0.5.0
         version: link:packages/p2p
@@ -218,6 +221,18 @@ importers:
       vite:
         specifier: ^8.3.5
         version: 8.3.5(@types/node@24.19.2)
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2))
+
+  packages/app-updates:
+    devDependencies:
+      '@capacitor/core':
+        specifier: ^8.6.0
+        version: 8.6.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
       vitest:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2))

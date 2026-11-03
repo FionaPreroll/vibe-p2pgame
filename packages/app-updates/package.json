@@ -1,0 +1,63 @@
+{
+  "name": "@fionapreroll/app-updates",
+  "version": "0.1.0",
+  "description": "Updates for Android apps made with Capacitor, from the app's own GitHub release: looks for a newer build, downloads it with pause and resume, and hands it to Android's installer.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FionaPreroll/vibe-p2pgame.git",
+    "directory": "packages/app-updates"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./dialog": "./src/dialog.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./dialog": {
+        "types": "./dist/dialog.d.ts",
+        "default": "./dist/dialog.js"
+      },
+      "./testing": {
+        "types": "./dist/testing.d.ts",
+        "default": "./dist/testing.js"
+      }
+    }
+  },
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "android/build.gradle",
+    "android/src/main/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/app-updates",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^8.6.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 const native = vi.hoisted(() => ({ app: false }))
 vi.mock('./native', () => ({ isApp: () => native.app }))
 vi.mock('./updates', () => ({
-  AppUpdater: { info: async () => ({ build: 42, name: '42-abc1234' }) },
+  appBuild: async () => ({ build: 42, name: '42-abc1234' }),
 }))
 vi.mock('./bluetooth', () => ({
   bluetooth: () => ({ diagnostics: async () => ({ sdk: 34, log: ['+0s start host'] }) }),

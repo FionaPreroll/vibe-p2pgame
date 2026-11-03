@@ -21,6 +21,7 @@ describe('the game’s libraries', () => {
   for (const [name, dir] of [
     ['@fionapreroll/p2p', 'packages/p2p'],
     ['@fionapreroll/p2p-nearby', 'packages/p2p-nearby'],
+    ['@fionapreroll/app-updates', 'packages/app-updates'],
   ] as const) {
     it(`uses ${name} in its newest version`, () => {
       const { version } = packageJson(`${dir}/package.json`)

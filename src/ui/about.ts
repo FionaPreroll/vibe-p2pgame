@@ -78,7 +78,7 @@ export function aboutScreen(onBack: () => void): void {
   // In the app, its own build number too, as the updates count by it.
   if (isApp()) {
     void import('../updates')
-      .then(({ AppUpdater }) => AppUpdater.info())
+      .then(({ appBuild }) => appBuild())
       .then(({ build: number }) => {
         build.textContent = t('aboutAppBuild', { ...web, build: number })
       })
