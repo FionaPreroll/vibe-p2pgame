@@ -20,7 +20,7 @@ pnpm add @fionapreroll/p2p-nearby
 Or without logging in, from the file on the version's release:
 
 ```bash
-pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.2.0/fionapreroll-p2p-nearby-0.2.0.tgz
+pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.2.1/fionapreroll-p2p-nearby-0.2.1.tgz
 ```
 
 ```bash
@@ -87,7 +87,7 @@ search.again() // after 'refused', 'failed' or 'unavailable'
 await search.leave() // also takes the request back from the host's phone
 ```
 
-`search.state().phase` is `starting`, `looking`, `unavailable` (with the error), `asking` (with the host and the code), `joined`, `refused` (the host said no, or the connection broke before it opened), `failed` (it opened, but joining failed: the room's `version`, `full` or `timeout`), or `left`. A request the player takes back leaves the host's list by itself; one that failed stays, with its error, until the host rejects it.
+`search.state().phase` is `starting`, `looking`, `unavailable` (with the error), `asking` (with the host and the code), `joined`, `refused` (the host said no, or the connection broke before it opened), `failed` (it opened, but joining failed: the room's `version`, `full` or `timeout`), or `left`. A request the player takes back leaves the host's list by itself; one that failed stays, with its error, until the host rejects it. A player the host accepted has 30 seconds for the connection to open; one that never connects fails with `Connection timed out`, instead of staying on its way.
 
 A host sends a Bluetooth player fewer states than one over Wi-Fi: 15 a second by default (`stateIntervalMs`), as Bluetooth carries less.
 

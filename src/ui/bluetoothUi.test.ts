@@ -139,6 +139,21 @@ describe('the host’s Bluetooth dialog', () => {
     expect(host.fake.role).toBeNull()
   })
 
+  it('says so when a player let in never connects, and lets the host remove them', async () => {
+    const { host } = await hosting()
+    // A phone asks, as Nearby reports it, and is accepted; its connection never opens.
+    host.fake.answers.set('GONE1', 'pending')
+    host.fake.emit('request', { endpointId: 'GONE1', name: 'Gone', digits: '4321', incoming: true })
+    button('Accept', document.querySelector('.requests li') as HTMLElement).click()
+    await later(29_000)
+    expect(document.querySelector('.requests li')?.textContent).toContain('Connecting')
+    await later(1000)
+    const row = document.querySelector('.requests li') as HTMLElement
+    expect(row.textContent).toContain('The other phone did not answer in time.')
+    button('Reject', row).click()
+    expect(document.querySelectorAll('.requests li')).toHaveLength(0)
+  })
+
   it('turns a player down, and drops a request the player took back', async () => {
     await hosting()
     const first = await asking('PLAY1', 'Bo')

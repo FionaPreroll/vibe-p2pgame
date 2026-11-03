@@ -11,11 +11,22 @@ import type { JoinRequest, Nearby, Peer } from './index.ts'
  * Each runs on one `Nearby` and takes over its callbacks until closed.
  */
 
+/**
+ * How long, in milliseconds, a player the host accepted has for their connection to open, as
+ * `opened` waits by default. One that never connects, such as a phone gone out of reach or one
+ * that never completes Nearby's handshake, is then given up, and fails with `Connection timed
+ * out`, instead of staying on its way for good. Once open, the room's hello timeout takes over.
+ */
+const JOIN_TIMEOUT_MS = 30_000
+
 /** A request as the host sees it: still to decide, being let in, or let in but failed. */
 export interface HostRequest {
   readonly request: JoinRequest
   readonly status: 'waiting' | 'joining' | 'failed'
-  /** Why it failed, for the game to say: such as the room's `version` or `full`. */
+  /**
+   * Why it failed, for the game to say: such as the room's `version` or `full`, or `Connection
+   * timed out` if the connection never opened.
+   */
   readonly error?: unknown
 }
 
@@ -77,15 +88,24 @@ export class NearbyHosting<T> {
     }
     this.list.set(endpointId, { request: entry.request, status: 'joining' })
     this.onChange()
+    let timedOut = false
+    const timer = setTimeout(() => {
+      if (connection.state === 'open') return
+      timedOut = true
+      connection.close()
+    }, JOIN_TIMEOUT_MS)
     this.attach(connection).then(
       (value) => {
+        clearTimeout(timer)
         this.list.delete(endpointId)
         this.onChange()
         this.onJoined(value, entry.request)
       },
       (error: unknown) => {
+        clearTimeout(timer)
         connection.close()
-        this.list.set(endpointId, { request: entry.request, status: 'failed', error })
+        const reason = timedOut ? new Error('Connection timed out') : error
+        this.list.set(endpointId, { request: entry.request, status: 'failed', error: reason })
         this.onChange()
       },
     )

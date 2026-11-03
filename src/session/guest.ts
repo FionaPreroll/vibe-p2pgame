@@ -1,10 +1,17 @@
-import type { Connection } from '@fionapreroll/p2p'
+import { type Connection, opened } from '@fionapreroll/p2p'
 import { GuestRoom, HOST_ID } from '@fionapreroll/p2p/room'
 import type { Phase, Snapshot, Target } from '../game/sim'
 import { log } from '../log'
 import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
 import { IDLE_INPUT, type PlayerInput, PROTOCOL, parseSnapshot } from '../net/protocol'
 import type { Session } from './session'
+
+/**
+ * How long a player's phone waits for its connection to the host to open: for the host to take
+ * its answer, or over Bluetooth to accept. Scanning takes seconds, but a code copied, sent over a
+ * messenger and pasted on the other phone takes longer.
+ */
+export const ANSWER_WAIT_MS = 60_000
 
 /**
  * A player's side of Spark Hunt, on the room of `@fionapreroll/p2p`: it sends where the player
@@ -41,10 +48,11 @@ export class GuestSession implements Session {
   }
 
   /**
-   * Waits for the connection, says hello and resolves once the host has let the player in.
-   * The token lets the host recognise a player who comes back.
+   * Waits for the connection, up to `ANSWER_WAIT_MS`, says hello and resolves once the host has
+   * let the player in. The token lets the host recognise a player who comes back.
    */
   static async join(link: Connection, name: string, token: string): Promise<GuestSession> {
+    await opened(link, ANSWER_WAIT_MS)
     const room = await GuestRoom.join<PlayerInput, Snapshot>(link, {
       name,
       token,

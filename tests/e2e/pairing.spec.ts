@@ -75,6 +75,27 @@ test('two players pair with codes and play a round', async ({ browser }) => {
   await expect(host.getByRole('button', { name: /Continue/ })).toHaveCount(0)
 })
 
+test('a code sent over slowly still lets the player in', async ({ browser }) => {
+  // A code copied and sent through a messenger takes longer than a scan: here 45 seconds,
+  // longer than the 30 a player waited before.
+  test.setTimeout(120_000)
+  const host = await player(browser)
+  const guest = await player(browser)
+  await host.getByRole('button', { name: 'Host a game' }).click()
+  await host.getByRole('button', { name: 'Add player' }).click()
+  const modal = host.locator('.modal')
+  const offer = await ownCode(host, modal)
+  await guest.getByLabel('Your name').fill('Slowpoke')
+  await guest.getByRole('button', { name: 'Join a game' }).click()
+  await pasteCode(guest.locator('.join'), offer)
+  const answer = await ownCode(guest)
+
+  await guest.waitForTimeout(45_000)
+  await pasteCode(modal, answer)
+  await expect(host.locator('.toast')).toHaveText('Slowpoke joined.')
+  await expect(guest.locator('.roster')).toContainText('Slowpoke')
+})
+
 test('a player who opens the join link skips the scanning', async ({ browser }) => {
   const host = await player(browser)
   await host.getByRole('button', { name: 'Host a game' }).click()

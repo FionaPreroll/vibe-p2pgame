@@ -27,6 +27,7 @@ const en = {
   connecting: 'Connecting…',
   connected: '{name} joined.',
   connectFailed: 'The connection failed. Are both phones on the same Wi-Fi or hotspot?',
+  timedOut: 'The other phone did not answer in time.',
   joinStep1: 'Scan the code on the host’s screen.',
   joinStep2: 'Show this code to the host and keep the screen on.',
   waitHost: 'Waiting for the host to start…',
@@ -260,6 +261,7 @@ const de: Record<TextKey, string> = {
   connected: '{name} spielt mit.',
   connectFailed:
     'Die Verbindung ist fehlgeschlagen. Sind beide Handys im selben WLAN oder Hotspot?',
+  timedOut: 'Das andere Handy hat nicht rechtzeitig geantwortet.',
   joinStep1: 'Scanne den Code auf dem Bildschirm des Hosts.',
   joinStep2: 'Zeig diesen Code dem Host und lass den Bildschirm an.',
   waitHost: 'Warte, bis der Host die Runde startet…',

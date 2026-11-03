@@ -66,7 +66,7 @@ All phones join the same Wi-Fi; out and about, one phone opens a hotspot and the
 - **Take a photo instead** opens the phone's own camera app, which focuses better.
 - In the Android app, **Scan with the phone's scanner** opens Google's own scanner, which focuses and zooms by itself.
 
-**No camera?** Under _No camera? Use text codes_, each side can copy its code and paste the other's, for example between two laptops or through a messenger.
+**No camera?** Under _No camera? Use text codes_, each side can copy its code and paste the other's, for example between two laptops or through a messenger. The player's phone waits up to a minute for the host to take its code.
 
 ### By Bluetooth, in the Android app
 

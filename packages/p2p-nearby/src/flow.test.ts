@@ -211,6 +211,50 @@ describe('NearbySearch and NearbyHosting', () => {
     )
   })
 
+  it('give up a player the host accepted whose connection never opens', async () => {
+    const air = new NearbyAir()
+    const host = hostPhone(air)
+    await later()
+    // A stranger asks, as Nearby would report it, and the host accepts; its link never opens.
+    host.fake.answers.set('E9', 'pending')
+    host.fake.emit('request', { endpointId: 'E9', name: 'Gone', digits: '4321', incoming: true })
+    host.hosting.accept('E9')
+    await later(29_999)
+    expect(host.hosting.requests()[0]?.status).toBe('joining')
+    await later(1)
+    expect(host.hosting.requests()[0]).toMatchObject({
+      status: 'failed',
+      error: new Error('Connection timed out'),
+    })
+    expect(host.fake.disconnected).toContain('E9')
+    // The host clears it, and the next player still gets in.
+    host.hosting.reject('E9')
+    expect(host.hosting.requests()).toEqual([])
+    const player = playerPhone(air)
+    await later()
+    void player.search.choose(player.search.hosts()[0] as Peer)
+    await later()
+    host.hosting.accept(host.hosting.requests()[0]?.request.endpointId ?? '')
+    await later(100)
+    expect(host.joined).toEqual(['Bo'])
+  })
+
+  it('leave a connection that opened in time to the room, however long joining takes', async () => {
+    const air = new NearbyAir()
+    const host = hostPhone(air)
+    await later()
+    const player = playerPhone(air)
+    await later()
+    void player.search.choose(player.search.hosts()[0] as Peer)
+    await later()
+    host.hosting.accept(host.hosting.requests()[0]?.request.endpointId ?? '')
+    await later(100)
+    expect(host.joined).toEqual(['Bo'])
+    // Long after: the player stays in.
+    await later(60_000)
+    expect(host.room.players().map((p) => p.name)).toEqual(['Bo'])
+  })
+
   it('stop advertising when the host closes, and take no request after', async () => {
     const air = new NearbyAir()
     const host = hostPhone(air)

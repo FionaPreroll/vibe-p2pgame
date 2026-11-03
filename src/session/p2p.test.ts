@@ -3,7 +3,7 @@ import { linkPair } from '@fionapreroll/p2p/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ARENA, MAX_PLAYERS, PLAYER_RADIUS } from '../game/sim'
 import { PROTOCOL, parseSnapshot } from '../net/protocol'
-import { GuestSession } from './guest'
+import { ANSWER_WAIT_MS, GuestSession } from './guest'
 import { HostSession } from './host'
 
 /**
@@ -351,5 +351,31 @@ describe('a malicious host', () => {
       expect(guest.snapshot()).toEqual(sound)
     }
     guest.close()
+  })
+})
+
+describe('a player whose code is copied over', () => {
+  it('waits a minute for the host to take it, and then gives up', async () => {
+    const host = new HostSession('Hosty')
+    expect(ANSWER_WAIT_MS).toBe(60_000)
+    // Taken after 45 seconds, longer than the library's own 30: the player gets in.
+    const slow = linkPair()
+    const attached = host.attach(slow.host.link)
+    const joining = GuestSession.join(slow.guest.link, 'Slowpoke', token())
+    await later(45_000)
+    slow.open()
+    const guest = await joining
+    await attached.joined
+    expect(guest.selfId()).toBe(1)
+
+    // Never taken: after a minute, the player hears that it timed out.
+    const never = linkPair()
+    host.attach(never.host.link).joined.catch(() => {})
+    const waiting = GuestSession.join(never.guest.link, 'Waity', token())
+    const failed = expect(waiting).rejects.toThrow('Connection timed out')
+    await later(ANSWER_WAIT_MS - 1)
+    await later(1)
+    await failed
+    host.close()
   })
 })
