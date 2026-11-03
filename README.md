@@ -325,8 +325,7 @@ Each version is also a file on a release of its own (`p2p-vx.y.z`, `p2p-nearby-v
 
 ## Known limits
 
-- **Tested end to end in Chromium only,** with two profiles on one machine. Real phones, iOS Safari and Firefox still need testing on a hotspot.
-- **The Android app is built and unit-tested, but not yet tried on phones:** Bluetooth, Google's scanner and the updates, and whether Android's WebView hides local addresses behind mDNS names as Chrome does, keeps the screen on, and takes photos through the camera app.
+- **Automated end-to-end tests run in Chromium only,** with two profiles on one machine; the Android app has also been tried on phones. iOS Safari and Firefox still need testing on a hotspot.
 - **Some Wi-Fi networks,** such as public or guest networks, isolate their clients, so the phones cannot see each other there; a phone's own hotspot does not do this.
 - **If the host's screen turns off** or the host switches apps, the browser throttles the game loop and the round stutters for everyone. A screen wake lock keeps the screen on while the game is open, where the browser supports it.
 - **Rejoining by QR code** takes a new pair of scans: WebRTC needs a new offer and answer for every connection, and there is no server to exchange them. Over Bluetooth, the player just picks the game again.
