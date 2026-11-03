@@ -4,9 +4,14 @@ All notable changes to `@fionapreroll/app-updates` are listed here. The format f
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-03
+
 ### Added
 
 - Updates for Android apps made with Capacitor, from the app's own GitHub release, as Spark Hunt had them: looking for a newer build, downloading it with pause and resume, also after the app was closed, and handing it to Android's installer as a session that reports back.
 - The dialogs, in the app's own texts: the question at the first start, and the offer, with the download's size, a warning on mobile data, progress, pausing, the right to install apps and the installer's answers.
 - The releases to read from are named in the app's Capacitor config, so the page cannot name another place.
 - `FakeUpdater` in `@fionapreroll/app-updates/testing`, for tests without a phone.
+
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/app-updates-v0.1.0...HEAD
+[0.1.0]: https://github.com/FionaPreroll/vibe-p2pgame/releases/tag/app-updates-v0.1.0
