@@ -437,6 +437,7 @@ describe('a malicious player', () => {
     await later(100)
     for (const ping of [-5, 1e9, '7', null]) {
       raw('fast', { type: 'input', data: 1, ping })
+      raw('fast', { type: 'ping', sent: 1, ping })
       await later(50)
       expect(h.room.players()[0]?.ping).toBeNull()
     }

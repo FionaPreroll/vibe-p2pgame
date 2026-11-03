@@ -1,6 +1,16 @@
 import { listen, type Parse, send } from '../channel.ts'
 import { type Connection, onLost, opened } from '../connection.ts'
+import { NetLog, SAMPLE_MS } from '../debug/netlog.ts'
+import type { ConnectionDetails } from '../details.ts'
+import { HOST_ID } from './host.ts'
 import { guestParser, ROOM_PROTOCOL, type ToGuest, type ToHost } from './messages.ts'
+import {
+  type ConnectionTest,
+  noCounts,
+  type ProbeCounts,
+  sendProbes,
+  TEST_REPORT_MS,
+} from './probe.ts'
 import { type GuestTraffic, TrafficCounter } from './traffic.ts'
 
 /** A ping unanswered this long, in milliseconds, is taken for lost. */
@@ -25,6 +35,8 @@ export interface GuestRoomOptions<State, Event = never> {
   readonly silenceMs?: number
   /** How long to wait for the host's welcome. Default 10 000. */
   readonly welcomeTimeoutMs?: number
+  /** Takes a line for the game's log when the connection stalls, and when it recovers. */
+  readonly netNote?: (line: string) => void
 }
 
 /**
@@ -38,7 +50,21 @@ export class GuestRoom<Input, State, Event = never> {
   onState: (state: State) => void = () => {}
   /** Called once if the host is gone: `ended` if the host ended the game on purpose. */
   onLost: (ended: boolean) => void = () => {}
+  /**
+   * The host started a connection test of `ms` milliseconds (see `HostRoom.testConnections`);
+   * the room takes part by itself.
+   */
+  onTestStart: (ms: number) => void = () => {}
+  /** A connection test is over: how this player's connection did. */
+  onTestResult: (result: ConnectionTest) => void = () => {}
+  /**
+   * How well the connection to the host keeps up, sampled once a second from the moment the
+   * player got in (see `NetLog`).
+   */
+  readonly net: NetLog
   private latest: State | null = null
+  /** The number of the newest state from the host. */
+  private lastState = -1
   private input: { value: Input } | null = null
   private measured: number | null = null
   private lastSeen = performance.now()
@@ -53,6 +79,9 @@ export class GuestRoom<Input, State, Event = never> {
   private eventListener: ((event: Event) => void) | null = null
   /** Events that came before anyone listened, such as one the host sent on joining. */
   private readonly early: Event[] = []
+  /** The connection test going on, with what this side sent and received in it. */
+  private test: { id: number; until: number; counts: ProbeCounts; reported: boolean } | null = null
+  private lastResult: ConnectionTest | null = null
 
   private constructor(
     private readonly link: Connection,
@@ -65,11 +94,34 @@ export class GuestRoom<Input, State, Event = never> {
     parse: Parse<ToGuest<State, Event>>,
     options: GuestRoomOptions<State, Event>,
   ) {
-    this.counter.watch(link.control, link.fast)
+    this.net = new NetLog(id, performance.now(), new Date(), options.netNote)
+    this.counter.watch([link.control, link.fast], () =>
+      this.net.arrived(HOST_ID, performance.now()),
+    )
     listen(link.control, parse, (message) => this.control(message))
     listen(link.fast, parse, (message) => {
       this.lastSeen = performance.now()
-      if (message.type === 'state') {
+      if (message.type === 'probe') {
+        const test = this.test
+        if (!test || message.test !== test.id || this.lost) return
+        if (message.seq !== null) {
+          this.counter.out(
+            send(link.fast, {
+              type: 'echo',
+              test: test.id,
+              seq: message.seq,
+            } satisfies ToHost<Input, Event>),
+          )
+        } else if (performance.now() <= test.until) {
+          test.counts.received++
+          test.counts.receivedChars += message.pad.length
+        }
+      } else if (message.type === 'state') {
+        // `fast` may reorder: a state older than the one shown is skipped.
+        if (message.n !== undefined) {
+          if (message.n <= this.lastState) return
+          this.lastState = message.n
+        }
         this.latest = message.data
         this.onState(message.data)
       } else if (message.type === 'pong') {
@@ -95,23 +147,26 @@ export class GuestRoom<Input, State, Event = never> {
               } satisfies ToHost<Input, Event>),
             )
           }
+          this.probe()
           if (performance.now() - this.lastSeen > silenceMs) this.lose(false)
         },
         options.tickMs ?? 1000 / 30,
       ),
+      setInterval(() => this.sample(), SAMPLE_MS),
       setInterval(() => {
         const now = performance.now()
         while (this.waiting.length > 0 && now - (this.waiting[0] ?? now) >= PING_LOST_MS) {
           this.waiting.shift()
           this.lostPings++
         }
-        const ping = { type: 'ping', sent: now } satisfies ToHost<Input, Event>
+        const ping = { type: 'ping', sent: now, ping: this.measured } satisfies ToHost<Input, Event>
         if (this.counter.out(send(link.fast, ping)) > 0) {
           this.pings++
           this.waiting.push(now)
         }
       }, options.pingMs ?? 1000),
     )
+    this.sample()
   }
 
   /**
@@ -203,6 +258,21 @@ export class GuestRoom<Input, State, Event = never> {
     this.input = { value: input }
   }
 
+  /** What the transport tells about the connection to the host; null where it cannot. */
+  async details(): Promise<ConnectionDetails | null> {
+    return (await this.link.details?.()) ?? null
+  }
+
+  /** How this player's connection did in the last test the host ran, or null before one. */
+  lastTest(): ConnectionTest | null {
+    return this.lastResult
+  }
+
+  /** Whether a connection test is going on. */
+  testing(): boolean {
+    return this.test !== null
+  }
+
   /** The last measured round trip to the host, in milliseconds. */
   ping(): number | null {
     return this.measured
@@ -222,12 +292,59 @@ export class GuestRoom<Input, State, Event = never> {
   }
 
   private control(message: ToGuest<State, Event>): void {
-    if (message.type === 'bye') this.lose(true)
+    if (message.type === 'test') {
+      // One test at a time; a host asking for another meanwhile is ignored.
+      if (this.test || this.lost) return
+      this.test = {
+        id: message.test,
+        until: performance.now() + message.ms,
+        counts: noCounts(),
+        reported: false,
+      }
+      this.onTestStart(message.ms)
+    } else if (message.type === 'tested') {
+      if (this.lost) return
+      if (this.test?.id === message.test) this.test = null
+      this.lastResult = message.result
+      this.onTestResult(message.result)
+    } else if (message.type === 'bye') this.lose(true)
     else if (message.type === 'event' && !this.lost) {
       this.lastSeen = performance.now()
       if (this.eventListener) this.eventListener(message.data)
       else if (this.early.length < 100) this.early.push(message.data)
     }
+  }
+
+  /** During a connection test, sends this tick's data, and its counts once it is over. */
+  private probe(): void {
+    const test = this.test
+    if (!test || this.lost) return
+    const now = performance.now()
+    if (now <= test.until) {
+      sendProbes(
+        this.link.fast,
+        (pad) => ({ type: 'probe', test: test.id, pad }) satisfies ToHost<Input, Event>,
+        test.counts,
+        (chars) => this.counter.out(chars),
+      )
+    } else if (!test.reported) {
+      test.reported = true
+      this.counter.out(
+        send(this.link.control, {
+          type: 'tested',
+          test: test.id,
+          ...test.counts,
+        } satisfies ToHost<Input, Event>),
+      )
+    } else if (now > test.until + TEST_REPORT_MS) {
+      // The host's result never came: the test is over for this side all the same.
+      this.test = null
+    }
+  }
+
+  private sample(): void {
+    if (this.lost) return
+    this.net.sample(HOST_ID, performance.now(), { ping: this.measured, traffic: this.traffic() })
   }
 
   close(): void {

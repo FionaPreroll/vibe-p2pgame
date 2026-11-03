@@ -1,8 +1,9 @@
-import { type Connection, opened } from '@fionapreroll/p2p'
-import { GuestRoom, HOST_ID } from '@fionapreroll/p2p/room'
+import { type Connection, type ConnectionDetails, opened } from '@fionapreroll/p2p'
+import type { NetLog } from '@fionapreroll/p2p/debug'
+import { type ConnectionTest, GuestRoom, HOST_ID } from '@fionapreroll/p2p/room'
 import type { Phase, Snapshot, Target } from '../game/sim'
 import { log } from '../log'
-import { type NetLog, SAMPLE_MS, startNetLog } from '../net/netlog'
+import { rememberNet } from '../net/netlog'
 import { IDLE_INPUT, type PlayerInput, PROTOCOL, parseSnapshot } from '../net/protocol'
 import type { Session } from './session'
 
@@ -22,29 +23,28 @@ export class GuestSession implements Session {
   readonly isHost = false
   /** Called once if the host is gone: `ended` if the host ended the game on purpose. */
   onLost: (ended: boolean) => void = () => {}
-  readonly net: NetLog
+  /** The host started a connection test; the room takes part by itself. */
+  onTestStart: () => void = () => {}
+  /** A connection test is over: how this player's connection did. */
+  onTestResult: (result: ConnectionTest) => void = () => {}
   private input: PlayerInput = IDLE_INPUT
   private phase: Phase | null = null
-  private readonly sampler: ReturnType<typeof setInterval>
 
   private constructor(private readonly room: GuestRoom<PlayerInput, Snapshot>) {
-    this.net = startNetLog(room.id, performance.now(), (line) => log('net', line))
-    room.onLost = (ended) => {
-      clearInterval(this.sampler)
-      this.onLost(ended)
+    rememberNet(this)
+    room.onLost = (ended) => this.onLost(ended)
+    room.onTestStart = () => {
+      log('net', 'the host tests the connection')
+      this.onTestStart()
     }
+    room.onTestResult = (result) => this.onTestResult(result)
     room.onState = (state) => {
-      this.net.arrived(HOST_ID, performance.now())
       if (state.phase !== this.phase) {
         this.phase = state.phase
         if (state.phase === 'countdown' || state.phase === 'play') this.send({ ready: false })
       }
     }
     room.setInput(this.input)
-    const sample = () =>
-      this.net.sample(HOST_ID, performance.now(), { ping: room.ping(), traffic: room.traffic() })
-    sample()
-    this.sampler = setInterval(sample, SAMPLE_MS)
   }
 
   /**
@@ -58,6 +58,7 @@ export class GuestSession implements Session {
       token,
       version: PROTOCOL,
       parseState: parseSnapshot,
+      netNote: (line) => log('net', line),
     })
     return new GuestSession(room)
   }
@@ -74,6 +75,23 @@ export class GuestSession implements Session {
 
   selfId(): number {
     return this.room.id
+  }
+
+  /** How well the connection to the host keeps up, as the room samples it. */
+  get net(): NetLog {
+    return this.room.net
+  }
+
+  peers(): number[] {
+    return [HOST_ID]
+  }
+
+  details(): Promise<ConnectionDetails | null> {
+    return this.room.details()
+  }
+
+  lastTest(): ConnectionTest | null {
+    return this.room.lastTest()
   }
 
   snapshot(): Snapshot | null {
@@ -112,7 +130,6 @@ export class GuestSession implements Session {
   }
 
   close(): void {
-    clearInterval(this.sampler)
     this.room.close()
   }
 }

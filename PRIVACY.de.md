@@ -30,6 +30,7 @@ Du spielst mit Handys, die du selbst koppelst, und sie tauschen Daten direkt aus
 - **Beim Koppeln per QR-Code** tragen die Codes auf den Bildschirmen, was die Handys zum Verbinden brauchen: ihre Adressen im lokalen Netz und Schlüssel für die verschlüsselte Verbindung. Nur Handys, die einen Code scannen oder ihn als Text bekommen, können ihn nutzen. In einem Beitritts-Link steht der Code hinter dem `#`, den Browser nicht an den Server der Website schicken.
 - **Beim Koppeln per Bluetooth,** in der App, sehen Handys in der Nähe, die in Funkenjagd Spiele suchen oder anbieten, deinen Namen, und beide Handys zeigen einen vierstelligen Code zum Vergleichen.
 - **Während eines Spiels** sieht jeder Spieler von allen Spielern Namen, Farbe, Position, Punkte und Ping. Der Host erhält, wohin du steuerst, ob du bereit bist oder zuschaust, und dein Kennzeichen; das Kennzeichen geht nie an andere Spieler.
+- **Während eines Verbindungstests,** den der Host startet, schicken sich die Handys ein paar Sekunden lang Fülldaten, um die Verbindung zu messen; jeder Spieler sieht, wie seine eigene Verbindung abschnitt.
 
 Die Verbindung ist verschlüsselt. Wer aufhört, behält die Namen und Punkte, die auf seinem Bildschirm standen.
 
@@ -50,7 +51,7 @@ Die Verbindung ist verschlüsselt. Wer aufhört, behält die Namen und Punkte, d
 
 ## Fehlerberichte
 
-Ein Fehlerbericht entsteht nur, wenn du einen erstellst, und du liest ihn, bevor er irgendwohin geht. Er enthält Modell und Android-Version deines Handys, den Browser, die Versionen des Spiels, was das Handy kann, deine Einstellungen ohne deinen Namen, wie gut die Verbindungen des letzten Spiels mithielten, und das jüngste Protokoll. Er enthält keine Namen, Kennzeichen, Codes oder Adressen. Er erreicht den Entwickler nur, wenn du ihn schickst: in eine Nachricht kopiert, oder als Issue auf GitHub, wo er öffentlich ist.
+Ein Fehlerbericht entsteht nur, wenn du einen erstellst, und du liest ihn, bevor er irgendwohin geht. Er enthält Modell und Android-Version deines Handys, den Browser, die Versionen des Spiels, was das Handy kann, deine Einstellungen ohne deinen Namen, wie gut die Verbindungen des letzten Spiels mithielten, den letzten Verbindungstest und das jüngste Protokoll. Er enthält keine Namen, Kennzeichen, Codes oder Adressen. Die Verbindungsdetails, von der Verbindungsgrafik aus, zeigen die Adresse deines Handys und die der Handys, mit denen du spielst, nur auf deinem eigenen Bildschirm, verborgen, bis du auf _Adressen zeigen_ tippst. Er erreicht den Entwickler nur, wenn du ihn schickst: in eine Nachricht kopiert, oder als Issue auf GitHub, wo er öffentlich ist.
 
 ## E-Mail
 

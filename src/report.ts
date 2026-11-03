@@ -1,7 +1,8 @@
+import { detailsLines, networkLines, testLines } from '@fionapreroll/p2p/debug'
 import { ROOM_PROTOCOL } from '@fionapreroll/p2p/room'
 import { currentLanguage } from './i18n'
 import { describeError, logLines, redact } from './log'
-import { latestNetLog, networkLines } from './net/netlog'
+import { latestNet } from './net/netlog'
 import { PROTOCOL } from './net/protocol'
 import { hostedGame, joinedGame } from './session/saved'
 import { settings } from './settings'
@@ -68,8 +69,18 @@ export async function debugReport(sources: ReportSources): Promise<string> {
       lines.push(`- Could not read: ${describeError(error)}`)
     }
   }
-  const net = latestNetLog()
-  if (net) lines.push('', '### Network, last game', '', ...networkLines(net))
+  const net = latestNet()
+  if (net) {
+    lines.push('', '### Network, last game', '', ...networkLines(net.net))
+    // What each connection's transport tells, while it lasts: kinds of address, never one.
+    const peers = net.peers()
+    if (peers.length > 0) {
+      lines.push('', 'Connections now:', '')
+      for (const peer of peers)
+        lines.push(...detailsLines(peer, await net.details(peer).catch(() => null)))
+    }
+    lines.push('', 'Connection test:', '', ...testLines(net.lastTest()))
+  }
   lines.push(
     '',
     '### Log',

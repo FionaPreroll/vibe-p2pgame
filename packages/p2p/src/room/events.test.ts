@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { linkPair } from '../testing.ts'
 import { GuestRoom } from './guest.ts'
 import { HostRoom, MAX_EVENTS_PER_SECOND, type RoomPlayer } from './host.ts'
-import { ROOM_PROTOCOL } from './messages.ts'
 
 /**
  * Events and states of their own for each player, with a tiny card game in memory: players
@@ -196,8 +195,4 @@ describe('a state for each player', () => {
     expect(a.guest.state()).toEqual(b.guest.state())
     h.room.close()
   })
-})
-
-it('belongs to room protocol 2: phones of the room before cannot join', () => {
-  expect(ROOM_PROTOCOL).toBe(2)
 })

@@ -164,6 +164,7 @@ export function play(session: GuestSession, name: string, onLeave: () => void): 
   }
   show(screen.element, 'ignore')
   if (session.rejoined) toast(t('welcomeBack'))
+  session.onTestStart = () => toast(t('connTestStarted'))
 }
 
 /** The host is out of reach: rejoin straight away, or go back to the start. */

@@ -1,8 +1,21 @@
 import { cleanName, listen, type Parse, send } from '../channel.ts'
 import { type Connection, onLost, opened } from '../connection.ts'
+import { NetLog, SAMPLE_MS } from '../debug/netlog.ts'
+import type { ConnectionDetails } from '../details.ts'
 import { acceptAnswer, createOffer } from '../link.ts'
 import type { Signal } from '../signal.ts'
 import { hostParser, ROOM_PROTOCOL, type ToGuest, type ToHost } from './messages.ts'
+import {
+  type ConnectionTest,
+  MAX_TEST_MS,
+  noCounts,
+  type ProbeCounts,
+  sendProbes,
+  TEST_MS,
+  TEST_PING_MS,
+  TEST_REPORT_MS,
+  testResult,
+} from './probe.ts'
 import { type Seat, Seats } from './seats.ts'
 import { type Traffic, TrafficCounter } from './traffic.ts'
 
@@ -31,6 +44,8 @@ export interface HostRoomOptions<Input, Event = never> {
   readonly helloTimeoutMs?: number
   /** The seats of a game saved before (see `seats()`), so its players can rejoin. */
   readonly restore?: { readonly nextId: number; readonly seats: readonly Seat[] }
+  /** Takes a line for the game's log when a connection stalls, and when it recovers. */
+  readonly netNote?: (line: string) => void
 }
 
 /** A player in the room, as the host's game sees them. */
@@ -56,6 +71,19 @@ export interface Pairing {
   cancel(): void
 }
 
+/** How one player's connection did in a test; null if the player left or never answered. */
+export interface TestedPlayer {
+  readonly player: RoomPlayer
+  readonly result: ConnectionTest | null
+}
+
+/** A connection test the host ran, and when, as `Date.now()`. */
+export interface ConnectionTestRun {
+  readonly at: number
+  readonly ms: number
+  readonly players: readonly TestedPlayer[]
+}
+
 /** Why a player left: their connection was lost, or the same browser came back on a new one. */
 export type LeaveReason = 'lost' | 'replaced'
 
@@ -71,6 +99,32 @@ interface Guest {
   /** The events taken in the current second, and when it began. */
   events: number
   eventsSince: number
+}
+
+/** One player's part of a connection test, as the host counts it. */
+interface Tested {
+  readonly guest: Guest
+  readonly player: RoomPlayer
+  pings: number
+  /** The pings still unanswered, by number, with when they went out. */
+  readonly waiting: Map<number, number>
+  readonly rtts: number[]
+  /** What the host sent the player, and what came from the player. */
+  readonly down: ProbeCounts
+  readonly up: ProbeCounts
+  /** The player's own counts, once they came. */
+  report: { sent: number; sentChars: number; received: number; receivedChars: number } | null
+}
+
+interface Test {
+  readonly id: number
+  readonly ms: number
+  readonly started: number
+  readonly until: number
+  nextPing: number
+  seq: number
+  readonly players: Map<number, Tested>
+  readonly done: (run: ConnectionTestRun) => void
 }
 
 /**
@@ -102,6 +156,11 @@ export class HostRoom<Input, State, Event = never> {
    * everyone gets the same. It runs once a tick for each player who gets a state.
    */
   stateFor: ((player: RoomPlayer, state: State) => State) | null = null
+  /**
+   * How well the connection to every player keeps up, sampled once a second while they are in
+   * (see `NetLog`).
+   */
+  readonly net: NetLog
 
   private readonly guests = new Map<number, Guest>()
   private readonly seats: Seats
@@ -113,8 +172,17 @@ export class HostRoom<Input, State, Event = never> {
   private readonly tickMs: number
   private readonly timer: ReturnType<typeof setInterval>
   private closed = false
+  private lastSample = performance.now()
+  private test: Test | null = null
+  private tests = 0
+  private lastRun: ConnectionTestRun | null = null
+  /** States sent so far, to number them. */
+  private states = 0
+  /** Whoever asked for a test while one ran. */
+  private readonly whenTested: ((run: ConnectionTestRun) => void)[] = []
 
   constructor(private readonly options: HostRoomOptions<Input, Event>) {
+    this.net = new NetLog(HOST_ID, performance.now(), new Date(), options.netNote)
     this.parse = hostParser(options.parseInput, options.parseEvent)
     this.maxPlayers = options.maxPlayers ?? 8
     this.silenceMs = options.silenceMs ?? 8000
@@ -226,6 +294,70 @@ export class HostRoom<Input, State, Event = never> {
     return this.guests.get(id)?.traffic.read() ?? null
   }
 
+  /** What the transport tells about a player's connection; null where it cannot, or for anyone not here. */
+  async details(id: number): Promise<ConnectionDetails | null> {
+    return (await this.guests.get(id)?.connection.details?.()) ?? null
+  }
+
+  /**
+   * Tests the connection to every player at once, for `ms` milliseconds (at most
+   * `MAX_TEST_MS`): host and players send each other as much data as their connections take,
+   * beside the game, while the host pings each player ten times a second. Resolves a few
+   * seconds after with how each did, and tells each player their part (`GuestRoom.onTestResult`).
+   * A test asked for while one runs resolves with that one.
+   */
+  testConnections(ms = TEST_MS): Promise<ConnectionTestRun> {
+    const running = this.test
+    if (running) return new Promise((resolve) => this.whenTested.push(resolve))
+    const length = Math.min(MAX_TEST_MS, Math.max(1000, Math.round(ms)))
+    const now = performance.now()
+    return new Promise((done) => {
+      const id = ++this.tests
+      const players = new Map<number, Tested>()
+      for (const [playerId, guest] of this.guests) {
+        if (this.closed) break
+        guest.traffic.out(
+          send(guest.connection.control, {
+            type: 'test',
+            test: id,
+            ms: length,
+          } satisfies ToGuest<State, Event>),
+        )
+        players.set(playerId, {
+          guest,
+          player: { id: playerId, name: guest.name, ping: guest.ping },
+          pings: 0,
+          waiting: new Map(),
+          rtts: [],
+          down: noCounts(),
+          up: noCounts(),
+          report: null,
+        })
+      }
+      this.test = {
+        id,
+        ms: length,
+        started: now,
+        until: now + length,
+        nextPing: now,
+        seq: 0,
+        players,
+        done,
+      }
+      if (players.size === 0) this.finishTest()
+    })
+  }
+
+  /** The last connection test, or null before the first. */
+  lastTest(): ConnectionTestRun | null {
+    return this.lastRun
+  }
+
+  /** Whether a connection test is going on. */
+  testing(): boolean {
+    return this.test !== null
+  }
+
   /** The players who left and may rejoin. */
   awaySeats(): Seat[] {
     return this.seats.awaySeats()
@@ -252,6 +384,7 @@ export class HostRoom<Input, State, Event = never> {
     if (this.closed) return
     this.closed = true
     clearInterval(this.timer)
+    this.finishTest()
     if (ended)
       for (const guest of this.guests.values()) send(guest.connection.control, { type: 'bye' })
     const links = [...this.guests.values()].map((guest) => guest.connection)
@@ -283,7 +416,7 @@ export class HostRoom<Input, State, Event = never> {
       eventsSince: Number.NEGATIVE_INFINITY,
     }
     this.guests.set(id, guest)
-    guest.traffic.watch(link.control, link.fast)
+    guest.traffic.watch([link.control, link.fast], () => this.net.arrived(id, performance.now()))
     guest.traffic.out(
       send(link.control, {
         type: 'welcome',
@@ -296,7 +429,16 @@ export class HostRoom<Input, State, Event = never> {
     )
     // After the hello, `control` carries only events, a few a second at most.
     listen(link.control, this.parse, (message) => {
-      if (this.guests.get(id) !== guest || message.type !== 'event') return
+      if (this.guests.get(id) !== guest) return
+      if (message.type === 'tested') {
+        const tested = this.test?.id === message.test ? this.test.players.get(id) : undefined
+        if (tested?.guest === guest && !tested.report) {
+          const { sent, sentChars, received, receivedChars } = message
+          tested.report = { sent, sentChars, received, receivedChars }
+        }
+        return
+      }
+      if (message.type !== 'event') return
       const now = performance.now()
       guest.lastSeen = now
       if (now - guest.eventsSince >= 1000) {
@@ -311,12 +453,26 @@ export class HostRoom<Input, State, Event = never> {
       if (this.guests.get(id) !== guest) return
       guest.lastSeen = performance.now()
       if (message.type === 'ping') {
+        // Games without input hear of the player's ping only here.
+        if (message.ping !== null) guest.ping = Math.round(message.ping)
         guest.traffic.out(
           send(link.fast, { type: 'pong', sent: message.sent } satisfies ToGuest<State, Event>),
         )
       } else if (message.type === 'input') {
         guest.ping = message.ping === null ? null : Math.round(message.ping)
         this.onInput({ id, name, ping: guest.ping }, message.data)
+      } else if (message.type === 'probe' || message.type === 'echo') {
+        const tested = this.test?.id === message.test ? this.test.players.get(id) : undefined
+        if (tested?.guest !== guest || tested.report) return
+        if (message.type === 'probe') {
+          tested.up.received++
+          tested.up.receivedChars += message.pad.length
+        } else {
+          const sent = tested.waiting.get(message.seq)
+          if (sent === undefined) return
+          tested.waiting.delete(message.seq)
+          tested.rtts.push(Math.max(0, performance.now() - sent))
+        }
       }
     })
     onLost(link, () => this.drop(id, 'lost'))
@@ -329,9 +485,82 @@ export class HostRoom<Input, State, Event = never> {
     const guest = this.guests.get(id)
     if (!guest) return
     this.guests.delete(id)
+    this.net.forget(id)
     this.seats.leave({ token: guest.token, id, name: guest.name })
     guest.connection.close()
     this.onLeave({ id, name: guest.name, ping: guest.ping }, reason)
+  }
+
+  /** During a connection test: this tick's pings and data, and the end once every count is in. */
+  private probe(now: number): void {
+    const test = this.test
+    if (!test) return
+    if (now <= test.until) {
+      const ping = now >= test.nextPing
+      if (ping) test.nextPing += TEST_PING_MS
+      for (const [id, tested] of test.players) {
+        const { guest } = tested
+        if (this.guests.get(id) !== guest) continue
+        const fast = guest.connection.fast
+        if (ping) {
+          const seq = ++test.seq
+          const chars = send(fast, {
+            type: 'probe',
+            test: test.id,
+            seq,
+            pad: '',
+          } satisfies ToGuest<State, Event>)
+          if (chars > 0) {
+            guest.traffic.out(chars)
+            tested.pings++
+            tested.waiting.set(seq, now)
+          }
+        }
+        sendProbes(
+          fast,
+          (pad) =>
+            ({ type: 'probe', test: test.id, seq: null, pad }) satisfies ToGuest<State, Event>,
+          tested.down,
+          (chars) => guest.traffic.out(chars),
+        )
+      }
+      return
+    }
+    const waiting = [...test.players].filter(
+      ([id, tested]) => this.guests.get(id) === tested.guest && !tested.report,
+    )
+    if (waiting.length === 0 || now > test.until + TEST_REPORT_MS) this.finishTest()
+  }
+
+  private finishTest(): void {
+    const test = this.test
+    if (!test) return
+    this.test = null
+    const players = [...test.players].map(([id, tested]): TestedPlayer => {
+      const report = tested.report
+      if (!report || this.guests.get(id) !== tested.guest)
+        return { player: tested.player, result: null }
+      const down = {
+        ...tested.down,
+        received: report.received,
+        receivedChars: report.receivedChars,
+      }
+      const up = { ...tested.up, sent: report.sent, sentChars: report.sentChars }
+      const result = testResult(test.ms, tested.pings, tested.rtts, down, up)
+      if (!this.closed)
+        tested.guest.traffic.out(
+          send(tested.guest.connection.control, {
+            type: 'tested',
+            test: test.id,
+            result,
+          } satisfies ToGuest<State, Event>),
+        )
+      return { player: tested.player, result }
+    })
+    const run = { at: Date.now(), ms: test.ms, players }
+    this.lastRun = run
+    test.done(run)
+    for (const waiting of this.whenTested.splice(0)) waiting(run)
   }
 
   private tick(): void {
@@ -341,9 +570,16 @@ export class HostRoom<Input, State, Event = never> {
     for (const [id, guest] of this.guests) {
       if (now - guest.lastSeen > this.silenceMs) this.drop(id, 'lost')
     }
+    if (now - this.lastSample >= SAMPLE_MS) {
+      this.lastSample = now
+      for (const [id, guest] of this.guests)
+        this.net.sample(id, now, { ping: guest.ping, traffic: guest.traffic.read() })
+    }
+    this.probe(now)
     const state = this.onTick(dt)
     if (state === undefined) return
-    const shared = this.stateFor ? null : stateMessage(state)
+    const n = ++this.states
+    const shared = this.stateFor ? null : stateMessage(state, n)
     for (const [id, guest] of this.guests) {
       const { fast, minStateIntervalMs = 0 } = guest.connection
       // Half a tick of leeway: ticks do not fall exactly on the interval.
@@ -356,13 +592,13 @@ export class HostRoom<Input, State, Event = never> {
       guest.lastState = now
       const message =
         shared ??
-        stateMessage(this.stateFor?.({ id, name: guest.name, ping: guest.ping }, state) ?? state)
+        stateMessage(this.stateFor?.({ id, name: guest.name, ping: guest.ping }, state) ?? state, n)
       fast.send(message)
       guest.traffic.out(message.length)
     }
   }
 }
 
-function stateMessage<State>(state: State): string {
-  return JSON.stringify({ type: 'state', data: state } satisfies ToGuest<State>)
+function stateMessage<State>(state: State, n: number): string {
+  return JSON.stringify({ type: 'state', data: state, n } satisfies ToGuest<State>)
 }

@@ -15,6 +15,15 @@ export {
   send,
 } from './channel.ts'
 export { type Connection, type ConnectionState, onLost, opened } from './connection.ts'
+export {
+  type AddressKind,
+  addressKind,
+  type ChannelDetails,
+  type ConnectionDetails,
+  type Endpoint,
+  maskAddress,
+  rtcDetails,
+} from './details.ts'
 export { acceptAnswer, answerOffer, createOffer, type Link } from './link.ts'
 export {
   type ChannelName,

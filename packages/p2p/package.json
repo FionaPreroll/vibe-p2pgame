@@ -1,6 +1,6 @@
 {
   "name": "@fionapreroll/p2p",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Peer-to-peer games for phones in the browser: WebRTC over a shared Wi-Fi or hotspot, paired by QR codes, without internet or servers.",
   "license": "UNLICENSED",
   "type": "module",
@@ -14,6 +14,7 @@
     ".": "./src/index.ts",
     "./room": "./src/room/index.ts",
     "./qr": "./src/qr/index.ts",
+    "./debug": "./src/debug/index.ts",
     "./testing": "./src/testing.ts"
   },
   "publishConfig": {
@@ -30,6 +31,10 @@
       "./qr": {
         "types": "./dist/qr/index.d.ts",
         "default": "./dist/qr/index.js"
+      },
+      "./debug": {
+        "types": "./dist/debug/index.d.ts",
+        "default": "./dist/debug/index.js"
       },
       "./testing": {
         "types": "./dist/testing.d.ts",

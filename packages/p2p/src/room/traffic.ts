@@ -31,12 +31,13 @@ export class TrafficCounter {
   private received = 0
   private receivedChars = 0
 
-  /** Counts what arrives on these channels from now on. */
-  watch(...channels: Channel[]): void {
+  /** Counts what arrives on these channels from now on, and calls back with every message. */
+  watch(channels: readonly Channel[], arrived: () => void = () => {}): void {
     for (const channel of channels) {
       channel.addEventListener('message', (event) => {
         this.received++
         this.receivedChars += typeof event.data === 'string' ? event.data.length : 0
+        arrived()
       })
     }
   }

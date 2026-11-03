@@ -97,6 +97,15 @@ describe('between two phones', () => {
     guest.setInput(7)
     await later(1000)
     expect(guest.state()).toEqual({ digits: { 1: 7 } })
+    // Each side names the other by Nearby's id, never by a Bluetooth address.
+    expect(await guest.details()).toMatchObject({
+      transport: 'bluetooth',
+      remote: { address: 'HOST1', type: 'nearby' },
+    })
+    expect(await room.details(guest.id)).toMatchObject({
+      transport: 'bluetooth',
+      remote: { address: 'PLAY1' },
+    })
     room.close()
   })
 

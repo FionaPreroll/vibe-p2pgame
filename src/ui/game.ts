@@ -1,15 +1,15 @@
+import { drawNetGraph, pingQuality, STALL_MS, worstLatest } from '@fionapreroll/p2p/debug'
 import { Painter, playerColor, playerShape } from '../game/draw'
 import { type Player, type Snapshot, winners } from '../game/sim'
 import { t } from '../i18n'
 import { Controls } from '../input'
-import { STALL_MS } from '../net/netlog'
 import type { Session } from '../session/session'
 import { settings, updateSettings } from '../settings'
 import { play, scoreSound, unlockSound } from '../sound'
+import { connectionDialog } from './connection'
 import { h } from './dom'
 import { joystick } from './joystick'
-import { drawNetGraph, pingQuality, worstLatest } from './netGraph'
-import { reportDialog } from './report'
+import { netColor, reportDialog } from './report'
 
 /** Keys, the stick and the joystick steer this far ahead of the dot, in arena units. */
 const STEER_AHEAD = 120
@@ -52,6 +52,14 @@ export function gameScreen(
     },
   })
 
+  /** Whom a connection leads to, by player id: the player's name, the host's marked. */
+  const peerName = (peer: number) => {
+    const state = session.snapshot()
+    const known = [...(state?.players ?? []), ...(state?.watching ?? []), ...(state?.away ?? [])]
+    const name = known.find((p) => p.id === peer)?.name ?? `#${peer}`
+    return peer === 0 ? t('connHost', { name }) : name
+  }
+
   // The connection at a glance: a small graph of the ping, and its newest value.
   const netCanvas = h('canvas', { class: 'net-graph' })
   const netText = h('span', { class: 'net-ping' })
@@ -60,9 +68,9 @@ export function gameScreen(
     {
       type: 'button',
       class: 'net',
-      ariaLabel: t('debugTitle'),
+      ariaLabel: t('connOpen'),
       hidden: true,
-      onclick: () => void reportDialog(),
+      onclick: () => connectionDialog(session, peerName),
     },
     netCanvas,
     netText,
@@ -265,7 +273,7 @@ export function gameScreen(
     const latest = worstLatest(session.net, now)
     net.hidden = latest === null
     if (latest === null) return
-    drawNetGraph(netCanvas, session.net, now, 30)
+    drawNetGraph(netCanvas, session.net, now, 30, { color: netColor(session.net.self) })
     netText.textContent = latest.ping === null ? '…' : t('pingMs', { ms: latest.ping })
     net.dataset.quality = pingQuality(latest.ping, latest.gap >= STALL_MS)
   }
