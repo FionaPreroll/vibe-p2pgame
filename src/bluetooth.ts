@@ -1,7 +1,13 @@
 import { Nearby } from '@fionapreroll/p2p-nearby'
 import { log } from './log'
 
-export { type JoinRequest, NearbyStartError, type Peer } from '@fionapreroll/p2p-nearby'
+export {
+  type JoinRequest,
+  NearbyHosting,
+  NearbySearch,
+  NearbyStartError,
+  type Peer,
+} from '@fionapreroll/p2p-nearby'
 
 /**
  * Bluetooth between phones in the Android app, from `@fionapreroll/p2p-nearby` (Google's

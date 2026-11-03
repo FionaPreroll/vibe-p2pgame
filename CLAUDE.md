@@ -42,7 +42,7 @@ The README describes the project, its layout and its conventions. These rules ho
 - The release "Spark Hunt for Android" (tag `android-latest`) is replaced by CI with every push to `main`; that tag moves on purpose, and is the only one that does. Numbered game versions stay for when they are asked for.
 - In-app updates (`@fionapreroll/app-updates`, used by `src/updates.ts`) compare the release's `version.json` with the APK's `versionCode`; both are the Android workflow's run number, so the release job keeps publishing `version.json` beside the APK. The plugin reads and downloads only from the releases named in `capacitor.config.ts`, this repository's.
 
-- Bluetooth comes from `@fionapreroll/p2p-nearby` (`packages/p2p-nearby/src/index.ts`, `NearbyPlugin.java`) and reaches the game only as `@fionapreroll/p2p`'s `packetConnection`: rooms know nothing of it. `src/bluetooth.ts` only gives it Spark Hunt's service and log. Its limits are on both sides, native and in the library, and every native event is checked there like a message from another phone.
+- Bluetooth comes from `@fionapreroll/p2p-nearby` (`packages/p2p-nearby/src/index.ts`, `NearbyPlugin.java`) and reaches the game only as `@fionapreroll/p2p`'s `packetConnection`: rooms know nothing of it. `src/bluetooth.ts` only gives it Spark Hunt's service and log, and `src/ui/bluetoothUi.ts` only draws the library's flow (`NearbyHosting`, `NearbySearch`): what any game would do over Bluetooth belongs in the library, not here. Its limits are on both sides, native and in the library, and every native event is checked there like a message from another phone.
 
 ## Code
 

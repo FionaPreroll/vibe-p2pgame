@@ -168,6 +168,7 @@ Browsers cannot do this: Web Bluetooth can only connect to devices, and a web pa
 - One host takes several players at once, in Nearby's star strategy, as the game's own. Bluetooth allows up to seven connections a phone: the game's eight players, with the host.
 - Bluetooth carries less than a Wi-Fi, so the host sends a Bluetooth player 15 snapshots a second instead of 30 (`minStateIntervalMs` in the library), and the others as many as before.
 - Each Bluetooth link becomes a `Connection` through the library's `packetConnection`: the rooms know nothing of Bluetooth.
+- The flow is the library's too: `NearbyHosting` keeps the host's list of players who ask, with their codes, and lets in those accepted; `NearbySearch` lists the games nearby, asks the one chosen, and tells a host's no from a join that failed. `src/ui/bluetoothUi.ts` only draws them, in Spark Hunt's words.
 
 ### Versions, rejoining and storage
 

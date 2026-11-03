@@ -8,6 +8,11 @@ All changes players can notice are listed here. The format follows [Keep a Chang
 
 - Phones with this version and phones with 0.2.0 cannot play together: update both.
 
+### Fixed
+
+- A player who leaves the Bluetooth search while asking a host no longer stays in the host's list, where the host could still accept them.
+- After a Bluetooth player could not join, the host's list keeps them with the reason until the host removes them, instead of offering to accept them again.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added

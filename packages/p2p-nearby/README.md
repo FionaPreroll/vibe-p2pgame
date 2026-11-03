@@ -20,7 +20,7 @@ pnpm add @fionapreroll/p2p-nearby
 Or without logging in, from the file on the version's release:
 
 ```bash
-pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.1.2/fionapreroll-p2p-nearby-0.1.2.tgz
+pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.2.0/fionapreroll-p2p-nearby-0.2.0.tgz
 ```
 
 ```bash
@@ -60,6 +60,34 @@ await nearby.stop() // stops advertising or looking; connections stay
 ```
 
 `NearbyStartError` says why Nearby could not start, in `kind`: `permission` (a permission was refused), `unavailable` (no Google Play services), `bluetooth-off`, `location-off`, or `radio` for anything else. `code` and `message` carry Nearby's own status, such as `nearby-8007`, for a debug report; `nearby.diagnostics()` adds the phone, Google Play services, every permission's state and the native log.
+
+### The flow, without screens
+
+Most games show the same: the host's list of players who ask, each with the code, and the player's list of games nearby. `NearbyHosting` and `NearbySearch` hold that flow, in the right order, and leave the screens and their texts to the game:
+
+```ts
+import { NearbyHosting, NearbySearch } from '@fionapreroll/p2p-nearby'
+
+// The host's phone: advertise, and let players in through the room.
+const hosting = new NearbyHosting(nearby, 'Ada', (connection) => room.attach(connection).joined)
+hosting.onChange = () => drawRequests(hosting.requests()) // { request, status: 'waiting' | 'joining' | 'failed', error }
+hosting.onJoined = ({ player }) => say(`${player.name} joined`)
+hosting.started.catch((error) => sayWhy(error)) // NearbyStartError
+// The host compares the code, then: hosting.accept(endpointId) or hosting.reject(endpointId)
+await hosting.close() // stops advertising; players let in stay
+
+// A player's phone: looks at once; choosing a game stops looking and asks it.
+const search = new NearbySearch(nearby, 'Bo', (connection) => GuestRoom.join(connection, options), {
+  discard: (guest) => guest.close(), // a join that comes after the player left
+})
+search.onChange = () => draw(search.state(), search.hosts())
+search.onJoined = (guest) => play(guest)
+void search.choose(host) // state: asking, with the code once both phones have it
+search.again() // after 'refused', 'failed' or 'unavailable'
+await search.leave() // also takes the request back from the host's phone
+```
+
+`search.state().phase` is `starting`, `looking`, `unavailable` (with the error), `asking` (with the host and the code), `joined`, `refused` (the host said no, or the connection broke before it opened), `failed` (it opened, but joining failed: the room's `version`, `full` or `timeout`), or `left`. A request the player takes back leaves the host's list by itself; one that failed stays, with its error, until the host rejects it.
 
 A host sends a Bluetooth player fewer states than one over Wi-Fi: 15 a second by default (`stateIntervalMs`), as Bluetooth carries less.
 

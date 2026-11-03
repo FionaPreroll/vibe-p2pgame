@@ -126,7 +126,10 @@ describe('the host’s Bluetooth dialog', () => {
     expect(row.textContent).toContain(`Bo wants to join. Code: ${digits}`)
 
     button('Accept', row).click()
-    expect([...row.querySelectorAll('button')].every((b) => b.disabled)).toBe(true)
+    // While the player gets in, the row says so, and takes no second answer.
+    const joiningRow = document.querySelector('.requests li') as HTMLElement
+    expect(joiningRow.textContent).toContain('Connecting')
+    expect([...joiningRow.querySelectorAll('button')].every((b) => b.disabled)).toBe(true)
     await joining
     await later()
     expect(session.world.players.map((p) => p.name)).toEqual(['Hosty', 'Bo'])

@@ -372,3 +372,11 @@ function describeError(error: unknown): string {
     .join(': ')
     .slice(0, 300)
 }
+
+export {
+  type HostRequest,
+  NearbyHosting,
+  NearbySearch,
+  type NearbySearchOptions,
+  type SearchState,
+} from './flow.ts'
