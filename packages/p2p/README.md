@@ -28,7 +28,7 @@ pnpm add @fionapreroll/p2p
 Or without logging in, from the file on the version's release (see its [releases](https://github.com/FionaPreroll/vibe-p2pgame/releases)):
 
 ```bash
-pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-v0.4.0/fionapreroll-p2p-0.4.0.tgz
+pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-v0.6.0/fionapreroll-p2p-0.6.0.tgz
 ```
 
 It is ESM only, written in TypeScript with its types included, and runs in browsers. The room and the codes also run in Node, for tests.

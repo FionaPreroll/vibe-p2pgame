@@ -10,9 +10,9 @@ import type { Session } from './session'
 /**
  * How long a player's phone waits for its connection to the host to open: for the host to take
  * its answer, or over Bluetooth to accept. Scanning takes seconds, but a code copied, sent over a
- * messenger and pasted on the other phone takes longer.
+ * messenger and pasted on the other phone can take minutes. The Spielekiste waits as long.
  */
-export const ANSWER_WAIT_MS = 60_000
+export const ANSWER_WAIT_MS = 10 * 60_000
 
 /**
  * A player's side of Spark Hunt, on the room of `@fionapreroll/p2p`: it sends where the player

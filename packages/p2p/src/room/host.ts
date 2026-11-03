@@ -453,6 +453,8 @@ export class HostRoom<Input, State, Event = never> {
       if (this.guests.get(id) !== guest) return
       guest.lastSeen = performance.now()
       if (message.type === 'ping') {
+        // Games without input hear of the player's ping only here.
+        if (message.ping !== null) guest.ping = Math.round(message.ping)
         guest.traffic.out(
           send(link.fast, { type: 'pong', sent: message.sent } satisfies ToGuest<State, Event>),
         )

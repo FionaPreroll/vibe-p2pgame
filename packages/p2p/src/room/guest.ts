@@ -159,7 +159,7 @@ export class GuestRoom<Input, State, Event = never> {
           this.waiting.shift()
           this.lostPings++
         }
-        const ping = { type: 'ping', sent: now } satisfies ToHost<Input, Event>
+        const ping = { type: 'ping', sent: now, ping: this.measured } satisfies ToHost<Input, Event>
         if (this.counter.out(send(link.fast, ping)) > 0) {
           this.pings++
           this.waiting.push(now)
