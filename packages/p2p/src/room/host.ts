@@ -176,6 +176,8 @@ export class HostRoom<Input, State, Event = never> {
   private test: Test | null = null
   private tests = 0
   private lastRun: ConnectionTestRun | null = null
+  /** States sent so far, to number them. */
+  private states = 0
   /** Whoever asked for a test while one ran. */
   private readonly whenTested: ((run: ConnectionTestRun) => void)[] = []
 
@@ -574,7 +576,8 @@ export class HostRoom<Input, State, Event = never> {
     this.probe(now)
     const state = this.onTick(dt)
     if (state === undefined) return
-    const shared = this.stateFor ? null : stateMessage(state)
+    const n = ++this.states
+    const shared = this.stateFor ? null : stateMessage(state, n)
     for (const [id, guest] of this.guests) {
       const { fast, minStateIntervalMs = 0 } = guest.connection
       // Half a tick of leeway: ticks do not fall exactly on the interval.
@@ -587,13 +590,13 @@ export class HostRoom<Input, State, Event = never> {
       guest.lastState = now
       const message =
         shared ??
-        stateMessage(this.stateFor?.({ id, name: guest.name, ping: guest.ping }, state) ?? state)
+        stateMessage(this.stateFor?.({ id, name: guest.name, ping: guest.ping }, state) ?? state, n)
       fast.send(message)
       guest.traffic.out(message.length)
     }
   }
 }
 
-function stateMessage<State>(state: State): string {
-  return JSON.stringify({ type: 'state', data: state } satisfies ToGuest<State>)
+function stateMessage<State>(state: State, n: number): string {
+  return JSON.stringify({ type: 'state', data: state, n } satisfies ToGuest<State>)
 }

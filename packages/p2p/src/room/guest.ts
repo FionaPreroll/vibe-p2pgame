@@ -63,6 +63,8 @@ export class GuestRoom<Input, State, Event = never> {
    */
   readonly net: NetLog
   private latest: State | null = null
+  /** The number of the newest state from the host. */
+  private lastState = -1
   private input: { value: Input } | null = null
   private measured: number | null = null
   private lastSeen = performance.now()
@@ -115,6 +117,11 @@ export class GuestRoom<Input, State, Event = never> {
           test.counts.receivedChars += message.pad.length
         }
       } else if (message.type === 'state') {
+        // `fast` may reorder: a state older than the one shown is skipped.
+        if (message.n !== undefined) {
+          if (message.n <= this.lastState) return
+          this.lastState = message.n
+        }
         this.latest = message.data
         this.onState(message.data)
       } else if (message.type === 'pong') {

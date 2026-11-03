@@ -101,6 +101,22 @@ describe('rooms over a weak connection', () => {
     )
   })
 
+  it('never shows an older state that came after a newer one', async () => {
+    const h = host()
+    const { guest, pair } = await join(h.room, { delayMs: [5, 300], seed: 17 })
+    const seen: number[] = []
+    guest.onState = (state) => seen.push(state.tick)
+    await later(5000)
+    // Delays of 5 to 300 ms make states overtake each other on the way, yet none is lost…
+    expect(seen.length).toBeGreaterThan(30)
+    expect(pair.host.fast.lost).toBe(0)
+    // …and the player saw only ever newer ones: those that came late were skipped.
+    expect(seen).toEqual([...seen].sort((a, b) => a - b))
+    expect(new Set(seen).size).toBe(seen.length)
+    expect(seen.length).toBeLessThan(150)
+    h.room.close()
+  })
+
   it('keeps players whose connection loses half of everything, and drops them once silent', async () => {
     const h = host()
     const { guest, pair } = await join(h.room, weak(0.5, 11))
