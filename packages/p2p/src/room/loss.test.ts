@@ -171,6 +171,15 @@ describe('rooms over a weak connection', () => {
     h.room.close()
   })
 
+  it('tells the host the ping of a player who sends no input, as in a game of turns', async () => {
+    const h = host()
+    const { guest } = await join(h.room, { delayMs: 40 })
+    await later(3000)
+    expect(guest.ping()).toBe(80)
+    expect(h.room.players()[0]?.ping).toBe(80)
+    h.room.close()
+  })
+
   it('samples every connection once a second on both sides, and notes stalls', async () => {
     const notes: string[] = []
     const room = new HostRoom<number, State>({

@@ -27,8 +27,11 @@ export type ToHost<Input, Event = never> =
   | { type: 'hello'; name: string; token: string; room: number; version: number }
   /** On `fast`, many times a second: the game's input, and the player's last ping. */
   | { type: 'input'; data: Input; ping: number | null }
-  /** On `fast`, once a second: the host answers at once, so the player can time the trip. */
-  | { type: 'ping'; sent: number }
+  /**
+   * On `fast`, once a second: the host answers at once, so the player can time the trip. It
+   * carries the player's last ping too, for games that send no input.
+   */
+  | { type: 'ping'; sent: number; ping: number | null }
   /** On `control`, now and then: one of the game's events, such as a move, which must arrive. */
   | { type: 'event'; data: Event }
   /** On `fast`, during a connection test: data to measure how much gets through. */
@@ -102,7 +105,13 @@ export function hostParser<Input, Event = never>(
         }
       }
       case 'ping':
-        return isNumber(value.sent) ? { type: 'ping', sent: value.sent } : undefined
+        return isNumber(value.sent)
+          ? {
+              type: 'ping',
+              sent: value.sent,
+              ping: inRange(value.ping, 0, MAX_PING_MS) ? value.ping : null,
+            }
+          : undefined
       case 'event': {
         const data = parseEvent(value.data)
         return data === undefined ? undefined : { type: 'event', data }

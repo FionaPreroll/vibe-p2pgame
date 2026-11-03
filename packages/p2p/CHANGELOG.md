@@ -15,10 +15,11 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 ### Fixed
 
 - A player's room no longer goes back to an older state that arrived after a newer one, as `fast` may reorder: the host numbers its states, and `GuestRoom` skips those older than the one it has. Found by the new tests over weak connections.
+- The host knows each player's ping in games without input, such as games of turns: the player's pings carry it too, not only its input.
 
 ### Changed
 
-- `ROOM_PROTOCOL` is 3: phones with 0.5 and earlier do not play together, as the connection test brings messages of its own.
+- `ROOM_PROTOCOL` is 3: phones with 0.5 and earlier do not play together, as the connection test brings messages of its own, and pings carry the player's ping.
 - `TrafficCounter.watch` takes the channels as a list, and calls back with every message.
 
 ## [0.5.0] - 2026-11-02

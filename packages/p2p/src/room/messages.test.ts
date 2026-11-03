@@ -62,7 +62,14 @@ describe('room messages', () => {
       data: 4,
       ping: 12,
     })
-    expect(toHost({ type: 'ping', sent: 5 })).toEqual({ type: 'ping', sent: 5 })
+    expect(toHost({ type: 'ping', sent: 5, ping: 30 })).toEqual({ type: 'ping', sent: 5, ping: 30 })
+    // A ping from before the first answer, or one out of range, is none.
+    expect(toHost({ type: 'ping', sent: 5 })).toEqual({ type: 'ping', sent: 5, ping: null })
+    expect(toHost({ type: 'ping', sent: 5, ping: -1 })).toEqual({
+      type: 'ping',
+      sent: 5,
+      ping: null,
+    })
     const welcome = {
       type: 'welcome',
       id: 2,
@@ -100,6 +107,7 @@ describe('room messages', () => {
           expect(h.ping === null || (h.ping >= 0 && h.ping <= 60_000)).toBe(true)
         } else if (h?.type === 'ping') {
           expect(Number.isFinite(h.sent)).toBe(true)
+          expect(h.ping === null || (h.ping >= 0 && h.ping <= 60_000)).toBe(true)
         }
         const g = toGuest(value)
         if (g?.type === 'welcome') {
