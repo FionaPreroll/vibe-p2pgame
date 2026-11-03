@@ -4,6 +4,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-03
+
 ### Added
 
 - `@fionapreroll/p2p/testing`: `linkPair({ conditions })` and each channel's `conditions` make a connection in memory weak, by seed: `fast` loses a share of messages, and delays and reorders them; `control` is only delayed, and keeps its order. `lost` counts what a channel lost; `seededRandom` is the generator it uses.
@@ -91,7 +93,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 - Checks for writing parsers, and name cleaning.
 - Connections in memory for tests (`@fionapreroll/p2p/testing`).
 
-[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.5.0...HEAD
+[Unreleased]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.6.0...HEAD
+[0.6.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.5.0...p2p-v0.6.0
 [0.5.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.4.0...p2p-v0.5.0
 [0.4.0]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.1...p2p-v0.4.0
 [0.3.1]: https://github.com/FionaPreroll/vibe-p2pgame/compare/p2p-v0.3.0...p2p-v0.3.1

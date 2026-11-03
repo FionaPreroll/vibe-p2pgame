@@ -20,7 +20,7 @@ pnpm add @fionapreroll/p2p-nearby
 Or without logging in, from the file on the version's release:
 
 ```bash
-pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.2.1/fionapreroll-p2p-nearby-0.2.1.tgz
+pnpm add https://github.com/FionaPreroll/vibe-p2pgame/releases/download/p2p-nearby-v0.3.0/fionapreroll-p2p-nearby-0.3.0.tgz
 ```
 
 ```bash
