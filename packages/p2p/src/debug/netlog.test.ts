@@ -40,6 +40,7 @@ describe('NetLog', () => {
       kbOut: 1.5,
       loss: 0,
       gap: 0,
+      stalled: false,
     })
   })
 
@@ -134,6 +135,41 @@ describe('NetLog', () => {
       .split('\n')
       .filter((line) => /^\d/.test(line))
     expect(rows).toHaveLength(REPORT_SAMPLES)
+  })
+
+  it('takes no stall for the second between pings of a player who sends no input', () => {
+    // Between games, a player sends only a ping a second: the host waits about a second for
+    // each, which is usual there. In a game, input comes 30 times a second: the same wait is a
+    // stall. A player gone quiet for good stalls either way.
+    const notes: string[] = []
+    const log = new NetLog(0, 0, new Date(), (line) => notes.push(line))
+    log.sample(1, 0, reading(null, 0, 0))
+    for (let second = 1; second <= 5; second++) {
+      log.arrived(1, second * 1000 - 950)
+      log.sample(1, second * 1000, reading(50, second, second))
+    }
+    expect(log.series(1).map((s) => [s.gap, s.stalled])).toEqual([
+      [950, false],
+      [1000, false],
+      [1000, false],
+      [1000, false],
+      [1000, false],
+    ])
+    // The game starts: 30 messages a second, then a wait of 700 ms.
+    for (let at = 5000; at < 6000; at += 33) log.arrived(1, at)
+    log.sample(1, 6000, reading(50, 35, 35))
+    for (let at = 6000; at < 6300; at += 33) log.arrived(1, at)
+    log.sample(1, 7000, reading(50, 45, 45))
+    // Nothing at all for three seconds.
+    log.sample(1, 10_000, reading(50, 45, 45))
+    expect(
+      log
+        .series(1)
+        .slice(5)
+        .map((s) => s.stalled),
+    ).toEqual([false, true, true])
+    expect(log.summary()[0]?.stalls).toBe(2)
+    expect(notes).toEqual(['player 1: no message for 703 ms'])
   })
 
   it('notes for the log when a connection stalls and when it recovers, once each', () => {

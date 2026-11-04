@@ -172,7 +172,7 @@ room.traffic(id) // { sent, sentChars, received, receivedChars } for one player
 
 The counts run from when the player got in, over both channels; `receivedChars` also counts messages dropped as malformed. Read them now and then, say once a second, and take the differences for rates. A ping counts as lost once it has gone unanswered for `PING_LOST_MS` (3 seconds); answers to pings the player never sent, or sent and gave up on, are ignored, and do not change `ping()` either.
 
-Every room also samples its connections once a second by itself, into a `NetLog` (`room.net`, `guest.net`, from `@fionapreroll/p2p/debug`): the ping, messages and kilobytes per second each way, the share of pings lost, and the longest wait for a message. `netNote` in the options takes a line for the game's log when a connection stalls for half a second (`STALL_MS`) and when it recovers.
+Every room also samples its connections once a second by itself, into a `NetLog` (`room.net`, `guest.net`, from `@fionapreroll/p2p/debug`): the ping, messages and kilobytes per second each way, the share of pings lost, and the longest wait for a message. `netNote` in the options takes a line for the game's log when a connection stalls and when it recovers. A wait counts as a stall (`NetSample.stalled`) when no message came for half a second (`STALL_MS`) and for twice as long as its messages were apart the second before: a player who sends no input, such as between games, sends only a ping a second, and the host's wait of a second for it is no stall.
 
 ```ts
 import { connectionView, DebugLog, drawNetGraph, networkLines } from '@fionapreroll/p2p/debug'

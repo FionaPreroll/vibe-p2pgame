@@ -84,7 +84,7 @@ Keys, the stick and the joystick steer a little ahead of the dot, and letting go
 
 ### The connection
 
-In the top line, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
+In the top line, a small graph shows the ping of the last half minute and its newest value: green below 60 ms, yellow below 150 ms, red above, or when no message came for half a second while they usually come more often. The host sees one line for every player, in their colour, and the worst newest value. Red marks below the line are seconds with such a stall or with lost pings.
 
 Every phone samples its connections once a second: the ping, messages and data per second each way, pings lost, and the longest wait for a message; the log notes when a connection stalls and when it recovers.
 

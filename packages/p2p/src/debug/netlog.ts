@@ -40,6 +40,13 @@ export interface NetSample {
   readonly loss: number | null
   /** The longest time without a message from the other phone, in milliseconds. */
   readonly gap: number
+  /**
+   * Whether that wait was a stall: at least `STALL_MS`, and at least twice as long as the
+   * connection's messages are usually apart, by how many came in the second before. A player
+   * who sends no input, such as between games, sends only a ping a second: waits of a second
+   * are usual there, not stalls.
+   */
+  readonly stalled: boolean
 }
 
 export interface PeerSummary {
@@ -54,7 +61,7 @@ export interface PeerSummary {
   readonly inRate: number
   readonly outRate: number
   readonly loss: number | null
-  /** Seconds in which no message came for half a second or longer. */
+  /** Seconds in which the connection stalled (see `NetSample.stalled`). */
   readonly stalls: number
   readonly longestGap: number
   readonly kbIn: number
@@ -63,7 +70,10 @@ export interface PeerSummary {
 
 /** How often the rooms take a sample of every connection. */
 export const SAMPLE_MS = 1000
-/** A wait this long for a message counts as a stall: players see the game stutter. */
+/**
+ * A wait this long for a message counts as a stall, players see the game stutter, as long as
+ * messages usually come more often (see `NetSample.stalled`).
+ */
 export const STALL_MS = 500
 /** Samples kept, the oldest go first: an hour with one player, ten minutes with six. */
 const MAX_SAMPLES = 3600
@@ -76,6 +86,11 @@ interface Peer {
   lost: number
   /** Whether the last sample was a stall, to note only when that changes. */
   stalled: boolean
+  /**
+   * How far apart messages came in the second before, in milliseconds: null if none came, and
+   * undefined before the connection's first sample.
+   */
+  spacing: number | null | undefined
 }
 
 export class NetLog {
@@ -118,18 +133,25 @@ export class NetLog {
     const lost = Math.max(0, (after.lostPings ?? 0) - (before.lostPings ?? 0))
     p.pongs += pongs
     p.lost += lost
+    const inRate = round(rate(after.received, before.received), 1)
+    // A wait is a stall only if messages usually come more often: as the second before shows,
+    // or for a connection's first second, this one.
+    const spacing = inRate > 0 ? 1000 / inRate : null
+    const usual = p.spacing === undefined ? spacing : p.spacing
+    const stalled = Math.round(gap) >= Math.max(STALL_MS, 2 * (usual ?? 0))
+    p.spacing = spacing
     const sample: NetSample = {
       t: round((now - this.startedAt) / 1000, 1),
       peer,
       ping: reading.ping === null ? null : Math.round(reading.ping),
-      inRate: round(rate(after.received, before.received), 1),
+      inRate,
       outRate: round(rate(after.sent, before.sent), 1),
       kbIn: round(rate(after.receivedChars, before.receivedChars) / 1000, 2),
       kbOut: round(rate(after.sentChars, before.sentChars) / 1000, 2),
       loss: pongs + lost === 0 ? null : lost / (pongs + lost),
       gap: Math.round(gap),
+      stalled,
     }
-    const stalled = sample.gap >= STALL_MS
     if (stalled !== p.stalled) {
       p.stalled = stalled
       this.note(
@@ -151,6 +173,7 @@ export class NetLog {
       p.lastArrival = null
       p.longestGap = 0
       p.stalled = false
+      p.spacing = undefined
     }
   }
 
@@ -161,7 +184,7 @@ export class NetLog {
 
   /** The seconds of a connection with a stall, from second `t` of the log on. */
   stallsSince(peer: number, t: number): number {
-    return this.samples.filter((s) => s.peer === peer && s.t >= t && s.gap >= STALL_MS).length
+    return this.samples.filter((s) => s.peer === peer && s.t >= t && s.stalled).length
   }
 
   /** Every connection with samples, by id. */
@@ -194,7 +217,7 @@ export class NetLog {
         inRate: round(sum((s) => s.inRate) / series.length, 1),
         outRate: round(sum((s) => s.outRate) / series.length, 1),
         loss: p && p.pongs + p.lost > 0 ? p.lost / (p.pongs + p.lost) : null,
-        stalls: series.filter((s) => s.gap >= STALL_MS).length,
+        stalls: series.filter((s) => s.stalled).length,
         longestGap: Math.max(0, ...series.map((s) => s.gap)),
         kbIn: round(
           sum((s) => s.kbIn),
@@ -211,7 +234,15 @@ export class NetLog {
   private peer(id: number): Peer {
     let peer = this.peers.get(id)
     if (!peer) {
-      peer = { last: null, lastArrival: null, longestGap: 0, pongs: 0, lost: 0, stalled: false }
+      peer = {
+        last: null,
+        lastArrival: null,
+        longestGap: 0,
+        pongs: 0,
+        lost: 0,
+        stalled: false,
+        spacing: undefined,
+      }
       this.peers.set(id, peer)
     }
     return peer
@@ -235,7 +266,7 @@ export function summaryLines(log: NetLog, s: PeerSummary): string[] {
     }`,
     `  - Messages received: ${s.inRate} per second, sent: ${s.outRate} per second`,
     `  - Pings lost: ${s.loss === null ? 'not measured' : `${round(s.loss * 100, 1)}%`}`,
-    `  - Stalls of ${STALL_MS} ms or more: ${s.stalls}, longest wait ${s.longestGap} ms`,
+    `  - Stalls of ${STALL_MS} ms or more, and twice the usual wait: ${s.stalls}, longest wait ${s.longestGap} ms`,
     `  - Data: ${s.kbIn} kB received, ${s.kbOut} kB sent`,
   ]
 }

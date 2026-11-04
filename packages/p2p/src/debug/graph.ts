@@ -1,4 +1,4 @@
-import { type NetLog, type NetSample, STALL_MS } from './netlog.ts'
+import type { NetLog, NetSample } from './netlog.ts'
 
 /** How the graph looks: `drawNetGraph` takes any of these. */
 export interface NetGraphOptions {
@@ -34,8 +34,7 @@ export function worstLatest(log: NetLog, now: number): NetSample | null {
   for (const sample of latest.values()) {
     // Connections without a sample in the last few seconds have ended.
     if (t - sample.t > 3) continue
-    if (worst === null || sample.gap >= STALL_MS || (sample.ping ?? 0) > (worst.ping ?? 0))
-      worst = sample
+    if (worst === null || sample.stalled || (sample.ping ?? 0) > (worst.ping ?? 0)) worst = sample
   }
   return worst
 }
@@ -128,7 +127,7 @@ export function drawNetGraph(
   c.fillStyle = stallColor
   const barWidth = Math.max(ratio, (width - left) / seconds - ratio)
   for (const sample of recent) {
-    if (sample.gap >= STALL_MS || (sample.loss ?? 0) > 0) {
+    if (sample.stalled || (sample.loss ?? 0) > 0) {
       c.fillRect(x(sample.t) - barWidth, plotHeight + ratio, barWidth, markHeight)
     }
   }

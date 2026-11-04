@@ -1,4 +1,4 @@
-import { drawNetGraph, pingQuality, STALL_MS, worstLatest } from '@fionapreroll/p2p/debug'
+import { drawNetGraph, pingQuality, worstLatest } from '@fionapreroll/p2p/debug'
 import { Painter, playerColor, playerShape } from '../game/draw'
 import { type Player, type Snapshot, winners } from '../game/sim'
 import { t } from '../i18n'
@@ -275,7 +275,7 @@ export function gameScreen(
     if (latest === null) return
     drawNetGraph(netCanvas, session.net, now, 30, { color: netColor(session.net.self) })
     netText.textContent = latest.ping === null ? '…' : t('pingMs', { ms: latest.ping })
-    net.dataset.quality = pingQuality(latest.ping, latest.gap >= STALL_MS)
+    net.dataset.quality = pingQuality(latest.ping, latest.stalled)
   }
 
   frame = requestAnimationFrame(render)
