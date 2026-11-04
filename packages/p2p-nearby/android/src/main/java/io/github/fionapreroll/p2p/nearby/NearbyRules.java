@@ -34,6 +34,31 @@ final class NearbyRules {
     static final int MAX_BYTES = 32768;
 
     /**
+     * Nearby's word for how much a connection carries (BandwidthInfo.Quality, whose numbers
+     * NearbyRulesAndroidTest checks). A connection starts over Bluetooth, which is `low`;
+     * `medium` and `high` mean that Nearby moved it up to Wi-Fi by itself, as it does when both
+     * phones can.
+     */
+    static final int QUALITY_UNKNOWN = 0;
+    static final int QUALITY_LOW = 1;
+    static final int QUALITY_MEDIUM = 2;
+    static final int QUALITY_HIGH = 3;
+
+    /** A bandwidth quality as the plugin tells it: low, medium, high or unknown. */
+    static String quality(int code) {
+        switch (code) {
+            case QUALITY_LOW:
+                return "low";
+            case QUALITY_MEDIUM:
+                return "medium";
+            case QUALITY_HIGH:
+                return "high";
+            default:
+                return "unknown";
+        }
+    }
+
+    /**
      * The game's own Nearby service, which both sides look for only: 3 to 64 letters, digits,
      * dots, dashes or underscores.
      */

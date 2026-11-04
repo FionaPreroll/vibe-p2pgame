@@ -185,7 +185,7 @@ importers:
         specifier: workspace:^0.6.0
         version: link:packages/p2p
       '@fionapreroll/p2p-nearby':
-        specifier: workspace:^0.3.0
+        specifier: workspace:^0.4.0
         version: link:packages/p2p-nearby
     devDependencies:
       '@biomejs/biome':

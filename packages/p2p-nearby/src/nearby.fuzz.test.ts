@@ -110,6 +110,16 @@ const nativeEvent = fc.oneof(
       fc.anything(),
     ),
   }),
+  fc.record({
+    event: fc.constant<NearbyEvent>('bandwidth'),
+    value: fc.oneof(
+      fc.record({
+        endpointId: stranger,
+        quality: fc.oneof(fc.constantFrom('low', 'medium', 'high', 'unknown'), fc.anything()),
+      }),
+      fc.anything(),
+    ),
+  }),
 )
 const hostAction = fc.oneof(
   fc.record({ kind: fc.constant('native' as const), native: nativeEvent }),

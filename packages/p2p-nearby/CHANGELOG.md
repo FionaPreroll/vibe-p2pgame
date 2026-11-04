@@ -4,6 +4,12 @@ All notable changes to `@fionapreroll/p2p-nearby` are listed here. The format fo
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
+### Added
+
+- Whether a connection is still on Bluetooth or moved up to Wi-Fi: the plugin passes on Nearby's bandwidth (`onBandwidthChanged`) as the event `bandwidth`, and a connection's `details()` tell it, in `state` (`low bandwidth`, `medium bandwidth` or `high bandwidth`) and as the other end's `network` (`bluetooth` or `wifi`). The log and the native log say so whenever it changes. The `Bandwidth` type names the qualities.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added

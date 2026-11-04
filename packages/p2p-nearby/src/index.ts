@@ -45,6 +45,25 @@ export type NearbyEvent =
   | 'rejected'
   | 'disconnected'
   | 'message'
+  | 'bandwidth'
+
+/**
+ * How much a connection carries, as Nearby measures it: `low` is Bluetooth, where every
+ * connection starts; `medium` and `high` mean that Nearby moved it up to Wi-Fi by itself, as it
+ * does when both phones can.
+ */
+export type Bandwidth = 'low' | 'medium' | 'high' | 'unknown'
+
+const BANDWIDTHS: readonly Bandwidth[] = ['low', 'medium', 'high', 'unknown']
+
+/** The medium a bandwidth means, as a connection's details name networks. */
+function medium(bandwidth: Bandwidth | undefined): string | undefined {
+  return bandwidth === 'low'
+    ? 'bluetooth'
+    : bandwidth === 'medium' || bandwidth === 'high'
+      ? 'wifi'
+      : undefined
+}
 
 let native: NearbyNative | undefined
 
@@ -139,6 +158,8 @@ export class Nearby {
   onRequestGone: (endpointId: string) => void = () => {}
 
   private readonly links = new Map<string, Link>()
+  /** Each connection's bandwidth, as Nearby last told it. */
+  private readonly bandwidths = new Map<string, Bandwidth>()
   private readonly requests = new Map<string, JoinRequest>()
   private role: 'host' | 'player' | null = null
   private ready: Promise<void> | undefined
@@ -244,6 +265,7 @@ export class Nearby {
         on('rejected', (e) => this.closed(e.endpointId)),
         on('disconnected', (e) => this.closed(e.endpointId)),
         on('message', (e) => this.message(e)),
+        on('bandwidth', (e) => this.bandwidth(e)),
       ])
     })()
     return this.ready
@@ -312,7 +334,18 @@ export class Nearby {
     const link = this.links.get(endpointId)
     if (!link) return
     this.links.delete(endpointId)
+    this.bandwidths.delete(endpointId)
     link.connection.markClosed()
+  }
+
+  /** Nearby measured a connection anew, or moved it between Bluetooth and Wi-Fi. */
+  private bandwidth(e: Record<string, unknown>): void {
+    if (!isEndpoint(e.endpointId) || !this.links.has(e.endpointId)) return
+    const quality = BANDWIDTHS.find((b) => b === e.quality)
+    if (!quality || this.bandwidths.get(e.endpointId) === quality) return
+    this.bandwidths.set(e.endpointId, quality)
+    const on = medium(quality)
+    this.log(`bandwidth of ${e.endpointId}: ${quality}${on ? `, over ${on}` : ''}`)
   }
 
   private message(e: Record<string, unknown>): void {
@@ -336,11 +369,17 @@ export class Nearby {
           void this.plugin.disconnect({ endpointId }).catch(() => {})
         },
         // Nearby names the other phone by an id of its own, new with every start; Bluetooth
-        // addresses stay hidden, also from the app.
-        details: () => ({
-          transport: 'bluetooth',
-          remote: { address: endpointId, type: 'nearby' },
-        }),
+        // addresses stay hidden, also from the app. What it carries says whether it is still on
+        // Bluetooth or moved up to Wi-Fi.
+        details: () => {
+          const bandwidth = this.bandwidths.get(endpointId)
+          const network = medium(bandwidth)
+          return {
+            transport: 'bluetooth',
+            ...(bandwidth ? { state: `${bandwidth} bandwidth` } : {}),
+            remote: { address: endpointId, type: 'nearby', ...(network ? { network } : {}) },
+          }
+        },
       },
       { minStateIntervalMs },
     )

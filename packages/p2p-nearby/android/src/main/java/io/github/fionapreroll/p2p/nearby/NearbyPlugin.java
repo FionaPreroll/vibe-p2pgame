@@ -24,6 +24,7 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.AdvertisingOptions;
+import com.google.android.gms.nearby.connection.BandwidthInfo;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
 import com.google.android.gms.nearby.connection.ConnectionOptions;
@@ -335,6 +336,20 @@ public class NearbyPlugin extends Plugin {
                 event.put("status", result.getStatus().getStatusCode());
                 notifyListeners("rejected", event);
             }
+        }
+
+        /**
+         * Nearby moved the connection to another medium, or measured it anew: Bluetooth at first
+         * (low), Wi-Fi once it moved up (medium or high).
+         */
+        @Override
+        public void onBandwidthChanged(String endpointId, BandwidthInfo info) {
+            String quality = NearbyRules.quality(info.getQuality());
+            log("bandwidth of " + endpointId + ": " + quality);
+            JSObject event = new JSObject();
+            event.put("endpointId", endpointId);
+            event.put("quality", quality);
+            notifyListeners("bandwidth", event);
         }
 
         @Override

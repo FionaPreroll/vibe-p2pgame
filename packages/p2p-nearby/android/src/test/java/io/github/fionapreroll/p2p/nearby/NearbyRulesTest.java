@@ -15,6 +15,16 @@ import org.junit.Test;
 public class NearbyRulesTest {
 
     @Test
+    public void namesTheBandwidth() {
+        assertEquals("low", NearbyRules.quality(NearbyRules.QUALITY_LOW));
+        assertEquals("medium", NearbyRules.quality(NearbyRules.QUALITY_MEDIUM));
+        assertEquals("high", NearbyRules.quality(NearbyRules.QUALITY_HIGH));
+        for (int other : new int[] { NearbyRules.QUALITY_UNKNOWN, -1, 4, Integer.MAX_VALUE }) {
+            assertEquals("unknown", NearbyRules.quality(other));
+        }
+    }
+
+    @Test
     public void takesOnlyASoundServiceName() {
         assertTrue(NearbyRules.isService("io.github.fionapreroll.sparkhunt.game"));
         assertTrue(NearbyRules.isService("a-b_c"));

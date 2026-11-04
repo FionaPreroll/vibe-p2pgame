@@ -109,6 +109,29 @@ describe('between two phones', () => {
     room.close()
   })
 
+  it('says whether a connection stays on Bluetooth or moves up to Wi-Fi', async () => {
+    const { hostPhone, playerPhone, room, guest } = await game()
+    expect((await guest.details())?.state).toBeUndefined()
+    playerPhone.emit('bandwidth', { endpointId: 'HOST1', quality: 'low' })
+    expect(await guest.details()).toMatchObject({
+      state: 'low bandwidth',
+      remote: { address: 'HOST1', network: 'bluetooth' },
+    })
+    hostPhone.emit('bandwidth', { endpointId: 'PLAY1', quality: 'high' })
+    expect(await room.details(guest.id)).toMatchObject({
+      state: 'high bandwidth',
+      remote: { network: 'wifi' },
+    })
+    // Made up, or for a connection nobody here has: ignored.
+    playerPhone.emit('bandwidth', { endpointId: 'HOST1', quality: 'huge' })
+    playerPhone.emit('bandwidth', { endpointId: 'NOBODY', quality: 'high' })
+    playerPhone.emit('bandwidth', { endpointId: 'HOST1\n', quality: 'high' })
+    expect((await guest.details())?.state).toBe('low bandwidth')
+    expect(lines).toContain('bandwidth of HOST1: low, over bluetooth')
+    expect(lines).toContain('bandwidth of PLAY1: high, over wifi')
+    room.close()
+  })
+
   it('sends a player fewer states than over Wi-Fi, as often as the game says', async () => {
     const { hostPhone, room } = await game()
     const count = () => hostPhone.sent.filter((m) => m.data.includes('"state"')).length
