@@ -110,6 +110,7 @@ function bluetoothLines(d: Record<string, unknown>): string[] {
     `- Permissions asked for: ${text(d.neededPermissions)}`,
     `- Permissions: ${permissions}`,
     `- Nearby: advertising ${text(d.advertising)}, discovering ${text(d.discovering)}, waiting ${text(d.waiting)}, connected ${text(d.connected)}`,
+    `- Dropped by the plugin: ${text(d.droppedBusy)} fast messages while busy, ${text(d.droppedOverRate)} over the rate`,
     '',
     'Native log:',
     '',

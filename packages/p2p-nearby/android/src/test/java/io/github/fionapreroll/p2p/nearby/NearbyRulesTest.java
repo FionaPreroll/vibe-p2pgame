@@ -140,6 +140,49 @@ public class NearbyRulesTest {
     }
 
     @Test
+    public void letsMoreFastMessagesGoOnceNearbyMovedUpToWifi() {
+        assertEquals(2, NearbyRules.fastInFlight(NearbyRules.QUALITY_LOW));
+        assertEquals(2, NearbyRules.fastInFlight(NearbyRules.QUALITY_UNKNOWN));
+        assertEquals(2, NearbyRules.fastInFlight(42));
+        assertEquals(6, NearbyRules.fastInFlight(NearbyRules.QUALITY_MEDIUM));
+        assertEquals(6, NearbyRules.fastInFlight(NearbyRules.QUALITY_HIGH));
+        NearbyRules.FastLanes lanes = new NearbyRules.FastLanes(NearbyRules.MAX_FAST_IN_FLIGHT);
+        lanes.limit("E1", NearbyRules.fastInFlight(NearbyRules.QUALITY_HIGH));
+        for (long id = 1; id <= 6; id++) {
+            assertTrue(lanes.admit("E1"));
+            lanes.sent("E1", id);
+        }
+        assertFalse(lanes.admit("E1"));
+        // Another connection, still on Bluetooth, keeps two.
+        assertTrue(lanes.admit("E2"));
+        lanes.sent("E2", 7);
+        assertTrue(lanes.admit("E2"));
+        lanes.sent("E2", 8);
+        assertFalse(lanes.admit("E2"));
+        assertEquals(2, lanes.dropped());
+        // Back on Bluetooth: no new message until the six in flight are down to one.
+        lanes.limit("E1", NearbyRules.fastInFlight(NearbyRules.QUALITY_LOW));
+        for (long id = 1; id <= 4; id++) lanes.released(id);
+        assertFalse(lanes.free("E1"));
+        lanes.released(5);
+        assertTrue(lanes.free("E1"));
+        // A connection that ends forgets its lanes; a nonsense limit still lets one go.
+        lanes.forget("E1");
+        assertEquals(NearbyRules.MAX_FAST_IN_FLIGHT, lanes.limit("E1"));
+        lanes.limit("E3", 0);
+        assertTrue(lanes.admit("E3"));
+    }
+
+    @Test
+    public void countsWhatTheRateLimitTurnedAway() {
+        NearbyRules.RateLimit limit = new NearbyRules.RateLimit(2);
+        for (int i = 0; i < 5; i++) limit.allow("E1", 1000 + i);
+        assertEquals(3, limit.dropped());
+        limit.clear();
+        assertEquals(3, limit.dropped());
+    }
+
+    @Test
     public void keepsTheNewestLinesWithTheirSeconds() {
         NearbyRules.DebugLog log = new NearbyRules.DebugLog(10_000, 3);
         log.add("start host", 10_500);

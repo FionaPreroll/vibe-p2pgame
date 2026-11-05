@@ -1,6 +1,6 @@
 {
   "name": "@fionapreroll/p2p-nearby",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Bluetooth for @fionapreroll/p2p in Android apps made with Capacitor: Google's Nearby Connections as a Connection, for rooms to play over without Wi-Fi.",
   "license": "UNLICENSED",
   "type": "module",

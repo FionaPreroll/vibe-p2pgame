@@ -4,6 +4,16 @@ All notable changes to `@fionapreroll/p2p-nearby` are listed here. The format fo
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-05
+
+### Added
+
+- `diagnostics()` tells what the native side dropped since it loaded: `droppedBusy`, `fast` messages while their connection was busy, and `droppedOverRate`, messages from another phone beyond 120 a second.
+
+### Changed
+
+- Once Nearby moved a connection up to Wi-Fi (medium or high bandwidth), six `fast` messages may be on their way to it instead of two. Nearby frees a lane only once a message is through, which takes a round trip of 40 ms or more even over Wi-Fi: two lanes carried about the 30 states a second of a game in real time and little more, so a connection test's data, sent beside the game's, was dropped whole. Over Bluetooth it stays two, so that a slow link never queues old states. The log says how many each connection gets.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added

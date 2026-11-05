@@ -59,7 +59,7 @@ const guest = await GuestRoom.join(connection, { name: 'Bo', token, version, par
 await nearby.stop() // stops advertising or looking; connections stay
 ```
 
-`NearbyStartError` says why Nearby could not start, in `kind`: `permission` (a permission was refused), `unavailable` (no Google Play services), `bluetooth-off`, `location-off`, or `radio` for anything else. `code` and `message` carry Nearby's own status, such as `nearby-8007`, for a debug report; `nearby.diagnostics()` adds the phone, Google Play services, every permission's state and the native log.
+`NearbyStartError` says why Nearby could not start, in `kind`: `permission` (a permission was refused), `unavailable` (no Google Play services), `bluetooth-off`, `location-off`, or `radio` for anything else. `code` and `message` carry Nearby's own status, such as `nearby-8007`, for a debug report; `nearby.diagnostics()` adds the phone, Google Play services, every permission's state, the native log, and what the native side dropped since it loaded: `droppedBusy`, `fast` messages while their connection was busy, and `droppedOverRate`, messages from another phone beyond 120 a second.
 
 ### The flow, without screens
 
@@ -104,7 +104,7 @@ Nobody nearby is trusted, and neither is the native side:
 - Every native event is read field by field: ids, names, codes and channels must look as they should, and names are cleaned as the library cleans them.
 - A host hears requests only while it advertises, and at most four wait at once; more are turned down at once, natively too.
 - An answer to a request this phone never made is turned down, and a connection nobody here asked for or accepted is ended.
-- Messages count only from accepted, open connections, on a known channel, as short text: `packetConnection` checks them. The native side takes at most 120 messages a second from a connection, of at most 32 KB, and drops `fast` messages while two are on their way.
+- Messages count only from accepted, open connections, on a known channel, as short text: `packetConnection` checks them. The native side takes at most 120 messages a second from a connection, of at most 32 KB, and drops `fast` messages while two are on their way, or six once Nearby moved the connection up to Wi-Fi, where a message takes a round trip to be through but many fit at once.
 - The log holds endpoint ids, roles and statuses, never names or messages.
 
 ## Testing a game

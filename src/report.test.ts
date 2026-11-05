@@ -126,6 +126,8 @@ describe('the debug report', () => {
         discovering: false,
         waiting: 0,
         connected: 0,
+        droppedBusy: 12,
+        droppedOverRate: 0,
         log: [
           '+3s start player (Android 34)',
           '+3s could not discover: 8034 MISSING_PERMISSION from 192.168.1.20',
@@ -136,6 +138,9 @@ describe('the debug report', () => {
     expect(report).toContain('- App build: 9 (9-abc)')
     expect(report).toContain('- Phone: Fairphone FP5, Android 14 (SDK 34)')
     expect(report).toContain('- Bluetooth: on, Location: off')
+    expect(report).toContain(
+      '- Dropped by the plugin: 12 fast messages while busy, 0 over the rate',
+    )
     expect(report).toContain('BLUETOOTH_SCAN granted, NEARBY_WIFI_DEVICES denied')
     expect(report).toContain('+3s could not discover: 8034 MISSING_PERMISSION from <ip>')
   })

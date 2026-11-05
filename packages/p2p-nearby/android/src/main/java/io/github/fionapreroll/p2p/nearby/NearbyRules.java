@@ -22,8 +22,19 @@ final class NearbyRules {
     static final int MAX_PENDING = 4;
     /** Messages a second taken from one connection; more are dropped before they reach the game. */
     static final int MAX_MESSAGES_PER_SECOND = 120;
-    /** Fast messages on their way to one connection; while there are this many, new ones are dropped. */
+    /**
+     * Fast messages on their way to one connection over Bluetooth, or before Nearby says what
+     * carries it; while there are this many, new ones are dropped, so that a slow link never
+     * queues states that are old by the time they arrive.
+     */
     static final int MAX_FAST_IN_FLIGHT = 2;
+    /**
+     * The same once Nearby moved the connection up to Wi-Fi (medium or high bandwidth). Nearby
+     * frees a lane only once a message is through, a round trip of 40 ms or more even over
+     * Wi-Fi: two lanes carried about the 30 states a second of a game in real time and little
+     * more, so a connection test's data, sent beside the game's, was dropped whole.
+     */
+    static final int MAX_FAST_IN_FLIGHT_WIFI = 6;
     /** Lines kept for the debug report: what happened, never what was said. */
     static final int MAX_LOG_LINES = 200;
     /**
@@ -43,6 +54,11 @@ final class NearbyRules {
     static final int QUALITY_LOW = 1;
     static final int QUALITY_MEDIUM = 2;
     static final int QUALITY_HIGH = 3;
+
+    /** How many fast messages may be on their way to a connection of this bandwidth. */
+    static int fastInFlight(int quality) {
+        return quality == QUALITY_MEDIUM || quality == QUALITY_HIGH ? MAX_FAST_IN_FLIGHT_WIFI : MAX_FAST_IN_FLIGHT;
+    }
 
     /** A bandwidth quality as the plugin tells it: low, medium, high or unknown. */
     static String quality(int code) {
@@ -142,10 +158,14 @@ final class NearbyRules {
         return status != null ? "nearby-" + status : "failed";
     }
 
-    /** At most so many messages a second from each connection; the window starts anew each second. */
+    /**
+     * At most so many messages a second from each connection; the window starts anew each second.
+     * Counts what it turned away, for the debug report.
+     */
     static final class RateLimit {
         private final int perSecond;
         private final Map<String, long[]> windows = new HashMap<>();
+        private long dropped;
 
         RateLimit(int perSecond) {
             this.perSecond = perSecond;
@@ -158,7 +178,14 @@ final class NearbyRules {
                 return true;
             }
             window[1]++;
-            return window[1] <= perSecond;
+            if (window[1] <= perSecond) return true;
+            dropped++;
+            return false;
+        }
+
+        /** Messages turned away since the plugin loaded. */
+        long dropped() {
+            return dropped;
         }
 
         void forget(String endpointId) {
@@ -172,21 +199,46 @@ final class NearbyRules {
 
     /**
      * The fast messages on their way to each connection: while a link is busy, new ones are dropped
-     * instead of piling up, as only the newest state counts.
+     * instead of piling up, as only the newest state counts. How many may be on their way follows
+     * what carries the connection (see `fastInFlight`). Counts what it dropped, for the debug
+     * report.
      */
     static final class FastLanes {
         private final int max;
+        private final Map<String, Integer> limits = new HashMap<>();
         private final Map<String, Integer> inFlight = new HashMap<>();
         private final Map<Long, String> payloads = new HashMap<>();
+        private long dropped;
 
         FastLanes(int max) {
             this.max = max;
         }
 
+        /** How many fast messages may be on their way to this connection from now on. */
+        void limit(String endpointId, int lanes) {
+            limits.put(endpointId, Math.max(1, lanes));
+        }
+
+        int limit(String endpointId) {
+            return limits.getOrDefault(endpointId, max);
+        }
+
         /** Whether a fast message to this connection may go now. */
         boolean free(String endpointId) {
             Integer count = inFlight.get(endpointId);
-            return count == null || count < max;
+            return count == null || count < limit(endpointId);
+        }
+
+        /** Whether a fast message to this connection may go now; one that may not is counted as dropped. */
+        boolean admit(String endpointId) {
+            if (free(endpointId)) return true;
+            dropped++;
+            return false;
+        }
+
+        /** Fast messages dropped since the plugin loaded, as their connection was busy. */
+        long dropped() {
+            return dropped;
         }
 
         /** A fast message went out. */
@@ -205,11 +257,13 @@ final class NearbyRules {
 
         void forget(String endpointId) {
             inFlight.remove(endpointId);
+            limits.remove(endpointId);
             payloads.values().removeIf(endpointId::equals);
         }
 
         void clear() {
             inFlight.clear();
+            limits.clear();
             payloads.clear();
         }
 

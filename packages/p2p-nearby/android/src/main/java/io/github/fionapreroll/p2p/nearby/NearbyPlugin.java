@@ -261,7 +261,7 @@ public class NearbyPlugin extends Plugin {
             call.reject("Too long");
             return;
         }
-        if (fast && !lanes.free(endpointId)) {
+        if (fast && !lanes.admit(endpointId)) {
             call.resolve();
             return;
         }
@@ -345,7 +345,9 @@ public class NearbyPlugin extends Plugin {
         @Override
         public void onBandwidthChanged(String endpointId, BandwidthInfo info) {
             String quality = NearbyRules.quality(info.getQuality());
-            log("bandwidth of " + endpointId + ": " + quality);
+            int inFlight = NearbyRules.fastInFlight(info.getQuality());
+            lanes.limit(endpointId, inFlight);
+            log("bandwidth of " + endpointId + ": " + quality + ", " + inFlight + " fast messages on their way at most");
             JSObject event = new JSObject();
             event.put("endpointId", endpointId);
             event.put("quality", quality);
@@ -453,6 +455,10 @@ public class NearbyPlugin extends Plugin {
         result.put("discovering", discovering);
         result.put("waiting", pending.size());
         result.put("connected", connected.size());
+        // What the plugin dropped since it loaded: fast messages while a connection was busy, and
+        // messages from other phones beyond MAX_MESSAGES_PER_SECOND.
+        result.put("droppedBusy", lanes.dropped());
+        result.put("droppedOverRate", rates.dropped());
         JSArray lines = new JSArray();
         for (String line : log.lines()) lines.put(line);
         result.put("log", lines);

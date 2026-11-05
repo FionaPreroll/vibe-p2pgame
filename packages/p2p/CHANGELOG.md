@@ -4,6 +4,8 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-05
+
 ### Fixed
 
 - `NetLog` no longer takes the second between pings of a player who sends no input, such as between games, for a stall: a wait counts as one when it is at least `STALL_MS` and twice as long as the connection's messages were apart the second before (for its first second, that second itself). Samples tell it in `stalled`, which `summary()`, the report, the graph and `netNote` go by; games should use it instead of comparing `gap` with `STALL_MS`.
