@@ -88,7 +88,7 @@ interface Peer {
   stalled: boolean
   /**
    * How far apart messages came in the second before, in milliseconds: null if none came, and
-   * undefined before the connection's first sample.
+   * undefined until the connection's first message.
    */
   spacing: number | null | undefined
 }
@@ -135,11 +135,13 @@ export class NetLog {
     p.lost += lost
     const inRate = round(rate(after.received, before.received), 1)
     // A wait is a stall only if messages usually come more often: as the second before shows,
-    // or for a connection's first second, this one.
+    // or, for the second its first message came in, this one.
     const spacing = inRate > 0 ? 1000 / inRate : null
     const usual = p.spacing === undefined ? spacing : p.spacing
     const stalled = Math.round(gap) >= Math.max(STALL_MS, 2 * (usual ?? 0))
-    p.spacing = spacing
+    // Before the first message, as when a sample falls between attaching a connection and its
+    // hello, the second without one tells nothing of the usual spacing.
+    p.spacing = spacing ?? (p.lastArrival === null ? undefined : null)
     const sample: NetSample = {
       t: round((now - this.startedAt) / 1000, 1),
       peer,

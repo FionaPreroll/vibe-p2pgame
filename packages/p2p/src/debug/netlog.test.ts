@@ -172,6 +172,26 @@ describe('NetLog', () => {
     expect(notes).toEqual(['player 1: no message for 703 ms'])
   })
 
+  it('takes no stall when a player who sends no input joins between two samples', () => {
+    // A sample falls between attaching the connection and the player's hello: a second with no
+    // message tells nothing yet, and the player's pings come a second apart from then on.
+    const notes: string[] = []
+    const log = new NetLog(0, 0, new Date(), (line) => notes.push(line))
+    log.sample(1, 0, reading(null, 0, 0))
+    log.sample(1, 1000, reading(null, 0, 0))
+    log.arrived(1, 1100)
+    log.sample(1, 2000, reading(null, 1, 1))
+    for (let second = 3; second <= 6; second++) {
+      log.arrived(1, second * 1000 - 900)
+      log.sample(1, second * 1000, reading(50, second - 1, second - 1))
+    }
+    expect(log.series(1).map((s) => s.stalled)).toEqual([false, false, false, false, false, false])
+    expect(notes).toEqual([])
+    // Gone quiet once it had spoken: a stall, as ever.
+    log.sample(1, 9000, reading(50, 5, 5))
+    expect(log.series(1).at(-1)?.stalled).toBe(true)
+  })
+
   it('notes for the log when a connection stalls and when it recovers, once each', () => {
     const notes: string[] = []
     const log = new NetLog(0, 0, new Date(), (line) => notes.push(line))

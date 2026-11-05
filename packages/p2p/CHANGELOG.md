@@ -4,6 +4,12 @@ All notable changes to `@fionapreroll/p2p` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-05
+
+### Fixed
+
+- `NetLog` no longer takes the first wait of a player who sends no input for a stall when a sample falls between attaching the connection and the player's hello: until a connection's first message, a second without one tells nothing of how far apart its messages usually come.
+
 ## [0.6.1] - 2026-11-05
 
 ### Fixed
